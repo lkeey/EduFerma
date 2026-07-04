@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Next.js and Vercel
+.next/
+out/
+.vercel/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Tool caches
+.turbo/
+.cache/
+.eslintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# Tests and reports
+test-results/
+playwright-report/
+
+# Local databases, dumps, and uploads
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+uploads/
+local-uploads/
+tmp/
+temp/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
