@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@clerk/nextjs": "latest",
+    "@eduferma/api-client": "workspace:*",
+    "@eduferma/api-contract": "workspace:*",
     "@eduferma/config": "workspace:*",
     "@eduferma/core": "workspace:*",
     "@eduferma/db": "workspace:*",

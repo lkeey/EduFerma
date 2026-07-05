@@ -2,8 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canAccessRoute, resolveRoleFromEmail } from "@eduferma/core";
-import type { PlatformRole, PlatformUser } from "@eduferma/core";
-import { demoUsers } from "@eduferma/core";
+import { demoUsers, type PlatformRole, type PlatformUser } from "@eduferma/core/platform";
 
 const DEMO_ROLE_COOKIE = "eduferma_demo_role";
 

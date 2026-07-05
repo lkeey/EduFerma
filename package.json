@@ -11,10 +11,17 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
+    "api:openapi:generate": "tsx scripts/api-governance.ts generate",
+    "api:openapi:check": "tsx scripts/api-governance.ts check-openapi",
+    "api:governance": "tsx scripts/api-governance.ts check",
+    "db:generate": "pnpm --filter @eduferma/db db:generate",
+    "db:migrate": "pnpm --filter @eduferma/db db:migrate",
+    "db:push": "pnpm --filter @eduferma/db db:push",
+    "db:seed": "pnpm --filter @eduferma/db db:seed",
+    "db:studio": "pnpm --filter @eduferma/db db:studio",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
-    "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "db:seed": "tsx scripts/seed-demo-data.ts"
+    "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
@@ -22,10 +29,10 @@
     "@types/react-dom": "^19.1.6",
     "@playwright/test": "^1.54.1",
     "drizzle-kit": "^0.31.4",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.4.2",
     "tsx": "^4.20.3",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.9"
   }
 }

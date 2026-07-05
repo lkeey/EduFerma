@@ -1,15 +1,14 @@
-import { requireStudentAccess } from "@/lib/platform/auth";
-import { submitTaskAttempt } from "@/lib/platform/data";
+import { LegacySubmitAttemptRequestSchema } from "@eduferma/validators";
+import { created, handleApiError, parseJson } from "@/server/api/responses";
+import { requireApiRole, roles } from "@/server/auth/session";
+import { getServices } from "@/server/services";
 
 export async function POST(request: Request) {
-  await requireStudentAccess("demo_student_oge");
-  const body = await request.json();
-  const result = await submitTaskAttempt({
-    studentId: "demo_student_oge",
-    assignmentId: String(body.assignmentId ?? "assignment_demo_1"),
-    taskId: String(body.taskId ?? ""),
-    answer: String(body.answer ?? "")
-  });
-
-  return Response.json(result);
+  try {
+    await requireApiRole(roles.student, request);
+    const input = await parseJson(request, LegacySubmitAttemptRequestSchema);
+    return created(await getServices().student.submitAttempt({ taskId: input.taskId, answer: input.answer }));
+  } catch (error) {
+    return handleApiError(error);
+  }
 }

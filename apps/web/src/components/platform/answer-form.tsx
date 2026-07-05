@@ -21,14 +21,20 @@ export function AnswerForm({
     setPending(true);
     setResult(null);
 
-    const response = await fetch("/api/student/attempts", {
+    const response = await fetch(`/api/v1/student/tasks/${encodeURIComponent(taskId)}/attempts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ taskId, assignmentId, answer })
     });
     const payload = await response.json();
     setPending(false);
-    setResult(payload.result ?? { feedbackMd: payload.error ?? "Не удалось отправить ответ", checkStatus: "error" });
+    setResult(
+      payload.result ?? {
+        feedbackMd: payload.feedback ?? payload.error?.message ?? payload.error ?? "Не удалось отправить ответ",
+        checkStatus: payload.checkStatus ?? "error",
+        isCorrect: payload.isCorrect
+      }
+    );
   }
 
   return (
