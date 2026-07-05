@@ -1,10 +1,29 @@
 import { BookOpenCheck, CalendarDays, Home, LineChart, LockKeyhole, MessageCircle } from "lucide-react";
 import { Badge, LinkButton, MetricCard, Panel, ProgressBar } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
-import { assignmentRows, masteryRows } from "@/lib/demo-data";
+import { SetupRequiredError } from "@eduferma/core";
+import { requirePageRole, roles } from "@/server/auth/session";
+import { getServices } from "@/server/services";
+import { redirect } from "next/navigation";
 
-export default function StudentDashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function StudentDashboardPage() {
   const config = getPublicConfig();
+  try {
+    await requirePageRole("/dashboard/student", roles.student);
+  } catch {
+    redirect("/sign-in");
+  }
+
+  let data: Awaited<ReturnType<ReturnType<typeof getServices>["student"]["getDashboard"]>> | null = null;
+  let setupRequired = false;
+  try {
+    data = await getServices().student.getDashboard();
+  } catch (error) {
+    if (error instanceof SetupRequiredError) setupRequired = true;
+    else throw error;
+  }
 
   return (
     <main className="dashboard-shell">
@@ -40,11 +59,21 @@ export default function StudentDashboardPage() {
         </header>
 
         <div className="metric-grid">
-          <MetricCard label="Ближайшее занятие" value="Сегодня" detail="ЕГЭ 7 · графики" />
-          <MetricCard label="Домашка" value="2 активных" detail="1 к проверке" />
-          <MetricCard label="Средний прогресс" value="71%" detail="по demo skill atoms" />
+          <MetricCard label="Ближайшее занятие" value={data?.schedule[0]?.title || "DB setup"} detail="remote DB required" />
+          <MetricCard label="Домашка" value={String(data?.assignments.length || 0)} detail="из API/service layer" />
+          <MetricCard label="Средний прогресс" value={data ? `${Math.round(data.progress.reduce((sum, row) => sum + row.value, 0) / data.progress.length)}%` : "0%"} detail="по skill atoms" />
           <MetricCard label="Ответы" value="скрыты" detail="до сдачи или разрешения" />
         </div>
+
+        {setupRequired ? (
+          <Panel>
+            <div className="panel-header">
+              <h2>Remote DB не подключена</h2>
+              <LockKeyhole aria-hidden="true" />
+            </div>
+            <p>Production данные появятся после настройки `DATABASE_URL`, migrations и seed/import pipeline.</p>
+          </Panel>
+        ) : null}
 
         <div className="dashboard-grid">
           <Panel id="assignments">
@@ -62,12 +91,12 @@ export default function StudentDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {assignmentRows.map((row) => (
-                  <tr key={row.title}>
+                {(data?.assignments || []).map((row) => (
+                  <tr key={row.id}>
                     <td>{row.title}</td>
                     <td>{row.status}</td>
-                    <td>{row.due}</td>
-                    <td>{row.score}</td>
+                    <td>{row.due_at || "не задан"}</td>
+                    <td>{row.score || "ожидается"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -81,13 +110,13 @@ export default function StudentDashboardPage() {
                 <CalendarDays aria-hidden="true" />
               </div>
               <div className="stack">
-                {masteryRows.map((row) => (
-                  <div key={row.skill}>
+                {(data?.progress || []).map((row) => (
+                  <div key={row.skill_atom}>
                     <div className="panel-header">
-                      <span>{row.skill}</span>
+                      <span>{row.skill_atom}</span>
                       <Badge>{row.value}%</Badge>
                     </div>
-                    <ProgressBar value={row.value} label={row.skill} />
+                    <ProgressBar value={row.value} label={row.skill_atom} />
                   </div>
                 ))}
               </div>

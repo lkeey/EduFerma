@@ -1,10 +1,29 @@
 import { BarChart3, BookOpenCheck, DatabaseZap, Home, MessageCircle, UsersRound } from "lucide-react";
 import { Badge, LinkButton, MetricCard, Panel, ProgressBar } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
-import { masteryRows, teacherRows } from "@/lib/demo-data";
+import { SetupRequiredError } from "@eduferma/core";
+import { requirePageRole, roles } from "@/server/auth/session";
+import { getServices } from "@/server/services";
+import { redirect } from "next/navigation";
 
-export default function TeacherDashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TeacherDashboardPage() {
   const config = getPublicConfig();
+  try {
+    await requirePageRole("/dashboard/teacher", roles.teacher);
+  } catch {
+    redirect("/sign-in");
+  }
+
+  let data: Awaited<ReturnType<ReturnType<typeof getServices>["teacher"]["getDashboard"]>> | null = null;
+  let setupRequired = false;
+  try {
+    data = await getServices().teacher.getDashboard();
+  } catch (error) {
+    if (error instanceof SetupRequiredError) setupRequired = true;
+    else throw error;
+  }
 
   return (
     <main className="dashboard-shell">
@@ -43,11 +62,21 @@ export default function TeacherDashboardPage() {
         </header>
 
         <div className="metric-grid">
-          <MetricCard label="Ученики" value="3 demo" detail="реальные только после invite" />
-          <MetricCard label="ДЗ к проверке" value="1" detail="short answer flow" />
-          <MetricCard label="Task bank" value="dry-run" detail="без прямого импорта" />
+          <MetricCard label="Ученики" value={String(data?.students.length || 0)} detail="из service layer" />
+          <MetricCard label="ДЗ к проверке" value={String(data?.pendingReview || 0)} detail="short answer flow" />
+          <MetricCard label="Task bank" value={setupRequired ? "DB setup" : "API"} detail="без прямого импорта" />
           <MetricCard label="Consent" value="strict" detail="public only granted" />
         </div>
+
+        {setupRequired ? (
+          <Panel>
+            <div className="panel-header">
+              <h2>Remote DB не подключена</h2>
+              <DatabaseZap aria-hidden="true" />
+            </div>
+            <p>Production source of truth должен быть Neon/managed Postgres через `DATABASE_URL`.</p>
+          </Panel>
+        ) : null}
 
         <div className="dashboard-grid">
           <Panel id="students">
@@ -65,12 +94,12 @@ export default function TeacherDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {teacherRows.map((row) => (
-                  <tr key={row.student}>
-                    <td>{row.student}</td>
-                    <td>{row.track}</td>
-                    <td>{row.next}</td>
-                    <td>{row.risk}</td>
+                {(data?.students || []).map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.display_name}</td>
+                    <td>{row.learning_track}</td>
+                    <td>{row.next_topic || "не задано"}</td>
+                    <td>{row.risk || "не задан"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -98,13 +127,13 @@ export default function TeacherDashboardPage() {
                 <BookOpenCheck aria-hidden="true" />
               </div>
               <div className="stack">
-                {masteryRows.map((row) => (
-                  <div key={row.skill}>
+                {(data?.progress || []).map((row) => (
+                  <div key={row.skill_atom}>
                     <div className="panel-header">
-                      <span>{row.skill}</span>
+                      <span>{row.skill_atom}</span>
                       <Badge>{row.value}%</Badge>
                     </div>
-                    <ProgressBar value={row.value} label={row.skill} />
+                    <ProgressBar value={row.value} label={row.skill_atom} />
                   </div>
                 ))}
               </div>

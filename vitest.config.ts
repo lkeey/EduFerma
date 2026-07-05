@@ -13,7 +13,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@eduferma/config": resolve(root, "packages/config/src/index.ts"),
+      "@eduferma/api-contract": resolve(root, "packages/api-contract/src/index.ts"),
       "@eduferma/core": resolve(root, "packages/core/src/index.ts"),
+      "@eduferma/db": resolve(root, "packages/db/src/index.ts"),
       "@eduferma/validators": resolve(root, "packages/validators/src/index.ts")
     }
   }

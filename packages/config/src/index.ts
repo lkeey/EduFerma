@@ -23,7 +23,7 @@ export const roleNames = {
 
 export type AppRole = keyof typeof roleNames;
 
-export const protectedRoutePrefixes = ["/dashboard", "/api/platform"] as const;
+export const protectedRoutePrefixes = ["/dashboard", "/api/v1", "/api/health/db"] as const;
 
 export function getPublicConfig(env: NodeJS.ProcessEnv = process.env) {
   return {

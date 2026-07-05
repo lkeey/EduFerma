@@ -27,6 +27,7 @@ coverage/
 # Tests and reports
 test-results/
 playwright-report/
+logs/api_governance/
 
 # Local databases, dumps, and uploads
 *.db

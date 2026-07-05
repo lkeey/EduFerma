@@ -10,6 +10,9 @@
     "CLERK_SECRET_KEY",
     "OWNER_EMAIL",
     "DATABASE_URL",
+    "DIRECT_DATABASE_URL",
+    "ENABLE_DEMO_AUTH",
+    "OPENAPI_DOCS_ENABLED",
     "BLOB_READ_WRITE_TOKEN"
   ],
   "tasks": {
@@ -22,7 +25,10 @@
         "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
         "CLERK_SECRET_KEY",
         "OWNER_EMAIL",
-        "DATABASE_URL"
+        "DATABASE_URL",
+        "DIRECT_DATABASE_URL",
+        "ENABLE_DEMO_AUTH",
+        "OPENAPI_DOCS_ENABLED"
       ]
     },
     "typecheck": {

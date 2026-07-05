@@ -18,12 +18,25 @@ const requiredFiles = [
   "apps/worker/src/index.ts",
   "packages/db/src/client.ts",
   "packages/db/src/schema.ts",
+  "packages/db/src/seed.ts",
+  "packages/db/drizzle/0000_fearless_elektra.sql",
+  "packages/api-contract/src/openapi.ts",
+  "packages/api-contract/src/registry.ts",
+  "packages/api-client/src/client.ts",
   "packages/core/src/permissions.ts",
+  "packages/core/src/services/serializers.ts",
   "packages/core/src/task-import.ts",
   "packages/validators/src/task.ts",
+  "packages/validators/src/api.ts",
   "packages/ui/src/index.tsx",
+  "apps/web/src/app/api/openapi.json/route.ts",
+  "apps/web/src/app/api/docs/page.tsx",
+  "apps/web/src/app/api/v1/me/route.ts",
+  "scripts/api-governance.ts",
   "scripts/sync-from-local-jsonl.ts",
   "docs/deployment.md",
+  "docs/api.md",
+  "docs/database-architecture.md",
   ".env.example"
 ];
 
@@ -37,6 +50,10 @@ function main() {
     checkLazyDb(),
     checkTestimonialsConsent(),
     checkTaskSyncDefaultsDryRun(),
+    checkOpenApiRoutes(),
+    checkDashboardServiceLayer(),
+    checkStudentSerializer(),
+    checkMigrationsAndSeed(),
     checkEnvIgnored()
   ];
 
@@ -55,7 +72,17 @@ function read(pathname: string) {
 
 function checkEnvExample(): Check {
   const env = read(".env.example");
-  const required = ["OWNER_EMAIL", "DATABASE_URL", "BLOB_READ_WRITE_TOKEN", "NEXT_PUBLIC_TELEGRAM_URL"];
+  const required = [
+    "OWNER_EMAIL",
+    "DATABASE_URL",
+    "DIRECT_DATABASE_URL",
+    "CLERK_SECRET_KEY",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "ENABLE_DEMO_AUTH",
+    "OPENAPI_DOCS_ENABLED",
+    "BLOB_READ_WRITE_TOKEN",
+    "NEXT_PUBLIC_TELEGRAM_URL"
+  ];
   const missing = required.filter((name) => !env.includes(`${name}=`));
   return { name: "env-example-required-vars", ok: missing.length === 0, detail: missing.join(", ") };
 }
@@ -80,6 +107,48 @@ function checkTaskSyncDefaultsDryRun(): Check {
   return {
     name: "task-sync-dry-run-default",
     ok: sync.includes("const dryRun = argv.includes(\"--dry-run\") || !apply")
+  };
+}
+
+function checkOpenApiRoutes(): Check {
+  const contract = read("packages/api-contract/src/registry.ts");
+  const openapiRoute = read("apps/web/src/app/api/openapi.json/route.ts");
+  const docsPage = read("apps/web/src/app/api/docs/page.tsx");
+  return {
+    name: "openapi-and-swagger-routes",
+    ok:
+      contract.includes("/api/v1/me") &&
+      openapiRoute.includes("openApiDocument") &&
+      docsPage.includes("/api/openapi.json")
+  };
+}
+
+function checkDashboardServiceLayer(): Check {
+  const student = read("apps/web/src/app/dashboard/student/page.tsx");
+  const teacher = read("apps/web/src/app/dashboard/teacher/page.tsx");
+  const usesServices = student.includes("getServices") && teacher.includes("getServices");
+  const noDemoImports = !student.includes("@/lib/demo-data") && !teacher.includes("@/lib/demo-data");
+  return { name: "dashboard-service-layer", ok: usesServices && noDemoImports };
+}
+
+function checkStudentSerializer(): Check {
+  const serializer = read("packages/core/src/services/serializers.ts");
+  return {
+    name: "student-serializer-removes-teacher-fields",
+    ok:
+      serializer.includes("answer_json") &&
+      serializer.includes("solution_md") &&
+      serializer.includes("teacher_notes") &&
+      serializer.includes("local_source_path")
+  };
+}
+
+function checkMigrationsAndSeed(): Check {
+  return {
+    name: "db-migration-and-seed-exist",
+    ok:
+      existsSync(join(root, "packages/db/drizzle/0000_fearless_elektra.sql")) &&
+      existsSync(join(root, "packages/db/src/seed.ts"))
   };
 }
 

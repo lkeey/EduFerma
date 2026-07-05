@@ -129,6 +129,7 @@ export const tasks = pgTable(
     sourceUrl: text("source_url"),
     sourceTaskId: text("source_task_id"),
     statementMd: text("statement_md").notNull(),
+    answerJson: jsonb("answer_json").$type<unknown>(),
     answerHash: text("answer_hash"),
     solutionMd: text("solution_md"),
     verificationStatus: text("verification_status").notNull().default("unknown"),
