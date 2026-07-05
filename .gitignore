@@ -20,6 +20,9 @@ coverage/
 # Tool caches
 .turbo/
 .cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
 .eslintcache
 .tsbuildinfo
 *.tsbuildinfo
@@ -27,6 +30,8 @@ coverage/
 # Tests and reports
 test-results/
 playwright-report/
+reports/
+logs/repo_governance/
 
 # Local databases, dumps, and uploads
 *.db
