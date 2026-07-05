@@ -579,6 +579,46 @@ textarea {
   gap: 12px;
 }
 
+.field-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.text-field {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--foreground);
+}
+
+.text-area {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 120px 160px auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.notice {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+}
+
+.muted-text {
+  color: var(--muted);
+}
+
 .auth-page {
   min-height: 100vh;
   display: grid;

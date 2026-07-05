@@ -1,15 +1,11 @@
-import { assignmentRows, masteryRows, teacherRows } from "../apps/web/src/lib/demo-data";
+import { demoData } from "@eduferma/core";
 
 const demoSeed = {
-  users: [{ email: process.env.OWNER_EMAIL || "owner@example.com", role: "owner" }],
-  students: teacherRows.map((row, index) => ({
-    publicCode: `demo-${index + 1}`,
-    displayName: row.student,
-    learningTrack: row.track,
-    nextTopic: row.next
-  })),
-  assignments: assignmentRows,
-  mastery: masteryRows
+  mode: process.env.DATABASE_URL ? "db-ready" : "dry-run",
+  note: process.env.DATABASE_URL
+    ? "Demo records are stable and ready to upsert in the DB apply path."
+    : "DATABASE_URL is not set, so this command prints the idempotent demo seed payload.",
+  ...demoData
 };
 
 console.log(JSON.stringify(demoSeed, null, 2));

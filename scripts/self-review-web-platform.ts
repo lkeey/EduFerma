@@ -14,7 +14,25 @@ const requiredFiles = [
   "apps/web/src/app/page.tsx",
   "apps/web/src/app/dashboard/student/page.tsx",
   "apps/web/src/app/dashboard/teacher/page.tsx",
+  "apps/web/src/app/student/dashboard/page.tsx",
+  "apps/web/src/app/student/schedule/page.tsx",
+  "apps/web/src/app/student/plan/page.tsx",
+  "apps/web/src/app/student/assignments/page.tsx",
+  "apps/web/src/app/student/assignments/[assignmentId]/page.tsx",
+  "apps/web/src/app/student/tasks/[taskId]/page.tsx",
+  "apps/web/src/app/student/progress/page.tsx",
+  "apps/web/src/app/teacher/dashboard/page.tsx",
+  "apps/web/src/app/teacher/students/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/plan/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/schedule/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/assignments/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/analytics/page.tsx",
+  "apps/web/src/app/teacher/task-bank/page.tsx",
+  "apps/web/src/app/teacher/assignments/new/page.tsx",
+  "apps/web/src/app/teacher/reviews/page.tsx",
   "apps/web/src/proxy.ts",
+  "apps/web/src/lib/platform/auth.ts",
+  "apps/web/src/lib/platform/data.ts",
   "apps/worker/src/index.ts",
   "packages/db/src/client.ts",
   "packages/db/src/schema.ts",
@@ -37,7 +55,10 @@ function main() {
     checkLazyDb(),
     checkTestimonialsConsent(),
     checkTaskSyncDefaultsDryRun(),
-    checkEnvIgnored()
+    checkEnvIgnored(),
+    checkProtectedRoutes(),
+    checkSafeTaskSerialization(),
+    checkDemoSeed()
   ];
 
   const failed = checks.filter((check) => !check.ok);
@@ -47,6 +68,30 @@ function main() {
   if (failed.length > 0) {
     process.exitCode = 1;
   }
+}
+
+function checkProtectedRoutes(): Check {
+  const proxy = read("apps/web/src/proxy.ts");
+  return {
+    name: "protected-student-teacher-routes",
+    ok: proxy.includes("/student(.*)") && proxy.includes("/teacher(.*)") && proxy.includes("/api/student(.*)") && proxy.includes("/api/teacher(.*)")
+  };
+}
+
+function checkSafeTaskSerialization(): Check {
+  const safeTask = read("packages/core/src/platform/safe-task.ts");
+  return {
+    name: "safe-task-excludes-answers",
+    ok: safeTask.includes("answerJson") && safeTask.includes("solutionMd") && safeTask.includes("sourceUrl")
+  };
+}
+
+function checkDemoSeed(): Check {
+  const seed = read("scripts/seed-demo-data.ts");
+  return {
+    name: "demo-seed-command",
+    ok: seed.includes("demoData") && read("package.json").includes("\"db:seed\"")
+  };
 }
 
 function read(pathname: string) {

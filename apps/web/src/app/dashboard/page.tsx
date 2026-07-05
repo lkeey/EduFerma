@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
+import { getRoleRedirectPath } from "@/lib/platform/auth";
 
-export default function DashboardIndex() {
-  redirect("/dashboard/student");
+export default async function DashboardIndex() {
+  redirect(await getRoleRedirectPath());
 }
