@@ -84,7 +84,7 @@ function checkOpenApi(): Finding[] {
 
 function checkRoutes(): Finding[] {
   const findings: Finding[] = [];
-  const routes = listRouteFiles(join(root, "apps/web/src/app/api/v1"));
+  const routes = listRouteFiles(join(root, "apps/web/src/app/api"));
 
   for (const file of routes) {
     const apiPath = routeFileToPath(file);

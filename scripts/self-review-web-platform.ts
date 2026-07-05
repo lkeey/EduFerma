@@ -14,7 +14,25 @@ const requiredFiles = [
   "apps/web/src/app/page.tsx",
   "apps/web/src/app/dashboard/student/page.tsx",
   "apps/web/src/app/dashboard/teacher/page.tsx",
+  "apps/web/src/app/student/dashboard/page.tsx",
+  "apps/web/src/app/student/schedule/page.tsx",
+  "apps/web/src/app/student/plan/page.tsx",
+  "apps/web/src/app/student/assignments/page.tsx",
+  "apps/web/src/app/student/assignments/[assignmentId]/page.tsx",
+  "apps/web/src/app/student/tasks/[taskId]/page.tsx",
+  "apps/web/src/app/student/progress/page.tsx",
+  "apps/web/src/app/teacher/dashboard/page.tsx",
+  "apps/web/src/app/teacher/students/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/plan/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/schedule/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/assignments/page.tsx",
+  "apps/web/src/app/teacher/students/[studentId]/analytics/page.tsx",
+  "apps/web/src/app/teacher/task-bank/page.tsx",
+  "apps/web/src/app/teacher/assignments/new/page.tsx",
+  "apps/web/src/app/teacher/reviews/page.tsx",
   "apps/web/src/proxy.ts",
+  "apps/web/src/lib/platform/auth.ts",
+  "apps/web/src/lib/platform/data.ts",
   "apps/worker/src/index.ts",
   "packages/db/src/client.ts",
   "packages/db/src/schema.ts",
@@ -51,10 +69,14 @@ function main() {
     checkTestimonialsConsent(),
     checkTaskSyncDefaultsDryRun(),
     checkOpenApiRoutes(),
-    checkDashboardServiceLayer(),
+    checkDashboardRouting(),
+    checkVersionedAttemptApiUsage(),
     checkStudentSerializer(),
     checkMigrationsAndSeed(),
-    checkEnvIgnored()
+    checkEnvIgnored(),
+    checkProtectedRoutes(),
+    checkSafeTaskSerialization(),
+    checkDemoSeed()
   ];
 
   const failed = checks.filter((check) => !check.ok);
@@ -64,6 +86,40 @@ function main() {
   if (failed.length > 0) {
     process.exitCode = 1;
   }
+}
+
+function checkProtectedRoutes(): Check {
+  const proxy = read("apps/web/src/proxy.ts");
+  return {
+    name: "protected-student-teacher-routes",
+    ok:
+      proxy.includes("/student(.*)") &&
+      proxy.includes("/teacher(.*)") &&
+      proxy.includes("/api/v1(.*)") &&
+      proxy.includes("/api/health/db") &&
+      proxy.includes("/api/student(.*)") &&
+      proxy.includes("/api/teacher(.*)")
+  };
+}
+
+function checkSafeTaskSerialization(): Check {
+  const safeTask = read("packages/core/src/platform/safe-task.ts");
+  return {
+    name: "safe-task-excludes-answers",
+    ok: safeTask.includes("answerJson") && safeTask.includes("solutionMd") && safeTask.includes("sourceUrl")
+  };
+}
+
+function checkDemoSeed(): Check {
+  const seed = read("scripts/seed-demo-data.ts");
+  return {
+    name: "demo-seed-command",
+    ok:
+      seed.includes("demoData") &&
+      seed.includes("buildDemoSeed") &&
+      read("package.json").includes("\"db:seed\": \"pnpm --filter @eduferma/db db:seed\"") &&
+      read("package.json").includes("\"seed:demo\"")
+  };
 }
 
 function read(pathname: string) {
@@ -123,12 +179,30 @@ function checkOpenApiRoutes(): Check {
   };
 }
 
-function checkDashboardServiceLayer(): Check {
-  const student = read("apps/web/src/app/dashboard/student/page.tsx");
-  const teacher = read("apps/web/src/app/dashboard/teacher/page.tsx");
-  const usesServices = student.includes("getServices") && teacher.includes("getServices");
-  const noDemoImports = !student.includes("@/lib/demo-data") && !teacher.includes("@/lib/demo-data");
-  return { name: "dashboard-service-layer", ok: usesServices && noDemoImports };
+function checkDashboardRouting(): Check {
+  const oldStudent = read("apps/web/src/app/dashboard/student/page.tsx");
+  const oldTeacher = read("apps/web/src/app/dashboard/teacher/page.tsx");
+  const newStudent = read("apps/web/src/app/student/dashboard/page.tsx");
+  const newTeacher = read("apps/web/src/app/teacher/dashboard/page.tsx");
+  const oldRoutesAreGuardedRedirects =
+    oldStudent.includes("requireStudentAccess") &&
+    oldStudent.includes("redirect(\"/student/dashboard\")") &&
+    oldTeacher.includes("requireTeacherAccess") &&
+    oldTeacher.includes("redirect(\"/teacher/dashboard\")");
+  const newRoutesAreGuarded =
+    newStudent.includes("requireStudentAccess") &&
+    newTeacher.includes("requireTeacherAccess") &&
+    !newStudent.includes("@/lib/demo-data") &&
+    !newTeacher.includes("@/lib/demo-data");
+  return { name: "dashboard-routing-and-role-gates", ok: oldRoutesAreGuardedRedirects && newRoutesAreGuarded };
+}
+
+function checkVersionedAttemptApiUsage(): Check {
+  const answerForm = read("apps/web/src/components/platform/answer-form.tsx");
+  return {
+    name: "student-attempts-use-versioned-api",
+    ok: answerForm.includes("/api/v1/student/tasks/")
+  };
 }
 
 function checkStudentSerializer(): Check {

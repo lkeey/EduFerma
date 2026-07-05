@@ -9,6 +9,7 @@
     "lint": "tsx scripts/lint-project.ts",
     "typecheck": "turbo typecheck",
     "test": "vitest run",
+    "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
     "api:openapi:generate": "tsx scripts/api-governance.ts generate",
     "api:openapi:check": "tsx scripts/api-governance.ts check-openapi",

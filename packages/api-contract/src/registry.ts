@@ -13,6 +13,11 @@ export type RouteDefinition = {
 export const routeDefinitions: RouteDefinition[] = [
   { path: "/api/health", method: "get", operationId: "getHealth", tags: ["Health"], summary: "Basic service health", public: true },
   { path: "/api/health/db", method: "get", operationId: "getDatabaseHealth", tags: ["Health"], summary: "Protected database health" },
+  { path: "/api/openapi.json", method: "get", operationId: "getOpenApiDocument", tags: ["Health"], summary: "OpenAPI JSON document", public: true },
+  { path: "/api/demo-auth/login", method: "get", operationId: "loginDemoAuth", tags: ["Auth"], summary: "Development-only demo auth login", public: true },
+  { path: "/api/demo-auth/logout", method: "get", operationId: "logoutDemoAuth", tags: ["Auth"], summary: "Development-only demo auth logout", public: true },
+  { path: "/api/student/attempts", method: "post", operationId: "submitStudentAttemptLegacy", tags: ["Attempts", "Student"], summary: "Legacy compatibility student attempt submit", requestBody: true },
+  { path: "/api/teacher/reviews", method: "post", operationId: "reviewTeacherAttemptLegacy", tags: ["Attempts", "Teacher"], summary: "Legacy compatibility teacher attempt review", requestBody: true },
   { path: "/api/v1/me", method: "get", operationId: "getCurrentUser", tags: ["Auth"], summary: "Current user" },
   { path: "/api/v1/student/dashboard", method: "get", operationId: "getStudentDashboard", tags: ["Student"], summary: "Student dashboard" },
   { path: "/api/v1/student/schedule", method: "get", operationId: "getStudentSchedule", tags: ["Schedule", "Student"], summary: "Student schedule" },

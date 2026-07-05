@@ -7,15 +7,16 @@ export const routes = {
   signIn: "/sign-in",
   signUp: "/sign-up",
   dashboard: "/dashboard",
-  studentDashboard: "/dashboard/student",
-  teacherDashboard: "/dashboard/teacher",
-  taskBank: "/dashboard/teacher#task-bank",
-  analytics: "/dashboard/teacher#analytics"
+  studentDashboard: "/student/dashboard",
+  teacherDashboard: "/teacher/dashboard",
+  taskBank: "/teacher/task-bank",
+  analytics: "/teacher/students/demo_student_oge/analytics"
 } as const;
 
 export const roleNames = {
   owner: "Владелец",
   tutor: "Преподаватель",
+  teacher: "Преподаватель",
   student: "Ученик",
   guardian: "Родитель",
   guest: "Гость"
@@ -23,7 +24,16 @@ export const roleNames = {
 
 export type AppRole = keyof typeof roleNames;
 
-export const protectedRoutePrefixes = ["/dashboard", "/api/v1", "/api/health/db"] as const;
+export const protectedRoutePrefixes = [
+  "/dashboard",
+  "/student",
+  "/teacher",
+  "/api/v1",
+  "/api/health/db",
+  "/api/student",
+  "/api/teacher",
+  "/api/platform"
+] as const;
 
 export function getPublicConfig(env: NodeJS.ProcessEnv = process.env) {
   return {

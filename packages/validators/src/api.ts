@@ -46,6 +46,10 @@ export const SubmitAttemptRequestSchema = z.object({
   timeSpentSec: z.number().int().nonnegative().optional()
 });
 
+export const LegacySubmitAttemptRequestSchema = SubmitAttemptRequestSchema.extend({
+  taskId: z.string().min(1)
+});
+
 export const CreateAssignmentRequestSchema = z.object({
   studentId: z.string().min(1),
   title: z.string().min(1),
@@ -81,11 +85,17 @@ export const ReviewAttemptRequestSchema = z.object({
   mistakeTags: z.array(z.string().min(1)).default([])
 });
 
+export const LegacyReviewAttemptRequestSchema = ReviewAttemptRequestSchema.extend({
+  attemptId: z.string().min(1)
+});
+
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
 export type SubmitAttemptRequest = z.infer<typeof SubmitAttemptRequestSchema>;
+export type LegacySubmitAttemptRequest = z.infer<typeof LegacySubmitAttemptRequestSchema>;
 export type CreateAssignmentRequest = z.infer<typeof CreateAssignmentRequestSchema>;
 export type UpdateAssignmentRequest = z.infer<typeof UpdateAssignmentRequestSchema>;
 export type UpdatePlanRequest = z.infer<typeof UpdatePlanRequestSchema>;
 export type CreateScheduleEventRequest = z.infer<typeof CreateScheduleEventRequestSchema>;
 export type ReviewAttemptRequest = z.infer<typeof ReviewAttemptRequestSchema>;
+export type LegacyReviewAttemptRequest = z.infer<typeof LegacyReviewAttemptRequestSchema>;

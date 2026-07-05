@@ -11,7 +11,7 @@ import {
   uuid
 } from "drizzle-orm/pg-core";
 
-export const appRole = pgEnum("app_role", ["owner", "tutor", "student", "guardian"]);
+export const appRole = pgEnum("app_role", ["owner", "teacher", "tutor", "student", "guardian"]);
 export const invitationStatus = pgEnum("invitation_status", ["pending", "accepted", "revoked", "expired"]);
 export const consentStatus = pgEnum("consent_status", ["granted", "pending", "revoked", "not_required"]);
 export const taskStatus = pgEnum("task_status", ["active", "draft", "archived", "needs_review"]);
@@ -29,6 +29,7 @@ export const users = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clerkUserId: text("clerk_user_id").notNull(),
+    authProviderUserId: text("auth_provider_user_id"),
     email: text("email").notNull(),
     displayName: text("display_name"),
     role: appRole("role").notNull().default("student"),
@@ -67,6 +68,12 @@ export const students = pgTable(
     publicCode: text("public_code").notNull(),
     displayName: text("display_name").notNull(),
     learningTrack: text("learning_track").notNull(),
+    examYear: integer("exam_year"),
+    currentLevel: text("current_level"),
+    targetScore: integer("target_score"),
+    targetGrade: text("target_grade"),
+    targetDate: timestamp("target_date", { withTimezone: true }),
+    status: text("status").notNull().default("active"),
     goalSummary: text("goal_summary"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     ...timestamps
@@ -118,10 +125,14 @@ export const tasks = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     taskId: text("task_id").notNull(),
+    canonicalHash: text("canonical_hash"),
     learningTrack: text("learning_track").notNull(),
     exam: text("exam"),
+    examYear: integer("exam_year"),
+    subject: text("subject").notNull().default("informatics"),
     taskNumber: text("task_number"),
     topic: text("topic"),
+    subtopic: text("subtopic"),
     prototypeId: text("prototype_id"),
     skillAtoms: jsonb("skill_atoms").$type<string[]>().notNull().default([]),
     difficultyLevel: text("difficulty_level").notNull().default("unknown"),
@@ -129,7 +140,7 @@ export const tasks = pgTable(
     sourceUrl: text("source_url"),
     sourceTaskId: text("source_task_id"),
     statementMd: text("statement_md").notNull(),
-    answerJson: jsonb("answer_json").$type<unknown>(),
+    answerJson: jsonb("answer_json").$type<Record<string, unknown>>(),
     answerHash: text("answer_hash"),
     solutionMd: text("solution_md"),
     verificationStatus: text("verification_status").notNull().default("unknown"),
@@ -152,6 +163,7 @@ export const assignments = pgTable(
     studentId: uuid("student_id").notNull().references(() => students.id),
     tutorUserId: uuid("tutor_user_id").references(() => users.id),
     title: text("title").notNull(),
+    descriptionMd: text("description_md"),
     status: assignmentStatus("status").notNull().default("draft"),
     dueAt: timestamp("due_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -170,7 +182,9 @@ export const assignmentTasks = pgTable(
     assignmentId: uuid("assignment_id").notNull().references(() => assignments.id),
     taskId: uuid("task_id").notNull().references(() => tasks.id),
     position: integer("position").notNull().default(0),
+    orderIndex: integer("order_index").notNull().default(0),
     points: integer("points").notNull().default(1),
+    required: boolean("required").notNull().default(true),
     revealAnswerAfterSubmit: boolean("reveal_answer_after_submit").notNull().default(false),
     ...timestamps
   },
@@ -185,17 +199,164 @@ export const attempts = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     assignmentTaskId: uuid("assignment_task_id").notNull().references(() => assignmentTasks.id),
     studentId: uuid("student_id").notNull().references(() => students.id),
+    assignmentId: uuid("assignment_id").references(() => assignments.id),
+    taskId: uuid("task_id").references(() => tasks.id),
+    attemptNo: integer("attempt_no").notNull().default(1),
     submittedAnswer: text("submitted_answer"),
+    answerJson: jsonb("answer_json").$type<Record<string, unknown>>(),
     isCorrect: boolean("is_correct"),
+    scoreAwarded: integer("score_awarded"),
+    checkStatus: text("check_status").notNull().default("pending_review"),
     status: attemptStatus("status").notNull().default("started"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     checkedByUserId: uuid("checked_by_user_id").references(() => users.id),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     checkedAt: timestamp("checked_at", { withTimezone: true }),
     feedback: text("feedback"),
+    feedbackMd: text("feedback_md"),
+    mistakeTags: jsonb("mistake_tags").$type<string[]>().notNull().default([]),
     ...timestamps
   },
   (table) => ({
     studentAttemptIdx: index("attempts_student_idx").on(table.studentId, table.submittedAt)
+  })
+);
+
+export const teacherStudentLinks = pgTable(
+  "teacher_student_links",
+  {
+    teacherUserId: uuid("teacher_user_id").notNull().references(() => users.id),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    ...timestamps
+  },
+  (table) => ({
+    linkIdx: uniqueIndex("teacher_student_links_idx").on(table.teacherUserId, table.studentId)
+  })
+);
+
+export const studentGoals = pgTable("student_goals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull().references(() => students.id),
+  summary: text("summary").notNull(),
+  targetScore: integer("target_score"),
+  targetGrade: text("target_grade"),
+  targetDate: timestamp("target_date", { withTimezone: true }),
+  ...timestamps
+});
+
+export const learningPlans = pgTable("learning_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull().references(() => students.id),
+  versionNo: integer("version_no").notNull().default(1),
+  status: text("status").notNull().default("active"),
+  learningTrack: text("learning_track").notNull(),
+  examYear: integer("exam_year"),
+  targetScore: integer("target_score"),
+  targetGrade: text("target_grade"),
+  strategy: text("strategy").notNull(),
+  planJson: jsonb("plan_json").$type<Record<string, unknown>>().notNull().default({}),
+  ...timestamps
+});
+
+export const learningPlanLessons = pgTable("learning_plan_lessons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  planId: uuid("plan_id").notNull().references(() => learningPlans.id),
+  lessonNo: integer("lesson_no").notNull(),
+  plannedDate: timestamp("planned_date", { withTimezone: true }),
+  title: text("title").notNull(),
+  lessonGoal: text("lesson_goal"),
+  topicsJson: jsonb("topics_json").$type<string[]>().notNull().default([]),
+  taskNumbersJson: jsonb("task_numbers_json").$type<string[]>().notNull().default([]),
+  prototypeIdsJson: jsonb("prototype_ids_json").$type<string[]>().notNull().default([]),
+  skillAtomsJson: jsonb("skill_atoms_json").$type<string[]>().notNull().default([]),
+  teacherNotes: text("teacher_notes"),
+  studentSummary: text("student_summary"),
+  status: text("status").notNull().default("planned"),
+  ...timestamps
+});
+
+export const scheduleEvents = pgTable("schedule_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull().references(() => students.id),
+  assignmentId: uuid("assignment_id").references(() => assignments.id),
+  title: text("title").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  status: text("status").notNull().default("planned"),
+  meetingUrl: text("meeting_url"),
+  notesMd: text("notes_md"),
+  ...timestamps
+});
+
+export const sources = pgTable("sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sourceId: text("source_id").notNull(),
+  name: text("name").notNull(),
+  url: text("url"),
+  licenseStatus: text("license_status").notNull().default("unknown"),
+  ...timestamps
+});
+
+export const prototypes = pgTable("prototypes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prototypeId: text("prototype_id").notNull(),
+  title: text("title").notNull(),
+  taskNumber: text("task_number"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  ...timestamps
+});
+
+export const skillAtoms = pgTable("skill_atoms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  skillAtom: text("skill_atom").notNull(),
+  title: text("title").notNull(),
+  topic: text("topic"),
+  ...timestamps
+});
+
+export const taskSkillAtoms = pgTable(
+  "task_skill_atoms",
+  {
+    taskId: uuid("task_id").notNull().references(() => tasks.id),
+    skillAtomId: uuid("skill_atom_id").notNull().references(() => skillAtoms.id),
+    ...timestamps
+  },
+  (table) => ({
+    taskSkillIdx: uniqueIndex("task_skill_atoms_idx").on(table.taskId, table.skillAtomId)
+  })
+);
+
+export const attemptEvents = pgTable("attempt_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  attemptId: uuid("attempt_id").notNull().references(() => attempts.id),
+  eventType: text("event_type").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const mistakeEvents = pgTable("mistake_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").notNull().references(() => students.id),
+  attemptId: uuid("attempt_id").references(() => attempts.id),
+  mistakeTag: text("mistake_tag").notNull(),
+  notesMd: text("notes_md"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const studentPrototypeMastery = pgTable(
+  "student_prototype_mastery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    prototypeId: text("prototype_id").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    correct: integer("correct").notNull().default(0),
+    confidence: integer("confidence").notNull().default(0),
+    riskFlag: text("risk_flag"),
+    ...timestamps
+  },
+  (table) => ({
+    studentPrototypeIdx: uniqueIndex("student_prototype_mastery_idx").on(table.studentId, table.prototypeId)
   })
 );
 
