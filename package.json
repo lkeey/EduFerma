@@ -9,10 +9,12 @@
     "lint": "tsx scripts/lint-project.ts",
     "typecheck": "turbo typecheck",
     "test": "vitest run",
+    "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
-    "seed:demo": "tsx scripts/seed-demo-data.ts"
+    "seed:demo": "tsx scripts/seed-demo-data.ts",
+    "db:seed": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.10",

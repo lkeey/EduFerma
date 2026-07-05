@@ -33,6 +33,16 @@ const rolePermissions: Record<AppRole, PermissionAction[]> = {
     "analytics:read",
     "student:manage"
   ],
+  teacher: [
+    "dashboard:view",
+    "task_bank:read",
+    "task_bank:write",
+    "assignment:read",
+    "assignment:write",
+    "answer:reveal",
+    "analytics:read",
+    "student:manage"
+  ],
   student: ["dashboard:view", "assignment:read"],
   guardian: ["dashboard:view", "assignment:read"],
   guest: []
@@ -43,12 +53,12 @@ export function hasPermission(role: AppRole, action: PermissionAction): boolean 
 }
 
 export function canAccessRoute(role: AppRole, pathname: string): boolean {
-  if (pathname.startsWith("/dashboard/teacher")) {
-    return role === "owner" || role === "tutor";
+  if (pathname.startsWith("/teacher") || pathname.startsWith("/api/teacher") || pathname.startsWith("/dashboard/teacher")) {
+    return role === "owner" || role === "teacher" || role === "tutor";
   }
 
-  if (pathname.startsWith("/dashboard/student")) {
-    return role === "owner" || role === "tutor" || role === "student" || role === "guardian";
+  if (pathname.startsWith("/student") || pathname.startsWith("/api/student") || pathname.startsWith("/dashboard/student")) {
+    return role === "owner" || role === "teacher" || role === "tutor" || role === "student" || role === "guardian";
   }
 
   if (pathname.startsWith("/dashboard")) {
@@ -61,5 +71,6 @@ export function canAccessRoute(role: AppRole, pathname: string): boolean {
 export function resolveRoleFromEmail(email: string | null | undefined, ownerEmail: string | null | undefined): AppRole {
   if (!email) return "guest";
   if (ownerEmail && email.toLowerCase() === ownerEmail.toLowerCase()) return "owner";
+  if (email.endsWith("@edu-ferma.local") && email.startsWith("teacher.")) return "teacher";
   return "student";
 }
