@@ -1,0 +1,116 @@
+version: 1
+
+repository:
+  expected_name: EduFerma
+  expected_root_path: /Users/lkeey/IT/platform/EduFerma
+  expected_remote_url: https://github.com/lkeey/EduFerma.git
+  forbidden_root_paths:
+    - /Users/lkeey/IT/EduFerma
+
+default_branch_names:
+  - main
+  - master
+
+required_branch_prefixes:
+  - codex/
+  - feature/
+  - fix/
+  - chore/
+  - docs/
+  - ci/
+
+forbidden_direct_work_branches:
+  - main
+  - master
+
+required_files:
+  - AGENTS.md
+  - .github/pull_request_template.md
+  - .github/CODEOWNERS
+  - .github/dependabot.yml
+  - .github/workflows/ci.yml
+  - Makefile
+  - pyproject.toml
+  - requirements-dev.txt
+  - config/repo_governance_rules.yaml
+  - scripts/repo_governance_harness.py
+  - scripts/run_quality_gate.py
+  - tests/test_repo_governance_harness.py
+
+recommended_files:
+  - docs/github-workflow.md
+  - docs/ci-quality-gates.md
+  - docs/branch-protection-setup.md
+  - .agents/skills/github-repo-workflow/SKILL.md
+
+safe_fix_directories:
+  - .github/workflows
+  - docs
+  - logs/repo_governance
+
+secret_file_patterns:
+  - ".env"
+  - ".env.*"
+  - "*.pem"
+  - "*.key"
+  - "*secret*"
+  - "*credentials*"
+  - "cookies.txt"
+
+allowed_secret_file_patterns:
+  - ".env.example"
+
+secret_content_patterns:
+  - "sk-"
+  - "ghp_"
+  - "github_pat_"
+  - "VERCEL_TOKEN="
+  - "DATABASE_URL="
+  - "CLERK_SECRET_KEY="
+  - "OPENAI_API_KEY="
+  - "GOOGLE_APPLICATION_CREDENTIALS"
+  - "BLOB_READ_WRITE_TOKEN="
+
+architecture_sensitive_paths:
+  - AGENTS.md
+  - config/
+  - scripts/
+  - docs/
+  - .agents/skills/
+  - .github/workflows/
+  - apps/
+  - packages/
+
+documentation_update_paths:
+  - AGENTS.md
+  - docs/
+  - .agents/skills/
+
+tests_required_when_changed:
+  scripts/repo_governance_harness.py:
+    - tests/test_repo_governance_harness.py
+  config/repo_governance_rules.yaml:
+    - tests/test_repo_governance_harness.py
+
+required_local_checks:
+  - name: repo-governance
+    command: "python3 scripts/repo_governance_harness.py --mode check"
+  - name: python-harness-tests
+    command: "python3 -m unittest tests/test_repo_governance_harness.py"
+  - name: platform-lint
+    command: "pnpm lint"
+  - name: platform-typecheck
+    command: "pnpm typecheck"
+  - name: platform-test
+    command: "pnpm test"
+  - name: platform-build
+    command: "pnpm build"
+  - name: platform-self-review
+    command: "pnpm web:self-review"
+
+required_pr_checks:
+  - repo-governance
+  - python-tests
+  - platform-quality
+  - platform-build
+  - quality-gate

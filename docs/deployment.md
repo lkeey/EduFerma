@@ -23,3 +23,14 @@ Use free-tier resources where available:
 If Marketplace provisioning is unavailable from Codex tools, create resources in
 the Vercel dashboard and add the resulting env vars to the Vercel project. Do
 not invent deployment, database, or storage URLs.
+## Deployment Governance
+
+Preferred deployment path:
+
+1. Connect `https://github.com/lkeey/EduFerma.git` to Vercel through Git integration.
+2. Pull requests create Vercel preview deployments.
+3. Merges to `main` create production deployments.
+4. Store all production and preview secrets in Vercel or GitHub settings, never in git.
+
+Before merge, check the GitHub Actions jobs documented in `docs/ci-quality-gates.md`. Branch
+protection recommendations live in `docs/branch-protection-setup.md`.
