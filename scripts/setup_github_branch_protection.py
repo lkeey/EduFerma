@@ -6,9 +6,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
-import sys
 from pathlib import Path
-
 
 REQUIRED_CHECKS = [
     "repo-governance",
@@ -25,9 +23,7 @@ def run(command: list[str], root: Path) -> tuple[int, str]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Show EduFerma branch protection recommendations."
-    )
+    parser = argparse.ArgumentParser(description="Show EduFerma branch protection recommendations.")
     parser.add_argument(
         "--apply",
         action="store_true",
