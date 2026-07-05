@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@eduferma/config": ["../../packages/config/src/index.ts"],
+      "@eduferma/core": ["../../packages/core/src/index.ts"],
+      "@eduferma/db": ["../../packages/db/src/index.ts"],
+      "@eduferma/ui": ["../../packages/ui/src/index.tsx"],
+      "@eduferma/validators": ["../../packages/validators/src/index.ts"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

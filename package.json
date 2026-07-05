@@ -1,0 +1,29 @@
+{
+  "name": "eduferma",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev --filter=@eduferma/web",
+    "lint": "tsx scripts/lint-project.ts",
+    "typecheck": "turbo typecheck",
+    "test": "vitest run",
+    "web:self-review": "tsx scripts/self-review-web-platform.ts",
+    "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
+    "students:sync": "tsx scripts/sync-student-space.ts",
+    "seed:demo": "tsx scripts/seed-demo-data.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.10",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@playwright/test": "^1.54.1",
+    "drizzle-kit": "^0.31.4",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.20.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

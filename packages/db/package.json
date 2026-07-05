@@ -1,0 +1,21 @@
+{
+  "name": "@eduferma/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --outDir dist --noEmit false",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "drizzle-orm": "^0.44.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.4"
+  }
+}

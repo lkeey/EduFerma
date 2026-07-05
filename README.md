@@ -1,16 +1,58 @@
 # EduFerma
 
-EduFerma is the public web platform monorepo for the tutor education product.
+EduFerma — публичный monorepo веб-платформы для репетиторского бренда `lkeey`.
 
-This repository is intended to contain the frontend and backend code for the platform layer only. The local teaching workshop at `/Users/lkeey/IT` remains the source of prepared lesson materials, normalized task data, student workspaces, and quality gates.
+Репозиторий хранит только код платформенного слоя: лендинг, invite-only кабинеты,
+shared packages, схему БД, валидаторы, import/dry-run scripts и quality gates.
+Локальная учебная мастерская `/Users/lkeey/IT` остается отдельным источником
+материалов, student spaces, корпуса задач и методических артефактов.
 
-Planned stack:
+## Stack
 
-- TypeScript
-- Next.js App Router
-- Turborepo
-- pnpm workspaces
-- Drizzle ORM
-- Neon Postgres
-- Clerk
-- Vercel
+- pnpm workspaces + Turborepo;
+- Next.js App Router в `apps/web`;
+- placeholder worker в `apps/worker`;
+- Drizzle ORM + Neon Postgres schema в `packages/db`;
+- Clerk invite-only auth;
+- shared domain logic в `packages/core`;
+- Zod validators в `packages/validators`;
+- lightweight shadcn/new-york inspired UI primitives в `packages/ui`;
+- Vercel preview deploy first, production promotion only after confirmation.
+
+## Local Start
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Quality gate:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm web:self-review
+```
+
+Dry-run импорт локального task bank:
+
+```bash
+pnpm tasks:sync --dry-run
+```
+
+`--apply` intentionally refuses invalid or `needs_review` tasks and requires
+real infrastructure env vars.
+
+## Environment
+
+Copy `.env.example` to `.env.local` locally. Never commit secrets.
+
+Key env vars:
+
+- `OWNER_EMAIL` — bootstrap owner email;
+- `NEXT_PUBLIC_TELEGRAM_URL` — CTA to Telegram;
+- Clerk keys — invite-only authentication;
+- `DATABASE_URL` — Neon Postgres;
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob.

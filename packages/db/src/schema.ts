@@ -1,0 +1,250 @@
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid
+} from "drizzle-orm/pg-core";
+
+export const appRole = pgEnum("app_role", ["owner", "tutor", "student", "guardian"]);
+export const invitationStatus = pgEnum("invitation_status", ["pending", "accepted", "revoked", "expired"]);
+export const consentStatus = pgEnum("consent_status", ["granted", "pending", "revoked", "not_required"]);
+export const taskStatus = pgEnum("task_status", ["active", "draft", "archived", "needs_review"]);
+export const assignmentStatus = pgEnum("assignment_status", ["draft", "assigned", "submitted", "reviewed", "archived"]);
+export const attemptStatus = pgEnum("attempt_status", ["started", "submitted", "checked", "needs_review"]);
+export const leadStatus = pgEnum("lead_status", ["new", "contacted", "converted", "closed"]);
+
+const timestamps = {
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+};
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    email: text("email").notNull(),
+    displayName: text("display_name"),
+    role: appRole("role").notNull().default("student"),
+    isActive: boolean("is_active").notNull().default(true),
+    ...timestamps
+  },
+  (table) => ({
+    clerkUserIdIdx: uniqueIndex("users_clerk_user_id_idx").on(table.clerkUserId),
+    emailIdx: uniqueIndex("users_email_idx").on(table.email)
+  })
+);
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    role: appRole("role").notNull().default("student"),
+    status: invitationStatus("status").notNull().default("pending"),
+    invitedByUserId: uuid("invited_by_user_id").references(() => users.id),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    ...timestamps
+  },
+  (table) => ({
+    emailStatusIdx: index("invitations_email_status_idx").on(table.email, table.status)
+  })
+);
+
+export const students = pgTable(
+  "students",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id),
+    tutorUserId: uuid("tutor_user_id").references(() => users.id),
+    publicCode: text("public_code").notNull(),
+    displayName: text("display_name").notNull(),
+    learningTrack: text("learning_track").notNull(),
+    goalSummary: text("goal_summary"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    publicCodeIdx: uniqueIndex("students_public_code_idx").on(table.publicCode),
+    tutorIdx: index("students_tutor_idx").on(table.tutorUserId)
+  })
+);
+
+export const skillMastery = pgTable(
+  "skill_mastery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    skillAtom: text("skill_atom").notNull(),
+    prototypeId: text("prototype_id"),
+    attempts: integer("attempts").notNull().default(0),
+    correct: integer("correct").notNull().default(0),
+    level: text("level").notNull().default("new"),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    ...timestamps
+  },
+  (table) => ({
+    studentSkillIdx: uniqueIndex("skill_mastery_student_skill_idx").on(table.studentId, table.skillAtom)
+  })
+);
+
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    tutorUserId: uuid("tutor_user_id").references(() => users.id),
+    title: text("title").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    durationMinutes: integer("duration_minutes").notNull().default(60),
+    notes: text("notes"),
+    status: text("status").notNull().default("planned"),
+    ...timestamps
+  },
+  (table) => ({
+    studentStartsIdx: index("lessons_student_starts_idx").on(table.studentId, table.startsAt)
+  })
+);
+
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: text("task_id").notNull(),
+    learningTrack: text("learning_track").notNull(),
+    exam: text("exam"),
+    taskNumber: text("task_number"),
+    topic: text("topic"),
+    prototypeId: text("prototype_id"),
+    skillAtoms: jsonb("skill_atoms").$type<string[]>().notNull().default([]),
+    difficultyLevel: text("difficulty_level").notNull().default("unknown"),
+    sourceName: text("source_name").notNull(),
+    sourceUrl: text("source_url"),
+    sourceTaskId: text("source_task_id"),
+    statementMd: text("statement_md").notNull(),
+    answerHash: text("answer_hash"),
+    solutionMd: text("solution_md"),
+    verificationStatus: text("verification_status").notNull().default("unknown"),
+    licenseStatus: text("license_status").notNull().default("unknown"),
+    status: taskStatus("status").notNull().default("draft"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    taskIdIdx: uniqueIndex("tasks_task_id_idx").on(table.taskId),
+    prototypeIdx: index("tasks_prototype_idx").on(table.learningTrack, table.prototypeId),
+    statusIdx: index("tasks_status_idx").on(table.status)
+  })
+);
+
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    tutorUserId: uuid("tutor_user_id").references(() => users.id),
+    title: text("title").notNull(),
+    status: assignmentStatus("status").notNull().default("draft"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    studentStatusIdx: index("assignments_student_status_idx").on(table.studentId, table.status)
+  })
+);
+
+export const assignmentTasks = pgTable(
+  "assignment_tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentId: uuid("assignment_id").notNull().references(() => assignments.id),
+    taskId: uuid("task_id").notNull().references(() => tasks.id),
+    position: integer("position").notNull().default(0),
+    points: integer("points").notNull().default(1),
+    revealAnswerAfterSubmit: boolean("reveal_answer_after_submit").notNull().default(false),
+    ...timestamps
+  },
+  (table) => ({
+    assignmentPositionIdx: uniqueIndex("assignment_tasks_assignment_position_idx").on(table.assignmentId, table.position)
+  })
+);
+
+export const attempts = pgTable(
+  "attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentTaskId: uuid("assignment_task_id").notNull().references(() => assignmentTasks.id),
+    studentId: uuid("student_id").notNull().references(() => students.id),
+    submittedAnswer: text("submitted_answer"),
+    isCorrect: boolean("is_correct"),
+    status: attemptStatus("status").notNull().default("started"),
+    checkedByUserId: uuid("checked_by_user_id").references(() => users.id),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    feedback: text("feedback"),
+    ...timestamps
+  },
+  (table) => ({
+    studentAttemptIdx: index("attempts_student_idx").on(table.studentId, table.submittedAt)
+  })
+);
+
+export const publicResults = pgTable(
+  "public_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").references(() => students.id),
+    title: text("title").notNull(),
+    summary: text("summary").notNull(),
+    published: boolean("published").notNull().default(false),
+    consentStatus: consentStatus("consent_status").notNull().default("pending"),
+    displayOrder: integer("display_order").notNull().default(0),
+    ...timestamps
+  },
+  (table) => ({
+    publishedIdx: index("public_results_published_idx").on(table.published, table.consentStatus)
+  })
+);
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorUserId: uuid("actor_user_id").references(() => users.id),
+    subjectUserId: uuid("subject_user_id").references(() => users.id),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    actionIdx: index("audit_events_action_idx").on(table.action, table.createdAt)
+  })
+);
+
+export const leads = pgTable(
+  "leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name"),
+    contact: text("contact").notNull(),
+    source: text("source").notNull().default("telegram"),
+    status: leadStatus("status").notNull().default("new"),
+    message: text("message"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    contactIdx: index("leads_contact_idx").on(table.contact)
+  })
+);
