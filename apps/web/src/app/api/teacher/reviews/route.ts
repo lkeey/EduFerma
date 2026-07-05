@@ -1,16 +1,14 @@
-import { requireTeacherAccess } from "@/lib/platform/auth";
-import { reviewAttempt } from "@/lib/platform/data";
+import { LegacyReviewAttemptRequestSchema } from "@eduferma/validators";
+import { created, handleApiError, parseJson } from "@/server/api/responses";
+import { requireApiRole, roles } from "@/server/auth/session";
+import { getServices } from "@/server/services";
 
 export async function POST(request: Request) {
-  await requireTeacherAccess();
-  const body = await request.json();
-  const result = await reviewAttempt({
-    attemptId: String(body.attemptId ?? ""),
-    scoreAwarded: Number(body.scoreAwarded ?? 0),
-    feedbackMd: String(body.feedbackMd ?? ""),
-    mistakeTags: Array.isArray(body.mistakeTags) ? body.mistakeTags : [],
-    isCorrect: Boolean(body.isCorrect)
-  });
-
-  return Response.json(result);
+  try {
+    await requireApiRole(roles.teacher, request);
+    const input = await parseJson(request, LegacyReviewAttemptRequestSchema);
+    return created(await getServices().teacher.reviewAttempt(input.attemptId));
+  } catch (error) {
+    return handleApiError(error);
+  }
 }

@@ -12,6 +12,8 @@ secrets from `/Users/lkeey/IT` into this public repository.
 - `apps/worker` — placeholder for background jobs.
 - `packages/db` — Drizzle schema and lazy Neon client.
 - `packages/core` — roles, permissions, answer checking, mastery and import logic.
+- `packages/api-contract` — OpenAPI contract, Swagger-visible operation metadata and API schemas.
+- `packages/api-client` — typed fetch wrappers for platform API consumers.
 - `packages/validators` — Zod schemas for platform-facing data.
 - `packages/ui` — shared UI primitives inspired by shadcn/new-york.
 - `scripts` — dry-run import, seed and quality gates.
@@ -27,11 +29,48 @@ secrets from `/Users/lkeey/IT` into this public repository.
 - Public results/testimonials render only when `published=true` and
   `consent_status=granted`.
 
+## API-first data access
+
+For the web platform, the API is the stable data access contract.
+
+- Production data must live in a remote managed Postgres database. Local
+  databases, local JSON, and mock repositories are allowed only for development,
+  tests, dry-run import, and seed/demo flows.
+- Frontend code must not depend on local JSON or mock data in production.
+- Operations needed by the frontend, external integrations, future mobile/PWA,
+  or automation flows must have a versioned `/api/v1/**` endpoint.
+- Every API endpoint must have a route handler, request validation when it
+  accepts input, response schema, server-side auth/role check, tests, and an
+  OpenAPI operation.
+- A new API route is not complete until it appears in OpenAPI/Swagger and
+  `pnpm api:governance` passes.
+- Teacher-only endpoints must declare security in OpenAPI and must enforce role
+  checks in the route handler or server service.
+- Student-facing endpoints must not return `answer_json`, `solution_md`,
+  teacher notes, local source paths, or other teacher-only fields.
+- API changes require OpenAPI, API tests, docs, and a changelog entry when the
+  change is breaking.
+- CI and self-review must check that all `/api/v1/**/route.ts` handlers are
+  covered by OpenAPI.
+
+API change is done only if:
+
+- route handler exists;
+- request and response schemas exist;
+- auth and permissions exist;
+- tests exist;
+- OpenAPI spec is updated;
+- Swagger UI renders;
+- API governance passes.
+
 ## Verification
 
 Before pushing platform changes, run:
 
 ```bash
+pnpm api:openapi:generate
+pnpm api:openapi:check
+pnpm api:governance
 python3 scripts/repo_governance_harness.py --mode check
 python3 -m unittest tests/test_repo_governance_harness.py
 pnpm lint

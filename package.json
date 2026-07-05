@@ -11,10 +11,17 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
+    "api:openapi:generate": "tsx scripts/api-governance.ts generate",
+    "api:openapi:check": "tsx scripts/api-governance.ts check-openapi",
+    "api:governance": "tsx scripts/api-governance.ts check",
+    "db:generate": "pnpm --filter @eduferma/db db:generate",
+    "db:migrate": "pnpm --filter @eduferma/db db:migrate",
+    "db:push": "pnpm --filter @eduferma/db db:push",
+    "db:seed": "pnpm --filter @eduferma/db db:seed",
+    "db:studio": "pnpm --filter @eduferma/db db:studio",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
-    "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "db:seed": "tsx scripts/seed-demo-data.ts"
+    "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.10",

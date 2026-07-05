@@ -12,8 +12,8 @@ import {
   getAssignmentProgress,
   getSafeTaskForStudent,
   getTaskForTeacher
-} from "@eduferma/core";
-import type { MistakeTag, PlatformTask, TaskAttempt } from "@eduferma/core";
+} from "@eduferma/core/platform";
+import type { MistakeTag, PlatformTask, TaskAttempt } from "@eduferma/core/platform";
 
 export function getDemoTeacher() {
   return demoUsers.find((user) => user.role === "teacher")!;

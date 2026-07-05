@@ -2,7 +2,7 @@ import { Badge, LinkButton, Panel } from "@eduferma/ui";
 import { PlatformShell } from "@/components/platform/app-shell";
 import { requireStudentAccess } from "@/lib/platform/auth";
 import { getTeacherTaskBank } from "@/lib/platform/data";
-import { getSafeTaskForStudent } from "@eduferma/core";
+import { getSafeTaskForStudent } from "@eduferma/core/platform";
 
 export default async function StudentTaskBankPage() {
   await requireStudentAccess("demo_student_oge");

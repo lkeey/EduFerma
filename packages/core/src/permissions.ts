@@ -53,11 +53,21 @@ export function hasPermission(role: AppRole, action: PermissionAction): boolean 
 }
 
 export function canAccessRoute(role: AppRole, pathname: string): boolean {
-  if (pathname.startsWith("/teacher") || pathname.startsWith("/api/teacher") || pathname.startsWith("/dashboard/teacher")) {
+  if (
+    pathname.startsWith("/teacher") ||
+    pathname.startsWith("/api/teacher") ||
+    pathname.startsWith("/api/v1/teacher") ||
+    pathname.startsWith("/dashboard/teacher")
+  ) {
     return role === "owner" || role === "teacher" || role === "tutor";
   }
 
-  if (pathname.startsWith("/student") || pathname.startsWith("/api/student") || pathname.startsWith("/dashboard/student")) {
+  if (
+    pathname.startsWith("/student") ||
+    pathname.startsWith("/api/student") ||
+    pathname.startsWith("/api/v1/student") ||
+    pathname.startsWith("/dashboard/student")
+  ) {
     return role === "owner" || role === "teacher" || role === "tutor" || role === "student" || role === "guardian";
   }
 

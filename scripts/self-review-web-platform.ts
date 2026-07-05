@@ -36,12 +36,25 @@ const requiredFiles = [
   "apps/worker/src/index.ts",
   "packages/db/src/client.ts",
   "packages/db/src/schema.ts",
+  "packages/db/src/seed.ts",
+  "packages/db/drizzle/0000_fearless_elektra.sql",
+  "packages/api-contract/src/openapi.ts",
+  "packages/api-contract/src/registry.ts",
+  "packages/api-client/src/client.ts",
   "packages/core/src/permissions.ts",
+  "packages/core/src/services/serializers.ts",
   "packages/core/src/task-import.ts",
   "packages/validators/src/task.ts",
+  "packages/validators/src/api.ts",
   "packages/ui/src/index.tsx",
+  "apps/web/src/app/api/openapi.json/route.ts",
+  "apps/web/src/app/api/docs/page.tsx",
+  "apps/web/src/app/api/v1/me/route.ts",
+  "scripts/api-governance.ts",
   "scripts/sync-from-local-jsonl.ts",
   "docs/deployment.md",
+  "docs/api.md",
+  "docs/database-architecture.md",
   ".env.example"
 ];
 
@@ -55,6 +68,11 @@ function main() {
     checkLazyDb(),
     checkTestimonialsConsent(),
     checkTaskSyncDefaultsDryRun(),
+    checkOpenApiRoutes(),
+    checkDashboardRouting(),
+    checkVersionedAttemptApiUsage(),
+    checkStudentSerializer(),
+    checkMigrationsAndSeed(),
     checkEnvIgnored(),
     checkProtectedRoutes(),
     checkSafeTaskSerialization(),
@@ -74,7 +92,13 @@ function checkProtectedRoutes(): Check {
   const proxy = read("apps/web/src/proxy.ts");
   return {
     name: "protected-student-teacher-routes",
-    ok: proxy.includes("/student(.*)") && proxy.includes("/teacher(.*)") && proxy.includes("/api/student(.*)") && proxy.includes("/api/teacher(.*)")
+    ok:
+      proxy.includes("/student(.*)") &&
+      proxy.includes("/teacher(.*)") &&
+      proxy.includes("/api/v1(.*)") &&
+      proxy.includes("/api/health/db") &&
+      proxy.includes("/api/student(.*)") &&
+      proxy.includes("/api/teacher(.*)")
   };
 }
 
@@ -90,7 +114,11 @@ function checkDemoSeed(): Check {
   const seed = read("scripts/seed-demo-data.ts");
   return {
     name: "demo-seed-command",
-    ok: seed.includes("demoData") && read("package.json").includes("\"db:seed\"")
+    ok:
+      seed.includes("demoData") &&
+      seed.includes("buildDemoSeed") &&
+      read("package.json").includes("\"db:seed\": \"pnpm --filter @eduferma/db db:seed\"") &&
+      read("package.json").includes("\"seed:demo\"")
   };
 }
 
@@ -100,7 +128,17 @@ function read(pathname: string) {
 
 function checkEnvExample(): Check {
   const env = read(".env.example");
-  const required = ["OWNER_EMAIL", "DATABASE_URL", "BLOB_READ_WRITE_TOKEN", "NEXT_PUBLIC_TELEGRAM_URL"];
+  const required = [
+    "OWNER_EMAIL",
+    "DATABASE_URL",
+    "DIRECT_DATABASE_URL",
+    "CLERK_SECRET_KEY",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "ENABLE_DEMO_AUTH",
+    "OPENAPI_DOCS_ENABLED",
+    "BLOB_READ_WRITE_TOKEN",
+    "NEXT_PUBLIC_TELEGRAM_URL"
+  ];
   const missing = required.filter((name) => !env.includes(`${name}=`));
   return { name: "env-example-required-vars", ok: missing.length === 0, detail: missing.join(", ") };
 }
@@ -125,6 +163,66 @@ function checkTaskSyncDefaultsDryRun(): Check {
   return {
     name: "task-sync-dry-run-default",
     ok: sync.includes("const dryRun = argv.includes(\"--dry-run\") || !apply")
+  };
+}
+
+function checkOpenApiRoutes(): Check {
+  const contract = read("packages/api-contract/src/registry.ts");
+  const openapiRoute = read("apps/web/src/app/api/openapi.json/route.ts");
+  const docsPage = read("apps/web/src/app/api/docs/page.tsx");
+  return {
+    name: "openapi-and-swagger-routes",
+    ok:
+      contract.includes("/api/v1/me") &&
+      openapiRoute.includes("openApiDocument") &&
+      docsPage.includes("/api/openapi.json")
+  };
+}
+
+function checkDashboardRouting(): Check {
+  const oldStudent = read("apps/web/src/app/dashboard/student/page.tsx");
+  const oldTeacher = read("apps/web/src/app/dashboard/teacher/page.tsx");
+  const newStudent = read("apps/web/src/app/student/dashboard/page.tsx");
+  const newTeacher = read("apps/web/src/app/teacher/dashboard/page.tsx");
+  const oldRoutesAreGuardedRedirects =
+    oldStudent.includes("requireStudentAccess") &&
+    oldStudent.includes("redirect(\"/student/dashboard\")") &&
+    oldTeacher.includes("requireTeacherAccess") &&
+    oldTeacher.includes("redirect(\"/teacher/dashboard\")");
+  const newRoutesAreGuarded =
+    newStudent.includes("requireStudentAccess") &&
+    newTeacher.includes("requireTeacherAccess") &&
+    !newStudent.includes("@/lib/demo-data") &&
+    !newTeacher.includes("@/lib/demo-data");
+  return { name: "dashboard-routing-and-role-gates", ok: oldRoutesAreGuardedRedirects && newRoutesAreGuarded };
+}
+
+function checkVersionedAttemptApiUsage(): Check {
+  const answerForm = read("apps/web/src/components/platform/answer-form.tsx");
+  return {
+    name: "student-attempts-use-versioned-api",
+    ok: answerForm.includes("/api/v1/student/tasks/")
+  };
+}
+
+function checkStudentSerializer(): Check {
+  const serializer = read("packages/core/src/services/serializers.ts");
+  return {
+    name: "student-serializer-removes-teacher-fields",
+    ok:
+      serializer.includes("answer_json") &&
+      serializer.includes("solution_md") &&
+      serializer.includes("teacher_notes") &&
+      serializer.includes("local_source_path")
+  };
+}
+
+function checkMigrationsAndSeed(): Check {
+  return {
+    name: "db-migration-and-seed-exist",
+    ok:
+      existsSync(join(root, "packages/db/drizzle/0000_fearless_elektra.sql")) &&
+      existsSync(join(root, "packages/db/src/seed.ts"))
   };
 }
 

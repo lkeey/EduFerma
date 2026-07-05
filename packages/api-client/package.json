@@ -1,0 +1,13 @@
+{
+  "name": "@eduferma/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --outDir dist --noEmit false",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
