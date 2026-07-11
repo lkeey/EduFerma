@@ -17,5 +17,18 @@ The importer validates every row against the web-facing task schema and reports:
 - rows safe to import;
 - rows skipped by status.
 
-`--apply` is intentionally conservative: it exits with an error if any invalid,
-duplicate, or manual-review rows are present.
+`--apply` writes importable rows into the configured Postgres task bank with an
+idempotent upsert on `task_id`.
+
+By default `--apply` is intentionally conservative: it exits with an error if
+any invalid, duplicate, or manual-review rows are present.
+
+Use `--apply --allow-partial` only after reviewing the dry-run report. Partial
+apply still writes only rows classified as `import`; invalid rows and
+manual-review rows are reported but not written.
+
+Production apply requires an explicit DB review gate:
+
+```bash
+EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --allow-partial
+```

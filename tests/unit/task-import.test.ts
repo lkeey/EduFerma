@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildTaskImportReport } from "../../packages/core/src/task-import";
+import { mapPlatformTaskToDbTask } from "../../scripts/sync-from-local-jsonl";
 
 const baseTask = {
   task_id: "demo-1",
@@ -30,5 +31,24 @@ describe("buildTaskImportReport", () => {
     expect(report.duplicates).toBe(1);
     expect(report.manualReview).toBe(1);
     expect(report.invalid).toBe(1);
+  });
+
+  it("maps importable platform tasks to database task rows", () => {
+    const row = mapPlatformTaskToDbTask({
+      ...baseTask,
+      answer: ["4"],
+      canonical_hash: "hash-1",
+      local_source_path: "/Users/lkeey/IT/data/raw/original/task.md",
+      source_url: "https://example.com/task"
+    });
+
+    expect(row.taskId).toBe("demo-1");
+    expect(row.learningTrack).toBe("ege_informatics");
+    expect(row.sourceName).toBe("original");
+    expect(row.answerJson).toEqual({ answers: ["4"] });
+    expect(row.metadata).toMatchObject({
+      source_id: "demo",
+      local_source_path: "/Users/lkeey/IT/data/raw/original/task.md"
+    });
   });
 });

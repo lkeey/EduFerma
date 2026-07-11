@@ -151,8 +151,13 @@ the normalized corpus with dry-run first:
 pnpm tasks:sync --dry-run
 ```
 
-Apply mode must require a configured remote/dev DB and must refuse invalid,
-duplicate, restricted, or `needs_review` task rows.
+Apply mode writes importable rows into the configured remote/dev DB using an
+idempotent upsert on `task_id`. By default it refuses to apply when the source
+contains invalid, duplicate, restricted, or `needs_review` task rows.
+
+For large mixed-review corpora, `pnpm tasks:sync --apply --allow-partial` may be
+used after dry-run review. Partial apply still writes only rows classified as
+safe `import` decisions; invalid and manual-review rows remain unwritten.
 
 Production import apply is also blocked unless
 `EDUFERMA_ALLOW_IMPORT_APPLY=true` is set after source, mapping, and backup
