@@ -10,6 +10,17 @@ type OpenApiOperation = {
   responses: Record<string, unknown>;
 };
 
+function apiErrorResponse(description: string) {
+  return {
+    description,
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ApiError" }
+      }
+    }
+  };
+}
+
 function pathParams(path: string) {
   return Array.from(path.matchAll(/\{([^}]+)\}/g)).map((match) => ({
     name: match[1],
@@ -33,14 +44,15 @@ function operation(route: RouteDefinition): OpenApiOperation {
           }
         }
       },
-      "401": { description: "Unauthorized" },
-      "403": { description: "Forbidden" },
-      "500": { description: "Internal error" }
+      "401": apiErrorResponse("Unauthorized"),
+      "403": apiErrorResponse("Forbidden"),
+      "500": apiErrorResponse("Internal error")
     }
   };
 
   if (!route.public) {
     op.security = [{ clerkAuth: [] }];
+    op.responses["503"] = apiErrorResponse("Remote database setup is required or temporarily unavailable");
   }
 
   const params = pathParams(route.path);

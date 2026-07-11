@@ -18,4 +18,13 @@ describe("openapi contract", () => {
       expect(openApiDocument.paths[route.path]?.[route.method]?.security).toBeTruthy();
     }
   });
+
+  it("documents controlled auth and DB setup errors for protected endpoints", () => {
+    for (const route of routeDefinitions.filter((item) => !item.public)) {
+      const responses = openApiDocument.paths[route.path]?.[route.method]?.responses;
+      expect(responses?.["401"]).toBeTruthy();
+      expect(responses?.["403"]).toBeTruthy();
+      expect(responses?.["503"]).toBeTruthy();
+    }
+  });
 });
