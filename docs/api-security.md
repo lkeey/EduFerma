@@ -2,9 +2,9 @@
 
 ## Roles
 
-Supported roles: `owner`, `tutor`, `student`, `guardian`, `guest`.
+Supported roles: `owner`, `teacher`, `tutor`, `student`, `guardian`, `guest`.
 
-- `owner` and `tutor` can access teacher APIs.
+- `owner`, `teacher` and `tutor` can access teacher APIs.
 - `student` and `guardian` can access student APIs scoped to their own data.
 - `guest` can access public endpoints only.
 
@@ -12,6 +12,10 @@ Supported roles: `owner`, `tutor`, `student`, `guardian`, `guest`.
 
 Proxy/middleware is not enough. Every protected route handler and protected page
 must perform server-side auth and role checks.
+
+DB-backed services must also resolve the linked `users` row, require
+`is_active=true`, and apply `users.role` plus ownership checks before returning
+student or teacher data.
 
 ## Student-Safe Data
 
