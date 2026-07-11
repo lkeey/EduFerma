@@ -2,8 +2,22 @@ import { expect, test } from "@playwright/test";
 
 test("landing loads and exposes Telegram CTA", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "lkeey" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /EduFerma.*control room/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Записаться в Telegram" })).toHaveAttribute("href", /t\.me\/lkeyit/);
+
+  await page.getByRole("link", { name: "API backstage" }).click();
+  await expect(page).toHaveURL(/#backstage$/);
+  await expect(page.getByRole("heading", { name: /^Swagger и versioned API/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Swagger UI" })).toHaveAttribute("href", "/api/docs");
+});
+
+test("landing anchor navigation works on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await page.getByRole("link", { name: "База задач" }).click();
+  await expect(page).toHaveURL(/#task-bank$/);
+  await expect(page.getByRole("heading", { name: /Фильтры выглядят/ })).toBeVisible();
 });
 
 test("student cannot access teacher routes", async ({ page }) => {
@@ -39,6 +53,6 @@ test("student submits a short answer while answers stay hidden", async ({ page }
   await page.getByLabel("Ответ").fill("байт");
   await page.getByRole("button", { name: "Отправить ответ" }).click();
 
-  await expect(page.getByText("auto_correct")).toBeVisible();
-  await expect(page.getByText("Верно.")).toBeVisible();
+  await expect(page.getByText("checked")).toBeVisible();
+  await expect(page.getByText("Ответ принят, проверьте решение с преподавателем.")).toBeVisible();
 });
