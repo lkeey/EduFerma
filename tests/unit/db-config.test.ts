@@ -45,6 +45,34 @@ describe("database config guardrails", () => {
     ).toBe("postgresql://direct:pass@db.example.com:5432/eduferma");
   });
 
+  it("reads Vercel Neon marketplace runtime aliases", () => {
+    const config = getRuntimeDatabaseConfig({
+      lkeey_edu_ferma_db_DATABASE_URL: "postgresql://runtime:pass@db.example.com:5432/eduferma",
+      VERCEL_ENV: "production"
+    });
+
+    expect(config.databaseUrl).toBe("postgresql://runtime:pass@db.example.com:5432/eduferma");
+    expect(config.isRemote).toBe(true);
+  });
+
+  it("uses explicit DATABASE_URL before marketplace aliases", () => {
+    const config = getRuntimeDatabaseConfig({
+      DATABASE_URL: "postgresql://explicit:pass@db.example.com:5432/eduferma",
+      lkeey_edu_ferma_db_DATABASE_URL: "postgresql://marketplace:pass@db.example.com:5432/eduferma"
+    });
+
+    expect(config.databaseUrl).toBe("postgresql://explicit:pass@db.example.com:5432/eduferma");
+  });
+
+  it("prefers Vercel Neon marketplace unpooled aliases for migrations", () => {
+    expect(
+      getMigrationDatabaseUrl({
+        lkeey_edu_ferma_db_DATABASE_URL: "postgresql://runtime:pass@db.example.com:5432/eduferma",
+        lkeey_edu_ferma_db_DATABASE_URL_UNPOOLED: "postgresql://direct:pass@db.example.com:5432/eduferma"
+      })
+    ).toBe("postgresql://direct:pass@db.example.com:5432/eduferma");
+  });
+
   it("allows Drizzle generate to run before env setup", () => {
     expect(getMigrationDatabaseUrl({}, { required: false })).toBeUndefined();
   });
