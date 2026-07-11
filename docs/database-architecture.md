@@ -41,6 +41,11 @@ if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.
 
 - `DATABASE_URL`: pooled runtime Postgres URL for Next.js route handlers and services.
 - `DIRECT_DATABASE_URL`: direct Postgres URL for migrations, if the provider gives one.
+- Neon/Vercel Marketplace aliases: if a Vercel integration injects prefixed
+  keys such as `*_DATABASE_URL`, `*_DATABASE_URL_UNPOOLED`,
+  `*_POSTGRES_URL`, or `*_POSTGRES_URL_NON_POOLING`, the DB config treats them
+  as provider aliases. Explicit `DATABASE_URL` and `DIRECT_DATABASE_URL` still
+  take priority.
 - `EDUFERMA_DB_ENV`: optional DB environment marker; use `production` only for
   the production database and `development` for local/dev branches.
 - `EDUFERMA_ALLOW_PRODUCTION_SEED`: must remain `false` unless a one-off,
@@ -94,14 +99,13 @@ Marketplace, add the pooled runtime URL as `DATABASE_URL`, add the direct URL as
 Last checked: 2026-07-11.
 
 Vercel project `edu-ferma-web` exists under team `lkeey` and is linked to the
-Next.js app. A safe `vercel env list --format json` check returned no project
-environment variables, so no remote database URL is currently configured for
-runtime, migration, seed, or import commands.
+Next.js app. Neon Marketplace env vars are present with provider prefixes, so
+runtime code supports those aliases in addition to explicit `DATABASE_URL` and
+`DIRECT_DATABASE_URL`.
 
-No Neon, Vercel Postgres, or other paid/free database resource was created in
-this branch. The code is ready for a remote managed Postgres URL, but DB apply
-commands remain blocked until an existing/free resource is connected and these
-env vars are present in Vercel or a local `.env.local`:
+No paid resource is created by the app code. When Neon is connected through
+Vercel Marketplace, prefer the injected provider env vars or add these aliases
+manually in Vercel/local `.env.local`:
 
 - `DATABASE_URL`: pooled Postgres runtime URL.
 - `DIRECT_DATABASE_URL`: direct Postgres migration URL, when provided by the

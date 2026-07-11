@@ -9,6 +9,11 @@ export type RuntimeDatabaseConfig = {
   isRemote: boolean;
 };
 
+type ResolvedEnvValue = {
+  label: string;
+  value: string;
+};
+
 export class DatabaseSetupRequiredError extends Error {
   readonly code = "SETUP_REQUIRED";
 
@@ -29,10 +34,14 @@ export class UnsafeDatabaseUrlError extends Error {
 
 const postgresProtocols = new Set(["postgres:", "postgresql:"]);
 const localHosts = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
+const runtimeDatabaseUrlKeys = ["DATABASE_URL", "POSTGRES_URL"];
+const directDatabaseUrlKeys = ["DIRECT_DATABASE_URL", "DATABASE_URL_UNPOOLED", "POSTGRES_URL_NON_POOLING", "POSTGRES_PRISMA_URL"];
 
 export function getRuntimeDatabaseConfig(env: DatabaseEnv = process.env): RuntimeDatabaseConfig {
-  const databaseUrl = readUrl(env.DATABASE_URL, "DATABASE_URL");
-  const directDatabaseUrl = readOptionalUrl(env.DIRECT_DATABASE_URL, "DIRECT_DATABASE_URL");
+  const runtimeUrl = resolveRuntimeDatabaseUrl(env);
+  const directUrl = resolveDirectDatabaseUrl(env);
+  const databaseUrl = readUrl(runtimeUrl?.value, runtimeUrl?.label ?? "DATABASE_URL");
+  const directDatabaseUrl = readOptionalUrl(directUrl?.value, directUrl?.label ?? "DIRECT_DATABASE_URL");
 
   assertSafeForEnvironment(databaseUrl, "DATABASE_URL", env);
   if (directDatabaseUrl) {
@@ -51,18 +60,17 @@ export function getMigrationDatabaseUrl(
   env: DatabaseEnv = process.env,
   options: { required?: boolean } = {}
 ): string | undefined {
-  const rawUrl = env.DIRECT_DATABASE_URL?.trim() || env.DATABASE_URL?.trim();
-  if (!rawUrl) {
+  const resolvedUrl = resolveMigrationDatabaseUrl(env);
+  if (!resolvedUrl) {
     if (options.required) {
       throw new DatabaseSetupRequiredError("DIRECT_DATABASE_URL or DATABASE_URL is required for this database command");
     }
     return undefined;
   }
 
-  const label = env.DIRECT_DATABASE_URL?.trim() ? "DIRECT_DATABASE_URL" : "DATABASE_URL";
-  assertPostgresUrl(rawUrl, label);
-  assertSafeForEnvironment(rawUrl, label, env);
-  return rawUrl;
+  assertPostgresUrl(resolvedUrl.value, resolvedUrl.label);
+  assertSafeForEnvironment(resolvedUrl.value, resolvedUrl.label, env);
+  return resolvedUrl.value;
 }
 
 export function assertProductionSeedAllowed(env: DatabaseEnv = process.env, argv: string[] = process.argv) {
@@ -119,6 +127,57 @@ function readOptionalUrl(value: string | undefined, label: string) {
   if (!url) return undefined;
   assertPostgresUrl(url, label);
   return url;
+}
+
+function resolveRuntimeDatabaseUrl(env: DatabaseEnv): ResolvedEnvValue | undefined {
+  return readFirstEnv(env, runtimeDatabaseUrlKeys) ?? readFirstSuffixedEnv(env, runtimeDatabaseUrlKeys, { excludeDirectUrls: true });
+}
+
+function resolveDirectDatabaseUrl(env: DatabaseEnv): ResolvedEnvValue | undefined {
+  return readFirstEnv(env, directDatabaseUrlKeys) ?? readFirstSuffixedEnv(env, directDatabaseUrlKeys);
+}
+
+function resolveMigrationDatabaseUrl(env: DatabaseEnv): ResolvedEnvValue | undefined {
+  return resolveDirectDatabaseUrl(env) ?? resolveRuntimeDatabaseUrl(env);
+}
+
+function readFirstEnv(env: DatabaseEnv, keys: string[]): ResolvedEnvValue | undefined {
+  for (const key of keys) {
+    const value = env[key]?.trim();
+    if (value) return { label: key, value };
+  }
+
+  return undefined;
+}
+
+function readFirstSuffixedEnv(
+  env: DatabaseEnv,
+  suffixes: string[],
+  options: { excludeDirectUrls?: boolean } = {}
+): ResolvedEnvValue | undefined {
+  const suffixPriorities = new Map(suffixes.map((suffix, index) => [suffix, index]));
+  const candidates: Array<ResolvedEnvValue & { priority: number }> = [];
+
+  for (const [key, rawValue] of Object.entries(env)) {
+    const value = rawValue?.trim();
+    if (!value || key.startsWith("NEXT_PUBLIC_")) continue;
+
+    const normalizedKey = key.toUpperCase();
+    if (options.excludeDirectUrls && isDirectDatabaseUrlKey(normalizedKey)) continue;
+
+    for (const suffix of suffixes) {
+      if (normalizedKey === suffix || !normalizedKey.endsWith(`_${suffix}`)) continue;
+      candidates.push({ label: key, value, priority: suffixPriorities.get(suffix) ?? suffixes.length });
+      break;
+    }
+  }
+
+  candidates.sort((left, right) => left.priority - right.priority || left.label.localeCompare(right.label));
+  return candidates[0] ? { label: candidates[0].label, value: candidates[0].value } : undefined;
+}
+
+function isDirectDatabaseUrlKey(normalizedKey: string) {
+  return directDatabaseUrlKeys.some((key) => normalizedKey === key || normalizedKey.endsWith(`_${key}`));
 }
 
 function assertPostgresUrl(url: string, label: string) {
