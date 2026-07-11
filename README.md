@@ -19,6 +19,19 @@ shared packages, схему БД, валидаторы, import/dry-run scripts �
 - lightweight shadcn/new-york inspired UI primitives в `packages/ui`;
 - Vercel preview deploy first, production promotion only after confirmation.
 
+## Production API
+
+Live site:
+
+- App: <https://edu-ferma-web.vercel.app>
+- Health: <https://edu-ferma-web.vercel.app/api/health>
+- OpenAPI JSON: <https://edu-ferma-web.vercel.app/api/openapi.json>
+- Swagger UI: <https://edu-ferma-web.vercel.app/api/docs>
+
+Production data is served from remote Neon Postgres. The repository includes a
+small curated original task seed for bootstrapping real task-bank rows without
+using mocks or the private local corpus.
+
 ## Local Start
 
 ```bash
@@ -40,6 +53,12 @@ Dry-run импорт локального task bank:
 
 ```bash
 pnpm tasks:sync --dry-run
+```
+
+Dry-run импорт curated original task seed:
+
+```bash
+pnpm tasks:sync --dry-run --path=packages/db/seed/task-bank-curated-original.jsonl
 ```
 
 `--apply` intentionally refuses invalid or `needs_review` tasks and requires
