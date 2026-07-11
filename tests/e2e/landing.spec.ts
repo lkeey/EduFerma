@@ -1,4 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+const expectLandingTopbarVisible = async (page: Page) => {
+  const topbar = page.locator(".landing-topbar");
+  await expect(topbar).toBeInViewport();
+  await expect(topbar).toHaveCSS("position", "fixed");
+  await expect
+    .poll(() => topbar.evaluate((element) => Math.round(element.getBoundingClientRect().top)))
+    .toBe(0);
+};
 
 test("landing loads and exposes Telegram CTA", async ({ page }) => {
   await page.goto("/");
@@ -17,7 +26,20 @@ test("landing anchor navigation works on mobile", async ({ page }) => {
 
   await page.getByRole("link", { name: "База задач" }).click();
   await expect(page).toHaveURL(/#task-bank$/);
+  await expect(page.getByRole("link", { name: "База задач" })).toHaveAttribute("aria-current", "location");
+  await expectLandingTopbarVisible(page);
   await expect(page.getByRole("heading", { name: /Фильтры выглядят/ })).toBeVisible();
+});
+
+test("landing reduced-motion users keep anchor navigation state", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await page.getByRole("link", { name: "API backstage" }).click();
+  await expect(page).toHaveURL(/#backstage$/);
+  await expect(page.getByRole("link", { name: "API backstage" })).toHaveAttribute("aria-current", "location");
+  await expectLandingTopbarVisible(page);
+  await expect(page.getByRole("heading", { name: /^Swagger и versioned API/ })).toBeVisible();
 });
 
 test("student cannot access teacher routes", async ({ page }) => {

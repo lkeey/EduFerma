@@ -39,6 +39,15 @@ const heroMetrics = [
   { label: "Review queue", value: "2", detail: "попытки ждут разбора" }
 ];
 
+const signalWords = [
+  "личный кабинет",
+  "банк задач",
+  "skill atoms",
+  "Swagger",
+  "remote DB",
+  "review queue"
+];
+
 const cockpitRows = [
   { title: "ЕГЭ 7 · графики и таблицы", meta: "lesson_19:00", status: "live" },
   { title: "Python · циклы и строки", meta: "homework_due", status: "ready" },
@@ -140,6 +149,7 @@ export default function LandingPage() {
   return (
     <LandingParallaxShell>
       <header className="landing-topbar">
+        <div className="landing-scroll-progress" aria-hidden="true" />
         <div className="landing-container landing-topbar-inner">
           <a className="landing-brand" href="/" aria-label={`EduFerma · ${config.brandHandle}`}>
             <span className="landing-brand-icon">EF</span>
@@ -208,10 +218,18 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+            <div className="landing-signal-strip" aria-hidden="true">
+              <div className="landing-signal-track">
+                {[...signalWords, ...signalWords].map((word, index) => (
+                  <span key={`${word}-${index}`}>{word}</span>
+                ))}
+              </div>
+            </div>
           </div>
 
           <aside className="landing-stage" aria-label="Превью интерфейса EduFerma" data-reveal>
             <div className="landing-stage-grid" aria-hidden="true" />
+            <div className="landing-stage-vignette" aria-hidden="true" />
             <div className="landing-floating-object landing-floating-object-a">
               <Radar aria-hidden="true" />
               <span>skill radar</span>
@@ -219,6 +237,14 @@ export default function LandingPage() {
             <div className="landing-floating-object landing-floating-object-b">
               <Gauge aria-hidden="true" />
               <span>72%</span>
+            </div>
+            <div className="landing-artifact landing-artifact-a" aria-hidden="true">
+              <span>API</span>
+              <strong>200</strong>
+            </div>
+            <div className="landing-artifact landing-artifact-b" aria-hidden="true">
+              <span>DB</span>
+              <strong>remote</strong>
             </div>
             <div className="landing-monitor">
               <div className="landing-monitor-header">
