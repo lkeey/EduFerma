@@ -27,6 +27,7 @@ import { demoResults } from "@/lib/demo-data";
 import { LandingParallaxShell } from "./landing-parallax";
 
 const navItems = [
+  // Diagnostic PR only: force Vercel to run a preview build for web source changes.
   { href: "#product", label: "Кабинет" },
   { href: "#task-bank", label: "База задач" },
   { href: "#backstage", label: "API backstage" },
