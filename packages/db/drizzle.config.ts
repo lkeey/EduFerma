@@ -1,7 +1,12 @@
-import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
+import { getMigrationDatabaseUrl } from "./src/config";
+import { loadWorkspaceEnv } from "./src/script-env";
 
-const databaseUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
+loadWorkspaceEnv();
+
+const dbCommandsThatRequireUrl = new Set(["migrate", "push", "studio"]);
+const requiresConnection = process.argv.some((arg) => dbCommandsThatRequireUrl.has(arg));
+const databaseUrl = getMigrationDatabaseUrl(process.env, { required: requiresConnection });
 
 export default defineConfig({
   schema: "./src/schema.ts",
