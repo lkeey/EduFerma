@@ -24,6 +24,16 @@ If Marketplace provisioning is unavailable from Codex tools, create resources in
 the Vercel dashboard and add the resulting env vars to the Vercel project. Do
 not invent deployment, database, or storage URLs.
 
+For private dashboards, production must have these auth env vars configured:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `OWNER_EMAIL`
+
+If `/api/health` reports `database:true` and `clerk:false`, the app has remote
+DB access but cannot authenticate real users. Add the Clerk env vars in Vercel
+and keep server-side role guards enabled.
+
 ## Telegram
 
 Telegram Bot API values must be configured only as Vercel/GitHub/local env vars:

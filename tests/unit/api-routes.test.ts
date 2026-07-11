@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { GET as getHealth } from "../../apps/web/src/app/api/health/route";
 import { GET as getOpenApiDocument } from "../../apps/web/src/app/api/openapi.json/route";
 import { GET as getStudentDashboard } from "../../apps/web/src/app/api/v1/student/dashboard/route";
 import { GET as getStudentTask } from "../../apps/web/src/app/api/v1/student/tasks/[taskId]/route";
@@ -36,10 +37,19 @@ describe("api route contracts", () => {
     resetEnv();
   });
 
-  it("returns 401 for protected endpoints without auth", async () => {
+  it("returns setup-required for protected endpoints when Clerk env is missing", async () => {
     const response = await getStudentDashboard(apiRequest("/api/v1/student/dashboard"));
 
-    await expectError(response, 401, "UNAUTHORIZED");
+    await expectError(response, 503, "SETUP_REQUIRED");
+  });
+
+  it("reports missing Clerk env names through public health without secret values", async () => {
+    const response = await getHealth();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.clerk).toBe(false);
+    expect(payload.checks.clerk.missingEnv).toEqual(["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"]);
   });
 
   it("returns 403 when a student calls a teacher endpoint", async () => {

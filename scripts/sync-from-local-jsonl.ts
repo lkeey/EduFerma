@@ -1,8 +1,19 @@
 import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { buildTaskImportReport, type TaskImportDecision } from "@eduferma/core";
-import type { PlatformTask } from "@eduferma/validators";
-import { assertImportApplyAllowed, getDb, loadWorkspaceEnv, tasks } from "@eduferma/db";
+import {
+  buildTaskImportReport,
+  estimateJsonStorageBytes,
+  evaluateDbSizeLimit,
+  formatBytes,
+  megabytesToBytes,
+  type TaskImportDecision
+} from "@eduferma/core";
+import {
+  productionLicenseStatuses,
+  productionVerificationStatuses,
+  type PlatformTask
+} from "@eduferma/validators";
+import { assertImportApplyAllowed, getDatabaseSizeSnapshot, getDb, loadWorkspaceEnv, tasks } from "@eduferma/db";
 import { readJsonl } from "./read-jsonl";
 
 type Args = {
@@ -10,6 +21,7 @@ type Args = {
   allowPartial: boolean;
   dryRun: boolean;
   limit?: number;
+  maxDbMb: number;
   sourcePath: string;
 };
 
@@ -27,9 +39,17 @@ async function main() {
 
   const rows = await readJsonl(args.sourcePath, args.limit);
   const report = buildTaskImportReport(rows);
+  const importableTasks = report.decisions.filter(isImportDecision).map((decision) => decision.task);
+  const estimatedImportBytes = estimateImportStorageBytes(importableTasks);
+  const sizeLimitBytes = megabytesToBytes(args.maxDbMb);
   const printable = {
     sourcePath: args.sourcePath,
     mode: args.apply ? "apply" : "dry-run",
+    importPolicy: {
+      verifiedOnly: true,
+      allowedVerificationStatuses: productionVerificationStatuses,
+      allowedLicenseStatuses: productionLicenseStatuses
+    },
     scanned: report.scanned,
     toImport: report.toImport,
     toUpdate: report.toUpdate,
@@ -38,6 +58,12 @@ async function main() {
     manualReview: report.manualReview,
     invalid: report.invalid,
     partialApply: args.allowPartial,
+    sizeEstimate: {
+      estimatedImportBytes,
+      estimatedImportPretty: formatBytes(estimatedImportBytes),
+      maxDbBytes: sizeLimitBytes,
+      maxDbPretty: formatBytes(sizeLimitBytes)
+    },
     sampleDecisions: report.decisions.slice(0, 10).map((decision) =>
       decision.action === "import"
         ? { action: "import", task_id: decision.task.task_id }
@@ -54,10 +80,32 @@ async function main() {
 
     assertImportApplyAllowed(process.env);
 
-    const importableTasks = report.decisions.filter(isImportDecision).map((decision) => decision.task);
+    const snapshot = await getDatabaseSizeSnapshot();
+    const dbSize = evaluateDbSizeLimit({
+      currentBytes: snapshot.sizeBytes ?? 0,
+      estimatedImportBytes,
+      limitBytes: sizeLimitBytes
+    });
+    if (!dbSize.withinLimit) {
+      throw new Error(
+        `--apply refused: projected DB size ${formatBytes(dbSize.projectedBytes)} exceeds ${formatBytes(dbSize.limitBytes)}`
+      );
+    }
+
     const written = await upsertImportableTasks(importableTasks);
 
-    console.log(JSON.stringify({ ok: true, mode: "apply", written, partialApply: args.allowPartial }, null, 2));
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "apply",
+      written,
+      partialApply: args.allowPartial,
+      dbSize: {
+        currentBytes: dbSize.currentBytes,
+        projectedBytes: dbSize.projectedBytes,
+        limitBytes: dbSize.limitBytes,
+        withinLimit: dbSize.withinLimit
+      }
+    }, null, 2));
   }
 }
 
@@ -66,6 +114,7 @@ function parseArgs(argv: string[]): Args {
   const allowPartial = argv.includes("--allow-partial");
   const dryRun = argv.includes("--dry-run") || !apply;
   const limitFlag = argv.find((arg) => arg.startsWith("--limit="));
+  const maxDbFlag = argv.find((arg) => arg.startsWith("--max-db-mb="));
   const pathFlag = argv.find((arg) => arg.startsWith("--path="));
 
   return {
@@ -73,8 +122,13 @@ function parseArgs(argv: string[]): Args {
     allowPartial,
     dryRun,
     limit: limitFlag ? Number(limitFlag.split("=")[1]) : undefined,
+    maxDbMb: maxDbFlag ? Number(maxDbFlag.split("=")[1]) : Number(process.env.EDUFERMA_DB_SIZE_LIMIT_MB || 500),
     sourcePath: pathFlag?.split("=")[1] || process.env.EDUFERMA_LOCAL_TASKS_PATH || DEFAULT_SOURCE
   };
+}
+
+export function estimateImportStorageBytes(importableTasks: PlatformTask[]) {
+  return estimateJsonStorageBytes(importableTasks.map(mapPlatformTaskToDbTask));
 }
 
 export async function upsertImportableTasks(importableTasks: PlatformTask[]) {

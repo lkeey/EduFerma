@@ -2,10 +2,12 @@ import { SignIn } from "@clerk/nextjs";
 import { Badge, LinkButton } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
 import { isDemoAuthEnabled } from "@/lib/platform/auth";
+import { getAuthSetupStatus } from "@/server/auth/setup-status";
 
 export default function SignInPage() {
   const config = getPublicConfig();
   const demoEnabled = isDemoAuthEnabled();
+  const setup = getAuthSetupStatus();
 
   return (
     <main className="auth-page">
@@ -18,11 +20,12 @@ export default function SignInPage() {
             <LinkButton href="/api/demo-auth/login?role=teacher" variant="primary">Войти как преподаватель</LinkButton>
             <LinkButton href="/api/demo-auth/login?role=student" variant="secondary">Войти как ученик</LinkButton>
           </div>
-        ) : process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+        ) : setup.clerk.configured ? (
           <SignIn routing="path" path="/sign-in" />
         ) : (
           <div className="stack">
-            <Badge>Clerk env не подключен локально</Badge>
+            <Badge>Clerk env не подключен</Badge>
+            <p>Владелец должен добавить переменные: {setup.clerk.missingEnv.join(", ")}.</p>
             <LinkButton href={config.telegramUrl} variant="primary">
               Запросить доступ
             </LinkButton>

@@ -66,6 +66,11 @@ export type TaskValidationResult =
   | { ok: true; task: PlatformTask }
   | { ok: false; issues: string[] };
 
+export const productionVerificationStatuses = ["verified", "checked"] as const;
+export const productionLicenseStatuses = ["original", "granted", "public_reference"] as const;
+const productionVerificationStatusSet = new Set<string>(productionVerificationStatuses);
+const productionLicenseStatusSet = new Set<string>(productionLicenseStatuses);
+
 export function validatePlatformTask(input: unknown): TaskValidationResult {
   const result = PlatformTaskSchema.safeParse(input);
   if (result.success) {
@@ -84,8 +89,11 @@ export function needsManualTaskReview(task: PlatformTask): boolean {
     task.license_status === "needs_review" ||
     task.license_status === "restricted" ||
     task.license_status === "unknown" ||
+    !productionLicenseStatusSet.has(task.license_status) ||
     task.verification_status === "needs_review" ||
     task.verification_status === "unverified" ||
+    task.verification_status === "unknown" ||
+    !productionVerificationStatusSet.has(task.verification_status) ||
     task.skill_atoms.includes("needs_manual_skill_mapping") ||
     looksLikeBinaryText(task.statement_md)
   );
