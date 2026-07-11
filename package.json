@@ -23,6 +23,7 @@
     "access:bootstrap": "tsx scripts/bootstrap-account-access.ts",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
+    "production:verify": "tsx scripts/verify-production-setup.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {

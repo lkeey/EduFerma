@@ -52,6 +52,22 @@ https://<deployment-host>/api/integrations/telegram/webhook
 
 Use `X-Telegram-Bot-Api-Secret-Token` with the configured webhook secret. This repository does not enable a Vercel Cron schedule for Telegram posts by default; use the guarded manual worker command or add a protected cron route in a separate reviewed change.
 
+## Production Setup Verification
+
+After changing Vercel env vars or rotating secrets, verify the public setup
+without printing secret values:
+
+```bash
+pnpm production:verify -- --url=https://edu-ferma-web.vercel.app --report-only
+```
+
+Use `--require-telegram` after `TELEGRAM_WEBHOOK_SECRET` is configured and the
+bot webhook should be considered part of the production readiness gate:
+
+```bash
+pnpm production:verify -- --url=https://edu-ferma-web.vercel.app --require-telegram
+```
+
 ## Deployment Governance
 
 Preferred deployment path:
