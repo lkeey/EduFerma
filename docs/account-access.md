@@ -8,6 +8,8 @@ Clerk email alone, except the first owner bootstrap described below.
 
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk browser key.
 - `CLERK_SECRET_KEY`: Clerk server key.
+- Vercel Marketplace / integration aliases are accepted when they end in
+  `_CLERK_SECRET_KEY` and `NEXT_PUBLIC_*_CLERK_PUBLISHABLE_KEY`.
 - `OWNER_EMAIL`: verified email allowed to bootstrap the first owner DB row.
 - `DATABASE_URL`: pooled remote Postgres runtime URL, or a supported
   Vercel/Neon provider alias ending in `_DATABASE_URL` / `_POSTGRES_URL`.
