@@ -169,6 +169,12 @@ def matches_any(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
 
+def secret_pattern_found(diff_text: str, pattern: str) -> bool:
+    if pattern == "sk-":
+        return re.search(r"(?<![A-Za-z0-9_])sk-[A-Za-z0-9][A-Za-z0-9_-]{7,}", diff_text) is not None
+    return pattern in diff_text
+
+
 def has_path_with_prefix(paths: list[str], prefixes: list[str]) -> bool:
     return any(
         any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in prefixes)
@@ -413,7 +419,7 @@ class RepoGovernanceHarness:
         for diff_args in (("diff", "--cached"), ("diff",)):
             _, diff_text = run_git(self.root, *diff_args)
             for pattern in self.rules["secret_content_patterns"]:
-                if pattern in diff_text:
+                if secret_pattern_found(diff_text, pattern):
                     self.add(
                         "SECRET_PATTERN_IN_DIFF",
                         ERROR,
