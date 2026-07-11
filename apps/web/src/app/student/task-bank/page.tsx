@@ -1,12 +1,11 @@
 import { Badge, LinkButton, Panel } from "@eduferma/ui";
 import { PlatformShell } from "@/components/platform/app-shell";
 import { requireStudentAccess } from "@/lib/platform/auth";
-import { getTeacherTaskBank } from "@/lib/platform/data";
-import { getSafeTaskForStudent } from "@eduferma/core/platform";
+import { getStudentPracticeTasks } from "@/lib/platform/data";
 
 export default async function StudentTaskBankPage() {
   await requireStudentAccess("demo_student_oge");
-  const tasks = (await getTeacherTaskBank()).filter((task) => task.status === "active").map(getSafeTaskForStudent);
+  const tasks = await getStudentPracticeTasks();
 
   return (
     <PlatformShell role="student" title="Практика" subtitle="Безопасный список задач без ответов и решений">
@@ -20,7 +19,7 @@ export default async function StudentTaskBankPage() {
                 <td>{task.exam ?? task.learningTrack}</td>
                 <td><Badge>{task.difficultyLevel}</Badge></td>
                 <td>{task.visibility.join(", ")}</td>
-                <td><LinkButton href={`/student/tasks/${task.id}`} variant="secondary">Решать</LinkButton></td>
+                <td><LinkButton href={`/student/tasks/${task.id}?assignmentId=${task.assignmentId ?? ""}`} variant="secondary">Решать</LinkButton></td>
               </tr>
             ))}
           </tbody>
