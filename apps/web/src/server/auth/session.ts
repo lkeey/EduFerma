@@ -3,7 +3,7 @@ import { canAccessRoute, resolveRoleFromEmail, type ServiceContext, type Service
 import type { AppRole } from "@eduferma/config";
 import { ApiError } from "@/server/api/responses";
 
-const teacherRoles: AppRole[] = ["owner", "tutor"];
+const teacherRoles: AppRole[] = ["owner", "teacher", "tutor"];
 const studentRoles: AppRole[] = ["owner", "tutor", "student", "guardian"];
 
 export function isDemoAuthEnabled() {

@@ -76,10 +76,18 @@ export function handleApiError(error: unknown) {
     return setupRequired(error.message);
   }
 
+  if (hasErrorCode(error, "SETUP_REQUIRED") || hasErrorCode(error, "UNSAFE_DATABASE_URL")) {
+    return setupRequired(error instanceof Error ? error.message : undefined);
+  }
+
   if (error instanceof ServiceForbiddenError) {
     return forbidden();
   }
 
   console.error(error);
   return serverError();
+}
+
+function hasErrorCode(error: unknown, code: string) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === code);
 }

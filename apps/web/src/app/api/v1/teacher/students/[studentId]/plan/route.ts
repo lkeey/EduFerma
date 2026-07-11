@@ -5,22 +5,22 @@ import { getServices } from "@/server/services";
 
 type RouteContext = { params: Promise<{ studentId: string }> };
 
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    const { studentId } = await context.params;
-    return ok(await getServices().teacher.getStudentPlan(studentId));
+    const context = await requireApiRole(roles.teacher, request);
+    const { studentId } = await routeContext.params;
+    return ok(await getServices().teacher.getStudentPlan(context, studentId));
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-export async function PATCH(request: Request, context: RouteContext) {
+export async function PATCH(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    const { studentId } = await context.params;
-    await parseJson(request, UpdatePlanRequestSchema);
-    return ok(await getServices().teacher.updateStudentPlan(studentId));
+    const context = await requireApiRole(roles.teacher, request);
+    const { studentId } = await routeContext.params;
+    const input = await parseJson(request, UpdatePlanRequestSchema);
+    return ok(await getServices().teacher.updateStudentPlan(context, studentId, input));
   } catch (error) {
     return handleApiError(error);
   }

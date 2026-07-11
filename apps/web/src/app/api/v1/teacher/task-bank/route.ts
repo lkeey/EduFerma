@@ -4,8 +4,8 @@ import { getServices } from "@/server/services";
 
 export async function GET(request: Request) {
   try {
-    await requireApiRole(roles.teacher, request);
-    return ok(await getServices().teacher.getTaskBank());
+    const context = await requireApiRole(roles.teacher, request);
+    return ok(await getServices().teacher.getTaskBank(context));
   } catch (error) {
     return handleApiError(error);
   }

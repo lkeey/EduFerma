@@ -5,9 +5,11 @@ import { getServices } from "@/server/services";
 
 export async function POST(request: Request) {
   try {
-    await requireApiRole(roles.teacher, request);
+    const context = await requireApiRole(roles.teacher, request);
     const input = await parseJson(request, LegacyReviewAttemptRequestSchema);
-    return created(await getServices().teacher.reviewAttempt(input.attemptId));
+    return created(
+      await getServices().teacher.reviewAttempt(context, input.attemptId, { ...input, mistakeTags: input.mistakeTags ?? [] })
+    );
   } catch (error) {
     return handleApiError(error);
   }
