@@ -18,6 +18,7 @@
       "@eduferma/core": ["packages/core/src/index.ts"],
       "@eduferma/core/platform": ["packages/core/src/platform/index.ts"],
       "@eduferma/core/services": ["packages/core/src/services/index.ts"],
+      "@eduferma/core/telegram": ["packages/core/src/telegram/index.ts"],
       "@eduferma/db": ["packages/db/src/index.ts"],
       "@eduferma/ui": ["packages/ui/src/index.tsx"],
       "@eduferma/validators": ["packages/validators/src/index.ts"]
