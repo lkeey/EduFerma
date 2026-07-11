@@ -6,10 +6,12 @@ import {
 import { getSafeTaskForStudent, type Assignment, type PlatformTask } from "@eduferma/core/platform";
 import { createTelegramAssignmentMessage, type TelegramDeliveryDestination } from "@eduferma/core/telegram";
 import { buildSocialPostsDryRun } from "./social-posts";
+import { runTelegramBroadcastToSubscribers, type TelegramBroadcastResult } from "./telegram-broadcast";
 import { createTelegramDryRunSender, readTelegramDeliveryRuntimeConfig } from "./telegram-delivery";
 
 export const workerJobNames = [
   "telegram:assignment:dry-run",
+  "telegram:broadcast:manual",
   "social:posts:dry-run",
   "lesson-feedback:dry-run"
 ] as const;
@@ -19,6 +21,8 @@ export type WorkerJobName = (typeof workerJobNames)[number];
 export type WorkerJobOptions = {
   now?: string;
   env?: Record<string, string | undefined>;
+  argv?: string[];
+  approvedText?: string;
 };
 
 export type WorkerJobResult =
@@ -31,6 +35,7 @@ export type WorkerJobResult =
       idempotencyKey: string;
       preview: string;
     }
+  | TelegramBroadcastResult
   | {
       ok: true;
       job: "social:posts:dry-run";
@@ -67,6 +72,10 @@ export async function runWorkerJob(jobName: string, options: WorkerJobOptions = 
 
   if (jobName === "telegram:assignment:dry-run") {
     return runTelegramAssignmentDryRun(options);
+  }
+
+  if (jobName === "telegram:broadcast:manual") {
+    return runTelegramBroadcastToSubscribers(options);
   }
 
   if (jobName === "social:posts:dry-run") {

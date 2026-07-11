@@ -15,6 +15,13 @@
       "when": 1783772403529,
       "tag": "0001_bouncy_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783787181820,
+      "tag": "0002_public_ben_grimm",
+      "breakpoints": true
     }
   ]
 }

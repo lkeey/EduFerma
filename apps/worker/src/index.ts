@@ -21,7 +21,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 
   try {
-    const result = await runWorkerJob(jobName);
+    const result = await runWorkerJob(jobName, { argv: args.slice(1) });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     process.exitCode = 1;

@@ -10,6 +10,9 @@ type Finding = {
 
 const root = process.cwd();
 const forbiddenStudentFields = ["answer_json", "solution_md", "teacher_notes", "local_source_path"];
+const documentedNonOpenApiRoutes = new Map([
+  ["/api/integrations/telegram/webhook", "docs/telegram-delivery.md"]
+]);
 
 function main() {
   const command = process.argv[2] || "check";
@@ -101,6 +104,10 @@ function checkRoutes(): Finding[] {
     for (const method of methods) {
       const definition = routeDefinitions.find((route) => route.path === apiPath && route.method === method);
       if (!definition) {
+        const documentedAt = documentedNonOpenApiRoutes.get(apiPath);
+        if (documentedAt && readFileSync(join(root, documentedAt), "utf8").includes(apiPath)) {
+          continue;
+        }
         findings.push({ severity: "ERROR", path: relative(root, file), message: `${method.toUpperCase()} ${apiPath} missing OpenAPI definition` });
         continue;
       }

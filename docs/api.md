@@ -23,6 +23,15 @@ Both are controlled by `OPENAPI_DOCS_ENABLED`. In production this can be set to
 
 No `/api/v1` route is complete until it is present in OpenAPI.
 
+## Integration Webhooks
+
+Integration callbacks that are provider-owned, such as
+`POST /api/integrations/telegram/webhook`, are not part of the versioned
+EduFerma public API contract and are intentionally excluded from OpenAPI. They
+must still validate provider authentication, validate request shape, avoid
+printing secrets, and have tests. Telegram webhook details live in
+`docs/telegram-delivery.md`.
+
 ## Error Shape
 
 ```json

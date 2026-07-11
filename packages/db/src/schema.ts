@@ -410,3 +410,57 @@ export const leads = pgTable(
     contactIdx: index("leads_contact_idx").on(table.contact)
   })
 );
+
+export const telegramSubscribers = pgTable(
+  "telegram_subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    telegramUserId: text("telegram_user_id").notNull(),
+    chatId: text("chat_id").notNull(),
+    chatType: text("chat_type").notNull().default("private"),
+    username: text("username"),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    languageCode: text("language_code"),
+    isActive: boolean("is_active").notNull().default(true),
+    subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    lastStartAt: timestamp("last_start_at", { withTimezone: true }),
+    lastCommandAt: timestamp("last_command_at", { withTimezone: true }),
+    source: text("source").notNull().default("telegram_start"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    chatIdIdx: uniqueIndex("telegram_subscribers_chat_id_idx").on(table.chatId),
+    userIdx: index("telegram_subscribers_user_idx").on(table.telegramUserId),
+    activeIdx: index("telegram_subscribers_active_idx").on(table.isActive)
+  })
+);
+
+export const telegramBroadcastOutbox = pgTable(
+  "telegram_broadcast_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subscriberId: uuid("subscriber_id").notNull().references(() => telegramSubscribers.id),
+    broadcastKey: text("broadcast_key").notNull(),
+    chatId: text("chat_id").notNull(),
+    messageText: text("message_text").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    providerMessageId: text("provider_message_id"),
+    lastErrorCode: text("last_error_code"),
+    lastErrorMessage: text("last_error_message"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    ...timestamps
+  },
+  (table) => ({
+    subscriberBroadcastIdx: uniqueIndex("telegram_broadcast_outbox_subscriber_broadcast_idx").on(
+      table.subscriberId,
+      table.broadcastKey
+    ),
+    statusIdx: index("telegram_broadcast_outbox_status_idx").on(table.status),
+    chatIdx: index("telegram_broadcast_outbox_chat_idx").on(table.chatId)
+  })
+);

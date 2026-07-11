@@ -23,6 +23,25 @@ Use free-tier resources where available:
 If Marketplace provisioning is unavailable from Codex tools, create resources in
 the Vercel dashboard and add the resulting env vars to the Vercel project. Do
 not invent deployment, database, or storage URLs.
+
+## Telegram
+
+Telegram Bot API values must be configured only as Vercel/GitHub/local env vars:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `TELEGRAM_BROADCAST_ENABLED`
+- `TELEGRAM_POSTS_CRON_SECRET`
+- `NEXT_PUBLIC_APP_URL`
+
+After deployment, point BotFather or the Telegram `setWebhook` call to:
+
+```text
+https://<deployment-host>/api/integrations/telegram/webhook
+```
+
+Use `X-Telegram-Bot-Api-Secret-Token` with the configured webhook secret. This repository does not enable a Vercel Cron schedule for Telegram posts by default; use the guarded manual worker command or add a protected cron route in a separate reviewed change.
+
 ## Deployment Governance
 
 Preferred deployment path:
