@@ -140,6 +140,7 @@ Key env vars:
 - `NEXT_PUBLIC_TELEGRAM_URL` — CTA to Telegram;
 - Clerk keys — invite-only authentication;
 - `DATABASE_URL` — Neon Postgres;
+- `EDUFERMA_DB_SIZE_LIMIT_MB` — DB storage guardrail, default 500 MB;
 - `BLOB_READ_WRITE_TOKEN` — Vercel Blob.
 
 Production secrets live in Vercel or GitHub secrets. Local DBs and local JSON are
@@ -147,3 +148,13 @@ only for development, tests, dry-run import and seed generation; production data
 must live in remote managed Postgres. See
 [docs/database-architecture.md](docs/database-architecture.md) and
 [docs/privacy-and-security.md](docs/privacy-and-security.md).
+
+Operational helpers:
+
+```bash
+pnpm db:size:check -- --max-db-mb=500
+pnpm access:bootstrap -- --email=teacher@example.com --role=teacher --invite
+```
+
+See `docs/account-access.md` for owner bootstrap, Clerk linking and
+student/teacher access rows.

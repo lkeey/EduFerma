@@ -56,6 +56,10 @@ export function getRuntimeDatabaseConfig(env: DatabaseEnv = process.env): Runtim
   };
 }
 
+export function hasRuntimeDatabaseEnv(env: DatabaseEnv = process.env): boolean {
+  return Boolean(resolveRuntimeDatabaseUrl(env)?.value.trim());
+}
+
 export function getMigrationDatabaseUrl(
   env: DatabaseEnv = process.env,
   options: { required?: boolean } = {}

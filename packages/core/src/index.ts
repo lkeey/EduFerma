@@ -1,4 +1,6 @@
+export * from "./account-access";
 export * from "./answer-checking";
+export * from "./db-size";
 export * from "./lesson-feedback";
 export * from "./mastery";
 export * from "./permissions";

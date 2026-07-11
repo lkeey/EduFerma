@@ -5,6 +5,7 @@ import {
   assertProductionSeedAllowed,
   getMigrationDatabaseUrl,
   getRuntimeDatabaseConfig,
+  hasRuntimeDatabaseEnv,
   isLocalDatabaseUrl
 } from "@eduferma/db";
 
@@ -53,6 +54,11 @@ describe("database config guardrails", () => {
 
     expect(config.databaseUrl).toBe("postgresql://runtime:pass@db.example.com:5432/eduferma");
     expect(config.isRemote).toBe(true);
+    expect(
+      hasRuntimeDatabaseEnv({
+        lkeey_edu_ferma_db_DATABASE_URL: "postgresql://runtime:pass@db.example.com:5432/eduferma"
+      })
+    ).toBe(true);
   });
 
   it("uses explicit DATABASE_URL before marketplace aliases", () => {

@@ -52,6 +52,7 @@ if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.
   reviewed production seed is intentionally being run.
 - `EDUFERMA_ALLOW_IMPORT_APPLY`: must remain `false` unless a reviewed
   production import is intentionally being run.
+- `EDUFERMA_DB_SIZE_LIMIT_MB`: DB storage guardrail. Default is `500`.
 - `NEXT_PUBLIC_APP_URL`: canonical app URL.
 - `CLERK_SECRET_KEY`: Clerk server key.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk browser key.
@@ -60,6 +61,31 @@ if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.
 - `OPENAPI_DOCS_ENABLED`: controls `/api/docs` and `/api/openapi.json`.
 
 Never commit real values.
+
+## Import Safety And Size Limit
+
+Production task import accepts only `status=active` tasks with
+`verification_status=verified|checked` and
+`license_status=original|granted|public_reference`. Rows marked
+`needs_review`, `unverified`, `unknown` verification/license, restricted
+license, manual skill mapping, or binary-looking text are excluded from active
+production import.
+
+Every dry-run prints a size estimate and the active DB limit. Apply mode checks
+the current remote DB size plus the import estimate and refuses the write if the
+projection exceeds `EDUFERMA_DB_SIZE_LIMIT_MB`:
+
+```bash
+pnpm tasks:sync --dry-run --max-db-mb=500
+pnpm db:size:check -- --max-db-mb=500
+```
+
+For a staged local corpus import, keep the first apply scoped and reviewed:
+
+```bash
+pnpm tasks:sync --dry-run --limit=100 --max-db-mb=500
+EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --allow-partial --limit=100 --max-db-mb=500
+```
 
 ## Migrations
 
@@ -161,7 +187,8 @@ contains invalid, duplicate, restricted, or `needs_review` task rows.
 
 For large mixed-review corpora, `pnpm tasks:sync --apply --allow-partial` may be
 used after dry-run review. Partial apply still writes only rows classified as
-safe `import` decisions; invalid and manual-review rows remain unwritten.
+safe verified `import` decisions; invalid and manual-review rows remain
+unwritten.
 
 Production import apply is also blocked unless
 `EDUFERMA_ALLOW_IMPORT_APPLY=true` is set after source, mapping, and backup

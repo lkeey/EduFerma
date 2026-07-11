@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { canAccessRoute, resolveRoleFromEmail, type ServiceContext, type ServiceUser } from "@eduferma/core";
 import type { AppRole } from "@eduferma/config";
 import { ApiError } from "@/server/api/responses";
+import { resolveDbAccountAccess } from "@/server/auth/db-account";
+import { getAuthSetupStatus } from "@/server/auth/setup-status";
 
 const teacherRoles: AppRole[] = ["owner", "teacher", "tutor"];
 const studentRoles: AppRole[] = ["owner", "tutor", "student", "guardian"];
@@ -11,7 +13,7 @@ export function isDemoAuthEnabled() {
 }
 
 export function hasClerkServerEnv() {
-  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+  return getAuthSetupStatus().clerk.configured;
 }
 
 function demoUser(request?: Request): ServiceUser {
@@ -42,6 +44,26 @@ export async function getCurrentServiceUser(request?: Request): Promise<ServiceU
     return null;
   }
 
+  const identity = {
+    providerUserId: user.id,
+    email,
+    name: user.fullName || undefined
+  };
+
+  if (getAuthSetupStatus().database.configured) {
+    const access = await resolveDbAccountAccess(identity);
+    if (!access.ok) {
+      return {
+        id: user.id,
+        email,
+        name: user.fullName || undefined,
+        role: "guest"
+      };
+    }
+
+    return access.user;
+  }
+
   return {
     id: user.id,
     email,
@@ -51,6 +73,16 @@ export async function getCurrentServiceUser(request?: Request): Promise<ServiceU
 }
 
 export async function requireApiRole(allowedRoles: AppRole[], request?: Request): Promise<ServiceContext> {
+  const setup = getAuthSetupStatus();
+  if (!isDemoAuthEnabled() && !setup.clerk.configured) {
+    throw new ApiError(
+      503,
+      "SETUP_REQUIRED",
+      "Clerk authentication is not configured",
+      { missingEnv: setup.clerk.missingEnv }
+    );
+  }
+
   const user = await getCurrentServiceUser(request);
   if (!user) {
     throw new ApiError(401, "UNAUTHORIZED", "Authentication is required");
