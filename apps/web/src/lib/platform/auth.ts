@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canAccessRoute, resolveRoleFromEmail } from "@eduferma/core";
 import { demoUsers, type PlatformRole, type PlatformUser } from "@eduferma/core/platform";
+import { mapAppRoleToPlatformRole } from "@eduferma/core";
+import { resolveDbAccountAccess } from "@/server/auth/db-account";
+import { getAuthSetupStatus } from "@/server/auth/setup-status";
 
 const DEMO_ROLE_COOKIE = "eduferma_demo_role";
 
@@ -11,7 +14,7 @@ export function isDemoAuthEnabled() {
 }
 
 export function hasClerkEnv() {
-  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+  return getAuthSetupStatus().clerk.configured;
 }
 
 export async function getCurrentUser(): Promise<PlatformUser | null> {
@@ -26,6 +29,32 @@ export async function getCurrentUser(): Promise<PlatformUser | null> {
     const clerkUser = await currentUser();
     const email = clerkUser?.emailAddresses[0]?.emailAddress;
     if (!clerkUser || !email) return null;
+
+    if (getAuthSetupStatus().database.configured) {
+      const access = await resolveDbAccountAccess({
+        providerUserId: clerkUser.id,
+        email,
+        name: clerkUser.fullName || undefined
+      });
+
+      if (!access.ok) {
+        return {
+          id: clerkUser.id,
+          authProviderUserId: clerkUser.id,
+          email,
+          name: clerkUser.fullName || email,
+          role: "guest"
+        };
+      }
+
+      return {
+        id: access.user.dbUserId,
+        authProviderUserId: access.user.id,
+        email: access.user.email,
+        name: access.user.name || email,
+        role: mapAppRoleToPlatformRole(access.user.role)
+      };
+    }
 
     const appRole = resolveRoleFromEmail(email, process.env.OWNER_EMAIL);
     const role: PlatformRole = appRole === "tutor" ? "teacher" : appRole;

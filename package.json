@@ -19,6 +19,8 @@
     "db:push": "pnpm --filter @eduferma/db db:push",
     "db:seed": "pnpm --filter @eduferma/db db:seed",
     "db:studio": "pnpm --filter @eduferma/db db:studio",
+    "db:size:check": "tsx scripts/check-db-size.ts",
+    "access:bootstrap": "tsx scripts/bootstrap-account-access.ts",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts"

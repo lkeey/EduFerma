@@ -41,8 +41,13 @@ Standard codes: `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`,
 
 ## Security
 
-Protected operations use Clerk-backed session auth. Demo auth is permitted only
-when `ENABLE_DEMO_AUTH=true` and `NODE_ENV !== "production"`.
+Protected operations use Clerk-backed session auth plus remote DB role/access
+checks. Clerk proves identity; the `users`, `students`, and
+`teacher_student_links` rows decide dashboard/API authorization. Demo auth is
+permitted only when `ENABLE_DEMO_AUTH=true` and `NODE_ENV !== "production"`.
+
+If Clerk env is missing, protected APIs return `SETUP_REQUIRED` with missing
+env names, not secret values.
 
 Student APIs must never include `answer_json`, `solution_md`, teacher notes or
 local/internal source paths.

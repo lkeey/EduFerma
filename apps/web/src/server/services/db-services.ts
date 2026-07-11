@@ -58,7 +58,7 @@ export function createDbPlatformServices() {
         return {
           user: {
             ...ctx.user,
-            id: dbUser.clerkUserId,
+            id: dbUser.authProviderUserId ?? dbUser.clerkUserId ?? ctx.user.id,
             dbUserId: dbUser.id,
             role: dbUser.role,
             name: dbUser.displayName ?? ctx.user.name

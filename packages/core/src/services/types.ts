@@ -2,6 +2,7 @@ import type { AppRole } from "@eduferma/config";
 
 export type ServiceUser = {
   id: string;
+  dbUserId?: string;
   email: string;
   name?: string;
   role: AppRole;
