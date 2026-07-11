@@ -102,6 +102,9 @@ importers:
       '@eduferma/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@eduferma/db':
+        specifier: workspace:*
+        version: link:../../packages/db
     devDependencies:
       tsx:
         specifier: ^4.20.3

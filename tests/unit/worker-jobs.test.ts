@@ -5,6 +5,7 @@ describe("worker dry-run jobs", () => {
   it("lists the supported worker jobs", () => {
     expect(workerJobNames).toEqual([
       "telegram:assignment:dry-run",
+      "telegram:broadcast:manual",
       "social:posts:dry-run",
       "lesson-feedback:dry-run"
     ]);
@@ -44,6 +45,19 @@ describe("worker dry-run jobs", () => {
     expect(result.draftCount).toBe(1);
     expect(result.blockedDraftCount).toBe(0);
     expect(result.publishAttempted).toBe(false);
+  });
+
+  it("keeps Telegram broadcast disabled by default", async () => {
+    const result = await runWorkerJob("telegram:broadcast:manual", {
+      env: {
+        TELEGRAM_BOT_TOKEN: "configured-but-unused"
+      },
+      approvedText: "Публичный пост без персональных данных."
+    });
+
+    expect(result.job).toBe("telegram:broadcast:manual");
+    expect(result.mode).toBe("disabled");
+    expect(result.sendAttempted).toBe(false);
   });
 
   it("analyzes lesson feedback locally without external model transfer", async () => {
