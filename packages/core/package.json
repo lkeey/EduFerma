@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./platform": "./src/platform/index.ts",
-    "./services": "./src/services/index.ts"
+    "./services": "./src/services/index.ts",
+    "./telegram": "./src/telegram/index.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --outDir dist --noEmit false",
