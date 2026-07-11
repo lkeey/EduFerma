@@ -31,6 +31,12 @@ Do not pass private student records, emails, phone numbers, Telegram/VK handles,
    - `approval_required` with `publishAllowed: false`.
 5. `buildSocialPostsDryRun` in the worker module creates dry-run output only. It never calls social network APIs.
 
+Run the current worker dry-run:
+
+```bash
+pnpm --filter @eduferma/worker dev -- social:posts:dry-run
+```
+
 ## Future Integrations
 
 Future publication integrations must add:

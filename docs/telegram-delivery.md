@@ -9,6 +9,12 @@ EduFerma will send tasks and assignments to a student's Telegram chat through an
 - Trigger: a future assignment publication or task assignment worker job should render a Telegram message from student-safe task data, enqueue it in an outbox, and let the sender adapter process it.
 - Current adapter: `createTelegramDryRunSender` in `apps/worker/src/telegram-delivery.ts`. It returns `dry_run` or `blocked` and never performs a network request.
 
+Dry-run command:
+
+```bash
+pnpm --filter @eduferma/worker dev -- telegram:assignment:dry-run
+```
+
 ## Linking Telegram To EduFerma
 
 Recommended future table or service record:
