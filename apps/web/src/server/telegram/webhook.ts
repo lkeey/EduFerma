@@ -3,6 +3,7 @@ import {
   createTelegramAboutReply,
   createTelegramBotApiTextSender,
   createTelegramStartReply,
+  createTelegramStopReply,
   createTelegramUnknownCommandReply,
   readTelegramCommand,
   subscriberFromTelegramMessage,
@@ -11,12 +12,13 @@ import {
   type TelegramWebhookMessage,
   type TelegramWebhookUpdate
 } from "@eduferma/core/telegram";
-import { upsertTelegramSubscriber } from "@eduferma/db";
+import { deactivateTelegramSubscriber, upsertTelegramSubscriber } from "@eduferma/db";
 
 type Env = Record<string, string | undefined>;
 
 export type TelegramSubscriberStore = {
   upsertSubscriber(input: TelegramSubscriberCommandInput & { source: string; metadata?: Record<string, unknown> }): Promise<unknown>;
+  deactivateSubscriber(chatId: string): Promise<unknown>;
 };
 
 export type TelegramWebhookDeps = {
@@ -84,6 +86,12 @@ export async function handleTelegramWebhook(request: Request, deps: TelegramWebh
       return ok({ handled: true, command: "start" });
     }
 
+    if (command.name === "stop") {
+      await (deps.subscriberStore ?? createDbTelegramSubscriberStore()).deactivateSubscriber(chatId);
+      await sender.sendText({ chatId, text: createTelegramStopReply(config.appUrl), disableWebPagePreview: true });
+      return ok({ handled: true, command: "stop" });
+    }
+
     if (command.name === "about" || command.name === "info") {
       await sender.sendText({ chatId, text: createTelegramAboutReply(config.appUrl), disableWebPagePreview: true });
       return ok({ handled: true, command: command.name });
@@ -112,6 +120,9 @@ function createDbTelegramSubscriberStore(): TelegramSubscriberStore {
   return {
     async upsertSubscriber(input) {
       return upsertTelegramSubscriber(input);
+    },
+    async deactivateSubscriber(chatId) {
+      return deactivateTelegramSubscriber(chatId);
     }
   };
 }

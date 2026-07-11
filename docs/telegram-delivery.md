@@ -1,6 +1,6 @@
 # Telegram Delivery Architecture
 
-EduFerma uses an EduFerma-owned Telegram bot as an additional entry point to the site. The first live iteration accepts Telegram webhook updates, stores users who run `/start` as broadcast subscribers, and can reply to `/start`, `/about`, and `/info`.
+EduFerma uses an EduFerma-owned Telegram bot as an additional entry point to the site. The first live iteration accepts Telegram webhook updates, stores users who run `/start` as broadcast subscribers, lets them opt out with `/stop`, and can reply to `/start`, `/about`, and `/info`.
 
 Assignment/task delivery remains a dry-run contract. Public social-post broadcast is guarded, disabled by default, and may only send explicitly approved public-safe text to subscribers.
 
@@ -26,7 +26,7 @@ First iteration:
 1. A Telegram user opens the bot and sends `/start`.
 2. The webhook verifies the Telegram secret header.
 3. EduFerma stores `telegram_user_id`, `chat_id`, chat type and public profile fields in `telegram_subscribers`.
-4. New public-safe broadcast posts may be sent to active subscribers who have ever started the bot.
+4. New public-safe broadcast posts may be sent only to active subscribers who have started the bot and have not later sent `/stop`.
 
 This first iteration does not link Telegram users to EduFerma student records and does not send private student tasks or personal plan data over Telegram.
 
@@ -61,6 +61,7 @@ Teachers should not manually paste student chat IDs as the primary linking mecha
 ## Commands
 
 - `/start`: subscribes the Telegram chat/user for public EduFerma updates and replies with the site entry point.
+- `/stop`: deactivates the current chat in `telegram_subscribers`, sets `is_active=false`, records unsubscribe and last-command timestamps, and confirms that public updates are disabled. Sending `/start` reactivates the chat.
 - `/about` or `/info`: describes EduFerma as preparation with a teacher, personal plans, task bank, homework and personal account; includes the site URL and `https://t.me/lkeyit`.
 - Unknown commands: reply with a short help message.
 
@@ -148,6 +149,7 @@ Header: X-Telegram-Bot-Api-Secret-Token: <TELEGRAM_WEBHOOK_SECRET>
 Supported update handling:
 
 - `/start`: store the Telegram user/chat as a public-update subscriber.
+- `/stop`: mark the Telegram subscriber inactive by `chat_id`; future public broadcasts skip that chat until `/start` is sent again.
 - `/about` or `/info`: send site and teacher-contact information.
 - Unknown messages: respond with a short help message, without exposing assignments or answers.
 
