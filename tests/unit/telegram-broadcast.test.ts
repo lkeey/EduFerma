@@ -93,12 +93,54 @@ describe("Telegram broadcast job", () => {
     expect(result).toMatchObject({
       mode: "sent",
       subscriberCount: 2,
+      eligibleSubscriberCount: 2,
       sentCount: 2,
       failedCount: 0
     });
     expect(outboxIds).toEqual(["outbox-subscriber-1", "outbox-subscriber-2"]);
     expect(sent.map((message) => message.chatId)).toEqual(["1001", "1002"]);
     expect(sent[0]?.text).toContain("Новый публичный пост EduFerma");
+  });
+
+  it("optionally limits live broadcast to configured Telegram chat ids", async () => {
+    const sent: TelegramTextSendInput[] = [];
+    const outboxIds: string[] = [];
+
+    const result = await runTelegramBroadcastToSubscribers(
+      {
+        env: {
+          TELEGRAM_BROADCAST_ENABLED: "true",
+          TELEGRAM_BOT_TOKEN: "configured",
+          TELEGRAM_ALLOWED_CHAT_IDS: "1002"
+        },
+        approvedText: "Публичный пост EduFerma для безопасного тестового rollout.",
+        now: "2026-07-11T10:00:00.000Z"
+      },
+      {
+        async listSubscribers() {
+          return [subscriber("subscriber-1", "1001"), subscriber("subscriber-2", "1002")];
+        },
+        async enqueueOutbox(input) {
+          const id = `outbox-${input.subscriberId}`;
+          outboxIds.push(id);
+          return { id };
+        },
+        async markSent() {},
+        async markFailed() {},
+        sender: sender(sent)
+      }
+    );
+
+    expect(result).toMatchObject({
+      mode: "sent",
+      subscriberCount: 2,
+      eligibleSubscriberCount: 1,
+      skippedByAllowlistCount: 1,
+      sentCount: 1,
+      failedCount: 0
+    });
+    expect(outboxIds).toEqual(["outbox-subscriber-2"]);
+    expect(sent.map((message) => message.chatId)).toEqual(["1002"]);
   });
 
   it("blocks unsafe Telegram posts with student fields before sending", async () => {

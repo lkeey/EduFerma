@@ -13,6 +13,7 @@ import {
   type TelegramBroadcastOutboxRecord,
   type TelegramSubscriberRecord
 } from "@eduferma/db";
+import { isTelegramChatAllowed, readTelegramDeliveryRuntimeConfig } from "./telegram-delivery";
 
 type Env = Record<string, string | undefined>;
 
@@ -42,9 +43,11 @@ export type TelegramBroadcastResult = {
   broadcastEnabled: boolean;
   sendAttempted: boolean;
   subscriberCount: number;
+  eligibleSubscriberCount: number;
   sentCount: number;
   failedCount: number;
   skippedDuplicateCount: number;
+  skippedByAllowlistCount: number;
   reason?: string;
   safetyIssueCount?: number;
 };
@@ -88,7 +91,12 @@ export async function runTelegramBroadcastToSubscribers(
   const markSent = deps.markSent ?? markTelegramBroadcastOutboxSent;
   const markFailed = deps.markFailed ?? markTelegramBroadcastOutboxFailed;
   const sender = deps.sender ?? createTelegramBotApiTextSender(botToken!);
-  const subscribers = await listSubscribers();
+  const deliveryConfig = readTelegramDeliveryRuntimeConfig(env);
+  const allSubscribers = await listSubscribers();
+  const subscribers = allSubscribers.filter((subscriber) =>
+    isTelegramChatAllowed(subscriber.chatId, deliveryConfig.allowedChatIds)
+  );
+  const skippedByAllowlistCount = allSubscribers.length - subscribers.length;
   const broadcastKey = buildTelegramBroadcastKey(messageText, options.now);
 
   let sentCount = 0;
@@ -130,10 +138,12 @@ export async function runTelegramBroadcastToSubscribers(
     mode: "sent",
     broadcastEnabled,
     sendAttempted: subscribers.length > 0,
-    subscriberCount: subscribers.length,
+    subscriberCount: allSubscribers.length,
+    eligibleSubscriberCount: subscribers.length,
     sentCount,
     failedCount,
-    skippedDuplicateCount
+    skippedDuplicateCount,
+    skippedByAllowlistCount
   };
 }
 
@@ -149,9 +159,11 @@ function blockedOrDisabled(
     broadcastEnabled,
     sendAttempted: false,
     subscriberCount: 0,
+    eligibleSubscriberCount: 0,
     sentCount: 0,
     failedCount: 0,
     skippedDuplicateCount: 0,
+    skippedByAllowlistCount: 0,
     reason
   };
 }

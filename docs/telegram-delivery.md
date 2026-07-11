@@ -136,6 +136,8 @@ NEXT_PUBLIC_APP_URL
 
 `TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` is reserved for a future Vercel Cron/manual route guard; this repository does not schedule a spammy cron by default.
 
+When `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, public broadcast sending is limited to those chat IDs. When no allowlist is configured, the approved public broadcast goes to all active subscribers who previously started the bot.
+
 ## Bot Listener Contract
 
 The webhook listener exposes:
@@ -162,6 +164,8 @@ Periodic public posts should be triggered either by a manual worker command:
 ```bash
 TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:broadcast:manual --approved-text "Approved public-safe text"
 ```
+
+For an early limited rollout, set `TELEGRAM_ALLOWED_CHAT_IDS` before running the command. With an empty allowlist, the command targets all active `telegram_subscribers`.
 
 or by a future Vercel Cron/worker route protected by `TELEGRAM_POSTS_CRON_SECRET`. No cron schedule is enabled in `vercel.json` in this iteration.
 
