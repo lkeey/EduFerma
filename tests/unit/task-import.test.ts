@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildTaskImportReport } from "../../packages/core/src/task-import";
 import { mapPlatformTaskToDbTask } from "../../scripts/sync-from-local-jsonl";
@@ -50,5 +51,23 @@ describe("buildTaskImportReport", () => {
       source_id: "demo",
       local_source_path: "/Users/lkeey/IT/data/raw/original/task.md"
     });
+  });
+
+  it("keeps the curated original task bank fully importable", () => {
+    const seedPath = new URL("../../packages/db/seed/task-bank-curated-original.jsonl", import.meta.url);
+    const rows = readFileSync(seedPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+    const report = buildTaskImportReport(rows);
+
+    expect(report.scanned).toBe(12);
+    expect(report.toImport).toBe(12);
+    expect(report.invalid).toBe(0);
+    expect(report.duplicates).toBe(0);
+    expect(report.manualReview).toBe(0);
+    expect(rows.every((row) => row.source_name === "EduFerma original")).toBe(true);
+    expect(rows.every((row) => row.license_status === "original")).toBe(true);
+    expect(rows.every((row) => row.verification_status === "verified")).toBe(true);
   });
 });
