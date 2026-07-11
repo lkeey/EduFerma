@@ -1,47 +1,75 @@
 import {
   ArrowRight,
-  BarChart3,
   BookOpenCheck,
-  CalendarDays,
-  CheckCircle2,
+  CalendarClock,
   ClipboardCheck,
+  FileCheck2,
   Filter,
+  Gauge,
   Layers3,
-  ListChecks,
+  LineChart,
   MessageCircle,
+  MonitorDot,
+  Play,
+  Radar,
   Search,
   ShieldCheck,
   Sparkles,
-  Target
+  Target,
+  TimerReset,
+  UsersRound
 } from "lucide-react";
 import { Badge, LinkButton } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
 import { filterPublicResults } from "@eduferma/core";
-import { ParallaxTestimonials } from "@/components/landing/ParallaxTestimonials";
+import { LandingParallaxShell } from "./landing-parallax";
 import { demoResults } from "@/lib/demo-data";
 
 const navItems = [
-  { href: "#cabinet", label: "Кабинет" },
-  { href: "#task-bank", label: "Банк задач" },
-  { href: "#workflow", label: "Как работает" },
-  { href: "#testimonials", label: "Отзывы" }
+  { href: "#about", label: "About" },
+  { href: "#services", label: "Services" },
+  { href: "#work", label: "Work" },
+  { href: "#reviews", label: "Отзывы" }
 ];
 
-const cabinetFeatures = [
+const heroMetrics = [
+  { label: "Сегодня", value: "19:00", detail: "занятие + ДЗ" },
+  { label: "Skill progress", value: "72%", detail: "graph_reading" },
+  { label: "Review queue", value: "2", detail: "попытки ждут разбора" }
+];
+
+const cockpitRows = [
+  { title: "ЕГЭ 7 · графики и таблицы", meta: "lesson_19:00", status: "live" },
+  { title: "Python · циклы и строки", meta: "homework_due", status: "ready" },
+  { title: "ОГЭ · файлы и поиск", meta: "repeat_slot", status: "warm-up" }
+];
+
+const skillProgress = [
+  { skill: "spreadsheet_logic", value: 64 },
+  { skill: "python_loops", value: 88 },
+  { skill: "logic_queries", value: 54 }
+];
+
+const serviceTiles = [
   {
-    icon: CalendarDays,
-    title: "Расписание и план",
-    text: "Ближайшие занятия, цель подготовки и маршрут по темам видны без поиска по чатам."
+    icon: UsersRound,
+    title: "Личный кабинет",
+    text: "Ученик видит маршрут, дедлайны, ближайшее занятие и безопасную версию заданий."
   },
   {
     icon: ClipboardCheck,
     title: "Домашние задания",
-    text: "Ученик видит дедлайны, статусы, попытки и короткий контекст к каждой работе."
+    text: "Преподаватель собирает ДЗ из проверенных задач, а попытки возвращаются в review queue."
   },
   {
-    icon: BarChart3,
-    title: "Прогресс по навыкам",
-    text: "Skill atoms и прототипы подсвечивают, что уже стабильно, а что нужно повторить."
+    icon: CalendarClock,
+    title: "Расписание",
+    text: "План, уроки и повторение живут рядом, поэтому подготовка не распадается на чаты и таблицы."
+  },
+  {
+    icon: LineChart,
+    title: "Skill progress",
+    text: "Прототипы и skill atoms показывают, что уже стабильно, а где нужен короткий разбор."
   }
 ];
 
@@ -52,20 +80,27 @@ const taskRows = [
 ];
 
 const workflowSteps = [
-  { icon: Target, title: "План", text: "Преподаватель выбирает цель, экзамен, сроки и ближайшие прототипы." },
-  { icon: ListChecks, title: "Задание", text: "Из банка собирается ДЗ с источниками, сложностью и безопасной ученической версией." },
-  { icon: BookOpenCheck, title: "Попытка", text: "Ученик сдаёт работу, а кабинет фиксирует статусы и слабые места." },
-  { icon: ShieldCheck, title: "Разбор ошибок", text: "Ошибки попадают в повторение, следующий план становится точнее." }
+  { icon: Target, title: "План", text: "Цель, экзамен, сроки и ближайшие прототипы складываются в маршрут." },
+  { icon: BookOpenCheck, title: "Практика", text: "Задачи выдаются с источниками, сложностью и student-safe форматом." },
+  { icon: FileCheck2, title: "Проверка", text: "Попытки, статусы и ошибки попадают в понятную очередь разбора." },
+  { icon: TimerReset, title: "Повторение", text: "Следующее занятие получает меньше шума и точнее попадает в слабые места." }
 ];
 
-const audienceColumns = [
+const workFrames = [
   {
-    title: "Для ученика",
-    items: ["видит, что делать сегодня", "понимает дедлайны и статусы", "следит за прогрессом без таблиц"]
+    label: "Cabinet",
+    title: "Один экран на урок",
+    text: "Сегодняшнее занятие, активное ДЗ, план и риск по навыкам не требуют отдельной сборки перед каждым созвоном."
   },
   {
-    title: "Для преподавателя",
-    items: ["держит маршруты и ДЗ рядом", "выбирает задачи по прототипам", "видит риск и темы для повторения"]
+    label: "Task bank",
+    title: "Задачи как источник правды",
+    text: "Фильтры по экзамену, теме, сложности и quality status помогают быстро собрать разнотипную практику."
+  },
+  {
+    label: "Progress",
+    title: "Прогресс не прячется",
+    text: "Skill atoms показывают не только процент, но и почему именно эта тема возвращается в повторение."
   }
 ];
 
@@ -74,14 +109,14 @@ export default function LandingPage() {
   const publicResults = filterPublicResults(demoResults);
 
   return (
-    <main className="landing-shell">
+    <LandingParallaxShell>
       <header className="landing-topbar">
         <div className="landing-container landing-topbar-inner">
-          <a className="landing-brand" href="/" aria-label="EduFerma · lkeey">
+          <a className="landing-brand" href="/" aria-label={`EduFerma · ${config.brandHandle}`}>
             <span className="landing-brand-icon">EF</span>
-            <span>EduFerma · {config.brandHandle}</span>
+            <span>EduFerma</span>
           </a>
-          <nav className="landing-nav" aria-label="Навигация по лендингу">
+          <nav className="landing-nav" aria-label="Навигация по главной странице">
             {navItems.map((item) => (
               <a href={item.href} key={item.href}>
                 {item.label}
@@ -100,117 +135,118 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="landing-hero" aria-labelledby="landing-hero-title">
+      <section className="landing-hero" id="about" aria-labelledby="landing-hero-title">
+        <div className="landing-frame-line landing-frame-line-top" aria-hidden="true" />
+        <div className="landing-frame-line landing-frame-line-bottom" aria-hidden="true" />
         <div className="landing-container landing-hero-grid">
-          <div className="landing-hero-copy-wrap">
-            <div className="landing-eyebrow">
-              <Sparkles aria-hidden="true" />
-              Маршрут, задания и прогресс в одном кабинете
+          <div className="landing-hero-copy">
+            <div className="landing-rec-row" aria-label="EduFerma production monitor">
+              <span className="landing-rec-dot" />
+              <span>REC</span>
+              <span>lesson-control-room</span>
+              <span>demo-safe</span>
             </div>
-            <h1 id="landing-hero-title">EduFerma — кабинет для подготовки по информатике</h1>
-            <p className="landing-hero-copy">
-              Маршрут ученика, домашние задания, банк задач, проверка попыток и прогресс по навыкам
-              собраны в спокойный рабочий экран для подготовки к ЕГЭ, ОГЭ и Python.
+            <p className="landing-kicker">
+              <Sparkles aria-hidden="true" />
+              Кабинет, банк задач и прогресс в одном учебном контуре
+            </p>
+            <h1 id="landing-hero-title">EduFerma от lkeey</h1>
+            <p className="landing-hero-lead">
+              Драматичный, но деловой интерфейс для подготовки по информатике: ученик понимает, что
+              делать сегодня, а преподаватель видит маршрут, попытки, задачи и повторение без ручной
+              режиссуры перед каждым уроком.
             </p>
             <div className="landing-hero-actions">
               <LinkButton href={config.telegramUrl} variant="primary">
-                Написать в Telegram
+                Записаться в Telegram
                 <ArrowRight aria-hidden="true" />
               </LinkButton>
               <LinkButton href="/sign-in" variant="secondary">
-                Войти в кабинет
+                <Play aria-hidden="true" />
+                Demo кабинет
               </LinkButton>
-            </div>
-            <div className="landing-hero-metrics" aria-label="Основные сценарии EduFerma">
-              <div className="landing-hero-metric">
-                <strong>План</strong>
-                <span>уроки, дедлайны, повторение</span>
-              </div>
-              <div className="landing-hero-metric">
-                <strong>ДЗ</strong>
-                <span>выдача, попытки, проверка</span>
-              </div>
-              <div className="landing-hero-metric">
-                <strong>Банк</strong>
-                <span>ЕГЭ, ОГЭ, Python, review</span>
-              </div>
             </div>
           </div>
 
-          <aside className="landing-product-preview" aria-label="Превью кабинета EduFerma">
-            <div className="landing-product-topline">
-              <span>Сегодня</span>
-              <Badge>demo-safe</Badge>
+          <aside className="landing-stage" aria-label="Превью интерфейса EduFerma">
+            <div className="landing-stage-grid" aria-hidden="true" />
+            <div className="landing-floating-object landing-floating-object-a">
+              <Radar aria-hidden="true" />
+              <span>skill radar</span>
             </div>
-            <div className="landing-today-card">
-              <div>
-                <strong>ЕГЭ информатика · задание 7</strong>
-                <span>19:00 · графики и табличные модели</span>
-              </div>
-              <a href="/sign-in">Кабинет</a>
+            <div className="landing-floating-object landing-floating-object-b">
+              <Gauge aria-hidden="true" />
+              <span>72%</span>
             </div>
-            <div className="landing-product-grid">
-              <div className="landing-product-card landing-product-card-warm">
-                <span>ДЗ</span>
-                <strong>8 / 10</strong>
-                <small>2 задачи ждут разбора</small>
+            <div className="landing-monitor">
+              <div className="landing-monitor-header">
+                <span>EDUFERMA / LIVE BOARD</span>
+                <Badge>demo-safe</Badge>
               </div>
-              <div className="landing-product-card landing-product-card-blue">
-                <span>Skill progress</span>
-                <strong>72%</strong>
-                <small>graph_reading растёт</small>
-              </div>
-            </div>
-            <div className="landing-skill-panel">
-              <div className="landing-skill-row">
-                <span>spreadsheet_logic</span>
-                <div className="landing-skill-track" aria-hidden="true">
-                  <span style={{ width: "64%" }} />
+              <div className="landing-monitor-body">
+                <div className="landing-monitor-main">
+                  <div className="landing-monitor-title">
+                    <MonitorDot aria-hidden="true" />
+                    <div>
+                      <strong>Сегодняшний маршрут</strong>
+                      <span>ЕГЭ информатика · задание 7</span>
+                    </div>
+                  </div>
+                  <div className="landing-cockpit-list">
+                    {cockpitRows.map((row) => (
+                      <div className="landing-cockpit-row" key={row.title}>
+                        <span>{row.title}</span>
+                        <small>{row.meta}</small>
+                        <Badge>{row.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <strong>64%</strong>
-              </div>
-              <div className="landing-skill-row">
-                <span>python_loops</span>
-                <div className="landing-skill-track" aria-hidden="true">
-                  <span style={{ width: "88%" }} />
+                <div className="landing-monitor-side">
+                  {heroMetrics.map((metric) => (
+                    <div className="landing-live-metric" key={metric.label}>
+                      <span>{metric.label}</span>
+                      <strong>{metric.value}</strong>
+                      <small>{metric.detail}</small>
+                    </div>
+                  ))}
                 </div>
-                <strong>88%</strong>
               </div>
-              <div className="landing-skill-row">
-                <span>logic_queries</span>
-                <div className="landing-skill-track" aria-hidden="true">
-                  <span style={{ width: "54%" }} />
-                </div>
-                <strong>54%</strong>
+              <div className="landing-skill-console" aria-label="Прогресс по навыкам">
+                {skillProgress.map((item) => (
+                  <div className="landing-skill-row" key={item.skill}>
+                    <span>{item.skill}</span>
+                    <div className="landing-skill-track" aria-hidden="true">
+                      <span style={{ width: `${item.value}%` }} />
+                    </div>
+                    <strong>{item.value}%</strong>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="landing-preview-links" aria-label="Быстрые ссылки превью">
-              <a href="/sign-in">Открыть кабинет</a>
-              <a href="/sign-in">Банк задач после входа</a>
             </div>
           </aside>
         </div>
       </section>
 
-      <section className="landing-section" id="cabinet">
+      <section className="landing-section landing-services" id="services">
         <div className="landing-container landing-section-grid">
           <div className="landing-section-heading">
-            <span className="landing-section-kicker">Личный кабинет</span>
-            <h2>Ученик видит маршрут, расписание, ДЗ и прогресс без лишних пересборок.</h2>
+            <span className="landing-section-kicker">Services / учебные модули</span>
+            <h2>Не лендинг ради лендинга, а карта настоящих рабочих сценариев.</h2>
             <p>
-              Кабинет не заменяет урок, а снимает шум вокруг него: что готовить, что сдать, где ошибка
-              повторяется и какие навыки уже стали устойчивыми.
+              Главная страница показывает будущий продуктовый язык EduFerma: спокойный кабинет,
+              проверяемые задачи, расписание, прогресс и отзывчивый demo-safe публичный слой.
             </p>
           </div>
-          <div className="landing-feature-grid">
-            {cabinetFeatures.map((feature) => {
-              const Icon = feature.icon;
+          <div className="landing-service-grid">
+            {serviceTiles.map((tile) => {
+              const Icon = tile.icon;
 
               return (
-                <article className="landing-feature-card" key={feature.title}>
+                <article className="landing-service-card" key={tile.title}>
                   <Icon aria-hidden="true" />
-                  <h3>{feature.title}</h3>
-                  <p>{feature.text}</p>
+                  <h3>{tile.title}</h3>
+                  <p>{tile.text}</p>
                 </article>
               );
             })}
@@ -218,14 +254,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section landing-section-blue" id="task-bank">
+      <section className="landing-section landing-task-band" id="work">
         <div className="landing-container landing-task-layout">
           <div className="landing-section-heading">
-            <span className="landing-section-kicker">Банк задач</span>
-            <h2>Фильтры по экзамену, теме, сложности и качеству источника.</h2>
+            <span className="landing-section-kicker">Work / банк задач</span>
+            <h2>Фильтры выглядят как инструмент, а не как витрина.</h2>
             <p>
-              Превью показывает рабочую модель: задачи проходят верификацию, а спорные элементы остаются
-              в статусе needs review до ручной проверки.
+              В публичном превью нет ответов и teacher-only полей. Видно только то, что помогает
+              понять продукт: источник, сложность, качество проверки и связка с прототипом.
             </p>
             <div className="landing-task-cta">
               <LinkButton href="/sign-in" variant="primary">
@@ -234,18 +270,18 @@ export default function LandingPage() {
               </LinkButton>
             </div>
           </div>
-          <div className="landing-task-bank-preview" aria-label="Превью фильтров банка задач">
-            <div className="landing-filter-toolbar">
+          <div className="landing-task-console" aria-label="Превью фильтров банка задач">
+            <div className="landing-console-top">
               <div className="landing-search-field">
                 <Search aria-hidden="true" />
-                <span>Поиск по прототипу или skill atom</span>
+                <span>prototype_id или skill atom</span>
               </div>
-              <span className="landing-filter-icon" aria-label="Фильтры">
+              <span className="landing-filter-button" aria-label="Фильтры">
                 <Filter aria-hidden="true" />
               </span>
             </div>
             <div className="landing-filter-chips" aria-label="Mock фильтров">
-              {["ЕГЭ", "ОГЭ", "Python", "сложность", "verified", "needs review"].map((filter) => (
+              {["ЕГЭ", "ОГЭ", "Python", "verified", "needs review"].map((filter) => (
                 <span key={filter}>{filter}</span>
               ))}
             </div>
@@ -264,11 +300,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section" id="workflow">
+      <section className="landing-section landing-workflow-section">
         <div className="landing-container">
           <div className="landing-section-heading">
-            <span className="landing-section-kicker">Рабочий процесс</span>
-            <h2>От плана до разбора ошибок — один короткий цикл.</h2>
+            <span className="landing-section-kicker">About / цикл урока</span>
+            <h2>Scroll rhythm ведёт от цели к повторению, как монтаж рабочего дня.</h2>
           </div>
           <div className="landing-workflow-grid">
             {workflowSteps.map((step, index) => {
@@ -287,60 +323,67 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section landing-section-warm">
-        <div className="landing-container landing-audience-grid">
+      <section className="landing-section landing-work-frames">
+        <div className="landing-container landing-work-frame-grid">
+          {workFrames.map((frame) => (
+            <article className="landing-work-frame" key={frame.label}>
+              <span>{frame.label}</span>
+              <h3>{frame.title}</h3>
+              <p>{frame.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-section landing-review-section" id="reviews">
+        <div className="landing-container landing-review-layout">
           <div className="landing-section-heading">
-            <span className="landing-section-kicker">Для ученика / для преподавателя</span>
-            <h2>Один интерфейс, две разные задачи.</h2>
+            <span className="landing-section-kicker">Отзывы / demo-safe</span>
+            <h2>Публичный слой не обещает чудес и не раскрывает личные данные.</h2>
             <p>
-              Ученик получает ясность на сегодня, преподаватель — управляемую систему задач, попыток и
-              повторения.
+              Ниже только демонстрационные карточки из safe-данных. Реальные результаты появляются
+              публично только после явного согласия и проверки полей.
             </p>
           </div>
-          <div className="landing-compare-grid">
-            {audienceColumns.map((column) => (
-              <article className="landing-compare-card" key={column.title}>
-                <h3>{column.title}</h3>
-                <ul>
-                  {column.items.map((item) => (
-                    <li key={item}>
-                      <CheckCircle2 aria-hidden="true" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+          <div className="landing-review-stage" aria-label="Демонстрационные отзывы EduFerma">
+            <div className="landing-review-rail landing-review-rail-a">
+              {publicResults.map((result) => (
+                <article className="landing-review-card" key={result.title}>
+                  <Badge>demo safe</Badge>
+                  <h3>{result.title}</h3>
+                  <p>{result.summary}</p>
+                </article>
+              ))}
+            </div>
+            <div className="landing-review-rail landing-review-rail-b" aria-hidden="true">
+              <div className="landing-review-metric">
+                <ShieldCheck aria-hidden="true" />
+                <strong>consent-first</strong>
+                <span>published=true + consent_status=granted</span>
+              </div>
+              <div className="landing-review-metric">
+                <Layers3 aria-hidden="true" />
+                <strong>0 teacher fields</strong>
+                <span>без ответов, решений и внутренних заметок</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="landing-section" id="testimonials">
-        <div className="landing-container">
-          <div className="landing-section-heading">
-            <span className="landing-section-kicker">Отзывы</span>
-            <h2>Demo-safe примеры, а не публичные обещания результата.</h2>
-            <p>
-              Ниже показаны только демонстрационные карточки из safe-данных. Реальные отзывы и результаты
-              нельзя публиковать без явного согласия.
-            </p>
-          </div>
-          <ParallaxTestimonials results={publicResults} />
-        </div>
-      </section>
-
-      <section className="landing-section landing-final-band">
+      <section className="landing-final-band">
         <div className="landing-container landing-final-grid">
           <div>
-            <Layers3 aria-hidden="true" />
-            <h2>EduFerma собирает подготовку в аккуратный кабинет.</h2>
-            <p>Invite-only доступ, банк задач, ДЗ, прогресс и прозрачная работа с ошибками.</p>
+            <Badge>invite-only</Badge>
+            <h2>EduFerma собирает подготовку в управляемый кабинет.</h2>
+            <p>Маршрут, ДЗ, банк задач, skill progress и аккуратный публичный demo-safe слой.</p>
           </div>
           <div className="landing-final-actions">
             <LinkButton href="/sign-in" variant="primary">
               Войти
             </LinkButton>
             <LinkButton href={config.telegramUrl} variant="secondary">
+              <MessageCircle aria-hidden="true" />
               Telegram
             </LinkButton>
           </div>
@@ -348,8 +391,10 @@ export default function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        <div className="landing-container">EduFerma · {config.brandHandle} · invite-only кабинет</div>
+        <div className="landing-container">
+          EduFerma · {config.brandHandle} · invite-only кабинет по информатике
+        </div>
       </footer>
-    </main>
+    </LandingParallaxShell>
   );
 }
