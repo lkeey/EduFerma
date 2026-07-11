@@ -22,19 +22,20 @@ import {
 import { Badge, LinkButton } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
 import { filterPublicResults } from "@eduferma/core";
-import { LandingParallaxShell } from "./landing-parallax";
+import { ParallaxTestimonials } from "@/components/landing/ParallaxTestimonials";
 import { demoResults } from "@/lib/demo-data";
+import { LandingParallaxShell } from "./landing-parallax";
 
 const navItems = [
-  { href: "#about", label: "About" },
-  { href: "#services", label: "Services" },
-  { href: "#work", label: "Work" },
+  { href: "#product", label: "Кабинет" },
+  { href: "#task-bank", label: "База задач" },
+  { href: "#backstage", label: "API backstage" },
   { href: "#reviews", label: "Отзывы" }
 ];
 
 const heroMetrics = [
-  { label: "Сегодня", value: "19:00", detail: "занятие + ДЗ" },
-  { label: "Skill progress", value: "72%", detail: "graph_reading" },
+  { label: "Сегодня", value: "19:00", detail: "урок + ДЗ" },
+  { label: "Skill graph", value: "72%", detail: "graph_reading" },
   { label: "Review queue", value: "2", detail: "попытки ждут разбора" }
 ];
 
@@ -83,14 +84,14 @@ const workflowSteps = [
   { icon: Target, title: "План", text: "Цель, экзамен, сроки и ближайшие прототипы складываются в маршрут." },
   { icon: BookOpenCheck, title: "Практика", text: "Задачи выдаются с источниками, сложностью и student-safe форматом." },
   { icon: FileCheck2, title: "Проверка", text: "Попытки, статусы и ошибки попадают в понятную очередь разбора." },
-  { icon: TimerReset, title: "Повторение", text: "Следующее занятие получает меньше шума и точнее попадает в слабые места." }
+  { icon: TimerReset, title: "Повторение", text: "Следующее занятие точнее попадает в слабые места." }
 ];
 
 const workFrames = [
   {
     label: "Cabinet",
     title: "Один экран на урок",
-    text: "Сегодняшнее занятие, активное ДЗ, план и риск по навыкам не требуют отдельной сборки перед каждым созвоном."
+    text: "Сегодняшнее занятие, активное ДЗ, план и риск по навыкам не требуют ручной сборки перед созвоном."
   },
   {
     label: "Task bank",
@@ -102,6 +103,34 @@ const workFrames = [
     title: "Прогресс не прячется",
     text: "Skill atoms показывают не только процент, но и почему именно эта тема возвращается в повторение."
   }
+];
+
+const backstageCards = [
+  {
+    icon: Layers3,
+    label: "OpenAPI",
+    title: "Swagger как технологичный backstage",
+    text: "Документация API видна из главной, но teacher-only поля остаются за role checks."
+  },
+  {
+    icon: MonitorDot,
+    label: "Remote DB",
+    title: "Production данные не из локального JSON",
+    text: "Кабинеты читают контрактный API, а локальные демо-данные остаются для seed и dry-run."
+  },
+  {
+    icon: ShieldCheck,
+    label: "Student-safe",
+    title: "Публичный слой без ответов",
+    text: "Ученик не получает решения, teacher notes и внутренние поля через student-facing routes."
+  }
+];
+
+const backstageRoutes = [
+  "GET /api/v1/student/dashboard",
+  "GET /api/v1/teacher/task-bank",
+  "POST /api/v1/student/tasks/{taskId}/attempts",
+  "GET /api/openapi.json"
 ];
 
 export default function LandingPage() {
@@ -135,26 +164,30 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="landing-hero" id="about" aria-labelledby="landing-hero-title">
+      <section className="landing-hero" id="product" aria-labelledby="landing-hero-title">
         <div className="landing-frame-line landing-frame-line-top" aria-hidden="true" />
         <div className="landing-frame-line landing-frame-line-bottom" aria-hidden="true" />
+        <div className="landing-hero-scan" aria-hidden="true" />
         <div className="landing-container landing-hero-grid">
-          <div className="landing-hero-copy">
+          <div className="landing-hero-copy" data-reveal>
             <div className="landing-rec-row" aria-label="EduFerma production monitor">
               <span className="landing-rec-dot" />
               <span>REC</span>
-              <span>lesson-control-room</span>
+              <span>4K lesson feed</span>
               <span>demo-safe</span>
             </div>
             <p className="landing-kicker">
               <Sparkles aria-hidden="true" />
               Кабинет, банк задач и прогресс в одном учебном контуре
             </p>
-            <h1 id="landing-hero-title">EduFerma от lkeey</h1>
+            <h1 id="landing-hero-title">
+              <span>EduFerma</span>
+              <em>control room для информатики</em>
+            </h1>
             <p className="landing-hero-lead">
-              Драматичный, но деловой интерфейс для подготовки по информатике: ученик понимает, что
-              делать сегодня, а преподаватель видит маршрут, попытки, задачи и повторение без ручной
-              режиссуры перед каждым уроком.
+              Кинематографичный, но рабочий интерфейс подготовки: ученик понимает, что делать сегодня,
+              а преподаватель видит маршрут, попытки, задачи и повторение без ручной режиссуры перед
+              каждым уроком.
             </p>
             <div className="landing-hero-actions">
               <LinkButton href={config.telegramUrl} variant="primary">
@@ -166,9 +199,18 @@ export default function LandingPage() {
                 Demo кабинет
               </LinkButton>
             </div>
+            <div className="landing-hero-proof-strip" aria-label="Ключевые сигналы продукта">
+              {heroMetrics.map((metric) => (
+                <div className="landing-hero-proof" key={metric.label}>
+                  <span>{metric.label}</span>
+                  <strong>{metric.value}</strong>
+                  <small>{metric.detail}</small>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <aside className="landing-stage" aria-label="Превью интерфейса EduFerma">
+          <aside className="landing-stage" aria-label="Превью интерфейса EduFerma" data-reveal>
             <div className="landing-stage-grid" aria-hidden="true" />
             <div className="landing-floating-object landing-floating-object-a">
               <Radar aria-hidden="true" />
@@ -228,14 +270,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section landing-services" id="services">
+      <section className="landing-section landing-services" id="cabinet">
         <div className="landing-container landing-section-grid">
-          <div className="landing-section-heading">
-            <span className="landing-section-kicker">Services / учебные модули</span>
-            <h2>Не лендинг ради лендинга, а карта настоящих рабочих сценариев.</h2>
+          <div className="landing-section-heading" data-reveal>
+            <span className="landing-section-kicker">Cabinet / личный кабинет</span>
+            <h2>Главная ведёт не в рекламную витрину, а в живой учебный пульт.</h2>
             <p>
-              Главная страница показывает будущий продуктовый язык EduFerma: спокойный кабинет,
-              проверяемые задачи, расписание, прогресс и отзывчивый demo-safe публичный слой.
+              Здесь сразу читается фактический продукт: вход, кабинет, расписание, проверка ДЗ,
+              прогресс и безопасный student-facing слой.
             </p>
           </div>
           <div className="landing-service-grid">
@@ -243,7 +285,7 @@ export default function LandingPage() {
               const Icon = tile.icon;
 
               return (
-                <article className="landing-service-card" key={tile.title}>
+                <article className="landing-service-card" key={tile.title} data-reveal>
                   <Icon aria-hidden="true" />
                   <h3>{tile.title}</h3>
                   <p>{tile.text}</p>
@@ -254,10 +296,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section landing-task-band" id="work">
+      <section className="landing-section landing-task-band" id="task-bank">
         <div className="landing-container landing-task-layout">
-          <div className="landing-section-heading">
-            <span className="landing-section-kicker">Work / банк задач</span>
+          <div className="landing-section-heading" data-reveal>
+            <span className="landing-section-kicker">Task bank / база задач</span>
             <h2>Фильтры выглядят как инструмент, а не как витрина.</h2>
             <p>
               В публичном превью нет ответов и teacher-only полей. Видно только то, что помогает
@@ -270,7 +312,7 @@ export default function LandingPage() {
               </LinkButton>
             </div>
           </div>
-          <div className="landing-task-console" aria-label="Превью фильтров банка задач">
+          <div className="landing-task-console" aria-label="Превью фильтров банка задач" data-reveal>
             <div className="landing-console-top">
               <div className="landing-search-field">
                 <Search aria-hidden="true" />
@@ -302,8 +344,8 @@ export default function LandingPage() {
 
       <section className="landing-section landing-workflow-section">
         <div className="landing-container">
-          <div className="landing-section-heading">
-            <span className="landing-section-kicker">About / цикл урока</span>
+          <div className="landing-section-heading" data-reveal>
+            <span className="landing-section-kicker">Lesson loop / цикл урока</span>
             <h2>Scroll rhythm ведёт от цели к повторению, как монтаж рабочего дня.</h2>
           </div>
           <div className="landing-workflow-grid">
@@ -311,7 +353,7 @@ export default function LandingPage() {
               const Icon = step.icon;
 
               return (
-                <article className="landing-workflow-card" key={step.title}>
+                <article className="landing-workflow-card" key={step.title} data-reveal>
                   <span className="landing-step-number">{index + 1}</span>
                   <Icon aria-hidden="true" />
                   <h3>{step.title}</h3>
@@ -326,7 +368,7 @@ export default function LandingPage() {
       <section className="landing-section landing-work-frames">
         <div className="landing-container landing-work-frame-grid">
           {workFrames.map((frame) => (
-            <article className="landing-work-frame" key={frame.label}>
+            <article className="landing-work-frame" key={frame.label} data-reveal>
               <span>{frame.label}</span>
               <h3>{frame.title}</h3>
               <p>{frame.text}</p>
@@ -335,9 +377,58 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="landing-section landing-backstage-section" id="backstage">
+        <div className="landing-container landing-backstage-layout">
+          <div className="landing-section-heading" data-reveal>
+            <span className="landing-section-kicker">API backstage / технологичный слой</span>
+            <h2>Swagger и versioned API можно показать как часть доверия.</h2>
+            <p>
+              EduFerma не прячет механику: кабинеты опираются на `/api/v1`, OpenAPI рендерится в
+              Swagger UI, а права проверяются на сервере.
+            </p>
+            <div className="landing-backstage-actions">
+              <LinkButton href="/api/docs" variant="primary">
+                Swagger UI
+                <ArrowRight aria-hidden="true" />
+              </LinkButton>
+              <LinkButton href="/api/openapi.json" variant="secondary">
+                OpenAPI JSON
+              </LinkButton>
+            </div>
+          </div>
+          <div className="landing-backstage-console" aria-label="API backstage preview" data-reveal>
+            <div className="landing-code-window">
+              <div className="landing-code-window-top">
+                <span>api-contract.ts</span>
+                <Badge>remote-db ready</Badge>
+              </div>
+              <div className="landing-code-lines">
+                {backstageRoutes.map((route) => (
+                  <code key={route}>{route}</code>
+                ))}
+              </div>
+            </div>
+            <div className="landing-backstage-card-grid">
+              {backstageCards.map((card) => {
+                const Icon = card.icon;
+
+                return (
+                  <article className="landing-backstage-card" key={card.title}>
+                    <Icon aria-hidden="true" />
+                    <span>{card.label}</span>
+                    <h3>{card.title}</h3>
+                    <p>{card.text}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="landing-section landing-review-section" id="reviews">
         <div className="landing-container landing-review-layout">
-          <div className="landing-section-heading">
+          <div className="landing-section-heading" data-reveal>
             <span className="landing-section-kicker">Отзывы / demo-safe</span>
             <h2>Публичный слой не обещает чудес и не раскрывает личные данные.</h2>
             <p>
@@ -345,40 +436,20 @@ export default function LandingPage() {
               публично только после явного согласия и проверки полей.
             </p>
           </div>
-          <div className="landing-review-stage" aria-label="Демонстрационные отзывы EduFerma">
-            <div className="landing-review-rail landing-review-rail-a">
-              {publicResults.map((result) => (
-                <article className="landing-review-card" key={result.title}>
-                  <Badge>demo safe</Badge>
-                  <h3>{result.title}</h3>
-                  <p>{result.summary}</p>
-                </article>
-              ))}
-            </div>
-            <div className="landing-review-rail landing-review-rail-b" aria-hidden="true">
-              <div className="landing-review-metric">
-                <ShieldCheck aria-hidden="true" />
-                <strong>consent-first</strong>
-                <span>published=true + consent_status=granted</span>
-              </div>
-              <div className="landing-review-metric">
-                <Layers3 aria-hidden="true" />
-                <strong>0 teacher fields</strong>
-                <span>без ответов, решений и внутренних заметок</span>
-              </div>
-            </div>
+          <div data-reveal>
+            <ParallaxTestimonials results={publicResults} />
           </div>
         </div>
       </section>
 
       <section className="landing-final-band">
         <div className="landing-container landing-final-grid">
-          <div>
+          <div data-reveal>
             <Badge>invite-only</Badge>
             <h2>EduFerma собирает подготовку в управляемый кабинет.</h2>
-            <p>Маршрут, ДЗ, банк задач, skill progress и аккуратный публичный demo-safe слой.</p>
+            <p>Маршрут, ДЗ, банк задач, skill progress, Swagger backstage и аккуратный demo-safe слой.</p>
           </div>
-          <div className="landing-final-actions">
+          <div className="landing-final-actions" data-reveal>
             <LinkButton href="/sign-in" variant="primary">
               Войти
             </LinkButton>
