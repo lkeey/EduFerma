@@ -32,3 +32,24 @@ Production apply requires an explicit DB review gate:
 ```bash
 EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --allow-partial
 ```
+
+## Curated Original Seed
+
+The repository includes a small production-safe original task bank:
+
+```text
+packages/db/seed/task-bank-curated-original.jsonl
+```
+
+These rows are authored for EduFerma, marked `license_status=original`,
+`verification_status=verified`, and `status=active`. Use it to bootstrap a
+remote DB task bank without importing the private local corpus:
+
+```bash
+pnpm tasks:sync --dry-run --path=packages/db/seed/task-bank-curated-original.jsonl
+EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --path=packages/db/seed/task-bank-curated-original.jsonl
+```
+
+Do not use this seed as evidence that the external source corpus has been
+reviewed. The large local corpus still needs separate normalization, duplicate
+review, and source verification before production import.

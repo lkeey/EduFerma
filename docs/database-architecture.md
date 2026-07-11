@@ -167,6 +167,14 @@ Production import apply is also blocked unless
 `EDUFERMA_ALLOW_IMPORT_APPLY=true` is set after source, mapping, and backup
 review.
 
+For first production bootstrap, use the tracked original curated seed instead of
+the private local corpus:
+
+```bash
+pnpm tasks:sync --dry-run --path=packages/db/seed/task-bank-curated-original.jsonl
+EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --path=packages/db/seed/task-bank-curated-original.jsonl
+```
+
 ## Production Safety
 
 - Run migrations before deploying code that depends on new columns.
