@@ -89,6 +89,34 @@ Do not invent or commit database URLs. If Neon is provisioned outside Vercel
 Marketplace, add the pooled runtime URL as `DATABASE_URL`, add the direct URL as
 `DIRECT_DATABASE_URL`, and then pull/sync env vars locally.
 
+## Remote DB Setup Status
+
+Last checked: 2026-07-11.
+
+Vercel project `edu-ferma-web` exists under team `lkeey` and is linked to the
+Next.js app. A safe `vercel env list --format json` check returned no project
+environment variables, so no remote database URL is currently configured for
+runtime, migration, seed, or import commands.
+
+No Neon, Vercel Postgres, or other paid/free database resource was created in
+this branch. The code is ready for a remote managed Postgres URL, but DB apply
+commands remain blocked until an existing/free resource is connected and these
+env vars are present in Vercel or a local `.env.local`:
+
+- `DATABASE_URL`: pooled Postgres runtime URL.
+- `DIRECT_DATABASE_URL`: direct Postgres migration URL, when provided by the
+  database provider.
+
+After a free/existing Neon or Vercel Postgres resource is connected, run:
+
+```bash
+pnpm db:migrate
+pnpm db:seed -- --apply
+```
+
+For production, `pnpm db:seed -- --apply` still requires the documented
+break-glass override and backup/migration review.
+
 ## Seed
 
 Dry-run seed preview:
