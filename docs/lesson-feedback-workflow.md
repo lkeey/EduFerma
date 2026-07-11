@@ -22,6 +22,12 @@ Run locally:
 pnpm tsx scripts/lesson-feedback.ts --input=lesson-feedback.json
 ```
 
+Run the worker dry-run demo:
+
+```bash
+pnpm --filter @eduferma/worker dev -- lesson-feedback:dry-run
+```
+
 `--apply` is intentionally disabled in the MVP. Future apply mode must write append-only changelog entries and create proposed adjustments for explicit teacher approval.
 
 ## Deterministic Parser

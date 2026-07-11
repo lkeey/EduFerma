@@ -18,6 +18,7 @@ export default defineConfig({
       "@eduferma/api-contract": resolve(root, "packages/api-contract/src/index.ts"),
       "@eduferma/core/platform": resolve(root, "packages/core/src/platform/index.ts"),
       "@eduferma/core/services": resolve(root, "packages/core/src/services/index.ts"),
+      "@eduferma/core/telegram": resolve(root, "packages/core/src/telegram/index.ts"),
       "@eduferma/core": resolve(root, "packages/core/src/index.ts"),
       "@eduferma/db": resolve(root, "packages/db/src/index.ts"),
       "@eduferma/validators": resolve(root, "packages/validators/src/index.ts")
