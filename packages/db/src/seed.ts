@@ -8,8 +8,12 @@ import {
   tasks,
   users
 } from "./schema";
+import { assertProductionSeedAllowed } from "./config";
 import { getDb } from "./client";
+import { loadWorkspaceEnv } from "./script-env";
 import { pathToFileURL } from "node:url";
+
+loadWorkspaceEnv();
 
 const ids = {
   owner: "00000000-0000-4000-8000-000000000001",
@@ -142,9 +146,7 @@ async function main() {
     return;
   }
 
-  if (!process.env.DATABASE_URL) {
-    throw new Error("--apply requires DATABASE_URL");
-  }
+  assertProductionSeedAllowed(process.env, process.argv);
 
   const db = getDb();
   await db.insert(users).values(seed.users).onConflictDoNothing();

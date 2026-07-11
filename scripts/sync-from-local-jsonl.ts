@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { buildTaskImportReport } from "@eduferma/core";
+import { assertImportApplyAllowed } from "@eduferma/db";
 import { readJsonl } from "./read-jsonl";
 
 type Args = {
@@ -44,9 +45,7 @@ async function main() {
       throw new Error("--apply refused: invalid, duplicate, or manual-review tasks are present");
     }
 
-    if (!process.env.DATABASE_URL) {
-      throw new Error("--apply requires DATABASE_URL");
-    }
+    assertImportApplyAllowed(process.env);
 
     console.log("Apply path passed safety checks. DB write implementation is intentionally deferred after preview infra setup.");
   }

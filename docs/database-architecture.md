@@ -22,10 +22,31 @@ Allowed development sources:
 SQLite is not part of the production-compatible path and should not be added as
 a runtime fallback.
 
+## Setup / Unavailable Flow
+
+Runtime code uses a lazy `getDb()` initializer. It does not create a DB client
+at module import time, so builds can complete before Vercel injects env vars.
+When code actually needs the database, `DATABASE_URL` must be present and must
+be a `postgres://` or `postgresql://` URL.
+
+If the URL is missing, DB-backed flows must return a controlled setup or
+unavailable response. They must not silently read local JSON, SQLite, local
+files, or demo fixtures as a production substitute.
+
+When `VERCEL_ENV=production`, `EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`
+without a preview override, `DATABASE_URL` and `DIRECT_DATABASE_URL` are rejected
+if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.
+
 ## Required Env Vars
 
 - `DATABASE_URL`: pooled runtime Postgres URL for Next.js route handlers and services.
 - `DIRECT_DATABASE_URL`: direct Postgres URL for migrations, if the provider gives one.
+- `EDUFERMA_DB_ENV`: optional DB environment marker; use `production` only for
+  the production database and `development` for local/dev branches.
+- `EDUFERMA_ALLOW_PRODUCTION_SEED`: must remain `false` unless a one-off,
+  reviewed production seed is intentionally being run.
+- `EDUFERMA_ALLOW_IMPORT_APPLY`: must remain `false` unless a reviewed
+  production import is intentionally being run.
 - `NEXT_PUBLIC_APP_URL`: canonical app URL.
 - `CLERK_SECRET_KEY`: Clerk server key.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk browser key.
@@ -43,14 +64,30 @@ Generate migrations:
 pnpm db:generate
 ```
 
-Run migrations against a configured database:
+Run migrations against a configured database. DB scripts load `.env.local` from
+the workspace root if it exists, while real shell/Vercel env vars still win:
 
 ```bash
 pnpm db:migrate
 ```
 
 Use `DIRECT_DATABASE_URL` for migrations when available. If it is absent,
-Drizzle falls back to `DATABASE_URL`.
+Drizzle falls back to `DATABASE_URL`. `pnpm db:generate` can run before env
+setup because it only compares schema files. `pnpm db:migrate`, `pnpm db:push`
+and `pnpm db:studio` require `DIRECT_DATABASE_URL` or `DATABASE_URL`.
+
+Preferred manual provisioning sequence:
+
+```bash
+vercel link
+vercel integration add neon
+vercel env pull .env.local --yes
+pnpm db:migrate
+```
+
+Do not invent or commit database URLs. If Neon is provisioned outside Vercel
+Marketplace, add the pooled runtime URL as `DATABASE_URL`, add the direct URL as
+`DIRECT_DATABASE_URL`, and then pull/sync env vars locally.
 
 ## Seed
 
@@ -66,7 +103,16 @@ Apply seed:
 pnpm db:seed -- --apply
 ```
 
-The seed script must refuse `--apply` without `DATABASE_URL`.
+The seed script refuses `--apply` without `DATABASE_URL`, refuses non-Postgres
+URLs, and refuses production seed apply unless both conditions are true:
+
+```bash
+EDUFERMA_ALLOW_PRODUCTION_SEED=true pnpm db:seed -- --apply --allow-production-seed
+```
+
+That override is a manual break-glass flow and should only be used after backup
+and migration review. Demo seed rows use stable IDs and `onConflictDoNothing()`
+so repeated non-production applies are idempotent.
 
 ## Importing Tasks From The Local Corpus
 
@@ -79,6 +125,10 @@ pnpm tasks:sync --dry-run
 
 Apply mode must require a configured remote/dev DB and must refuse invalid,
 duplicate, restricted, or `needs_review` task rows.
+
+Production import apply is also blocked unless
+`EDUFERMA_ALLOW_IMPORT_APPLY=true` is set after source, mapping, and backup
+review.
 
 ## Production Safety
 
