@@ -5,12 +5,12 @@ import { getServices } from "@/server/services";
 
 type RouteContext = { params: Promise<{ attemptId: string }> };
 
-export async function POST(request: Request, context: RouteContext) {
+export async function POST(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    const { attemptId } = await context.params;
-    await parseJson(request, ReviewAttemptRequestSchema);
-    return ok(await getServices().teacher.reviewAttempt(attemptId));
+    const context = await requireApiRole(roles.teacher, request);
+    const { attemptId } = await routeContext.params;
+    const input = await parseJson(request, ReviewAttemptRequestSchema);
+    return ok(await getServices().teacher.reviewAttempt(context, attemptId, { ...input, mistakeTags: input.mistakeTags ?? [] }));
   } catch (error) {
     return handleApiError(error);
   }

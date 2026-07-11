@@ -85,3 +85,46 @@ export type AttemptResult = {
 };
 
 export type ApiSetupState = "demo" | "db" | "unavailable";
+
+export type SubmitAttemptInput = {
+  assignmentId?: string;
+  taskId: string;
+  answer: string;
+  startedAt?: string;
+  timeSpentSec?: number;
+};
+
+export type CreateAssignmentInput = {
+  studentId: string;
+  title: string;
+  descriptionMd?: string;
+  dueAt?: string;
+  taskIds: string[];
+};
+
+export type UpdateAssignmentInput = {
+  title?: string;
+  descriptionMd?: string;
+  dueAt?: string;
+  taskIds?: string[];
+  status?: string;
+};
+
+export type UpdatePlanInput = {
+  title?: string;
+  milestones?: string[];
+  lessonStatus?: string;
+};
+
+export type CreateScheduleEventInput = {
+  title: string;
+  startsAt?: string;
+  durationMinutes: number;
+};
+
+export type ReviewAttemptInput = {
+  isCorrect: boolean;
+  scoreAwarded?: number;
+  feedbackMd?: string;
+  mistakeTags: string[];
+};

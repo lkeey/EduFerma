@@ -5,20 +5,27 @@ import { getServices } from "@/server/services";
 
 type RouteContext = { params: Promise<{ studentId: string }> };
 
-export async function GET(request: Request) {
+export async function GET(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    return ok(await getServices().teacher.getStudentSchedule());
+    const context = await requireApiRole(roles.teacher, request);
+    const { studentId } = await routeContext.params;
+    return ok(await getServices().teacher.getStudentSchedule(context, studentId));
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-export async function POST(request: Request, _context: RouteContext) {
+export async function POST(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    await parseJson(request, CreateScheduleEventRequestSchema);
-    return created(await getServices().teacher.createStudentScheduleEvent());
+    const context = await requireApiRole(roles.teacher, request);
+    const { studentId } = await routeContext.params;
+    const input = await parseJson(request, CreateScheduleEventRequestSchema);
+    return created(
+      await getServices().teacher.createStudentScheduleEvent(context, studentId, {
+        ...input,
+        durationMinutes: input.durationMinutes ?? 60
+      })
+    );
   } catch (error) {
     return handleApiError(error);
   }

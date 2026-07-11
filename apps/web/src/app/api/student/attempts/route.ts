@@ -5,9 +5,9 @@ import { getServices } from "@/server/services";
 
 export async function POST(request: Request) {
   try {
-    await requireApiRole(roles.student, request);
+    const context = await requireApiRole(roles.student, request);
     const input = await parseJson(request, LegacySubmitAttemptRequestSchema);
-    return created(await getServices().student.submitAttempt({ taskId: input.taskId, answer: input.answer }));
+    return created(await getServices().student.submitAttempt(context, input));
   } catch (error) {
     return handleApiError(error);
   }

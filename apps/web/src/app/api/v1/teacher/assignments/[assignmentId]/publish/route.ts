@@ -4,11 +4,11 @@ import { getServices } from "@/server/services";
 
 type RouteContext = { params: Promise<{ assignmentId: string }> };
 
-export async function POST(request: Request, context: RouteContext) {
+export async function POST(request: Request, routeContext: RouteContext) {
   try {
-    await requireApiRole(roles.teacher, request);
-    const { assignmentId } = await context.params;
-    return ok(await getServices().teacher.publishAssignment(assignmentId));
+    const context = await requireApiRole(roles.teacher, request);
+    const { assignmentId } = await routeContext.params;
+    return ok(await getServices().teacher.publishAssignment(context, assignmentId));
   } catch (error) {
     return handleApiError(error);
   }
