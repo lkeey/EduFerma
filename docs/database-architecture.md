@@ -33,6 +33,22 @@ If the URL is missing, DB-backed flows must return a controlled setup or
 unavailable response. They must not silently read local JSON, SQLite, local
 files, or demo fixtures as a production substitute.
 
+For HTTP requests this means:
+
+```mermaid
+flowchart LR
+  Request["/api/v1 or protected page"] --> Auth["Clerk/demo-dev auth guard"]
+  Auth --> Config{"Remote DB env configured and safe?"}
+  Config -- "yes" --> Services["DB-backed services"]
+  Services --> Postgres["Remote/dev Postgres"]
+  Config -- "missing or unsafe" --> Setup["503 SETUP_REQUIRED"]
+  Auth -- "missing auth" --> AuthError["401 / 403 / setup-required auth error"]
+```
+
+`ENABLE_DEMO_AUTH=true` is allowed only outside production. In production-marked
+environments, demo auth must not become a fixture-backed substitute for remote
+DB data.
+
 When `VERCEL_ENV=production`, `EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`
 without a preview override, `DATABASE_URL` and `DIRECT_DATABASE_URL` are rejected
 if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.

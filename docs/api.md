@@ -7,9 +7,48 @@ under `/api/v1`.
 
 - OpenAPI JSON: `/api/openapi.json`
 - Swagger UI: `/api/docs`
+- Contract registry: `packages/api-contract/src/registry.ts`
+- OpenAPI generator: `packages/api-contract/src/openapi.ts`
+- Tracked generated JSON: `packages/api-contract/openapi.json`
+- Runtime routes: `apps/web/src/app/api/**/route.ts`
+- Swagger page implementation: `apps/web/src/app/api/docs/page.tsx`
 
 Both are controlled by `OPENAPI_DOCS_ENABLED`. In production this can be set to
 `false` to hide docs without breaking the app.
+
+## Request Flows
+
+EduFerma keeps `/api/v1` as the stable HTTP contract for browser clients,
+external integrations, mobile/PWA and future automations. Server-rendered Next.js
+pages may call the same service layer directly instead of making a loopback HTTP
+request.
+
+```mermaid
+flowchart LR
+  Client["Browser/API client"] --> Route["/api/v1 route handler"]
+  Route --> ApiGuard["requireApiRole + Zod validation"]
+  ApiGuard --> Services["@eduferma/core/services"]
+  ServerPage["Server Component page"] --> PageGuard["requirePageRole"]
+  PageGuard --> Services
+  Services --> DbAdapter["apps/web server DB services"]
+  DbAdapter --> Db["@eduferma/db Drizzle client"]
+  Db --> Pg["Remote managed Postgres"]
+```
+
+Both paths must use the same role checks, service contracts and serializers.
+Neither path may read production data from local JSON/mock fixtures.
+
+## Route Matrix
+
+The authoritative route list lives in `routeDefinitions`. Current groups:
+
+| Group | Routes | Notes |
+| --- | --- | --- |
+| Health/Auth | `/api/health`, `/api/health/db`, `/api/openapi.json`, `/api/demo-auth/*`, `/api/v1/me` | Public health/docs plus protected DB health/current user. Demo auth is development/test only. |
+| Student | `/api/v1/student/dashboard`, `/schedule`, `/plan`, `/assignments`, `/assignments/{assignmentId}`, `/tasks/{taskId}`, `/tasks/{taskId}/attempts`, `/progress` | Student-safe serializers must omit answers, solutions, teacher notes and local/internal source paths. |
+| Teacher | `/api/v1/teacher/dashboard`, `/students`, `/students/{studentId}`, `/students/{studentId}/plan`, `/students/{studentId}/schedule`, `/students/{studentId}/assignments`, `/students/{studentId}/analytics`, `/task-bank`, `/tasks/{taskId}` | Teacher routes require server-side teacher/owner/tutor role checks and ownership checks where a student is addressed. |
+| Assignments/Attempts | `/api/v1/teacher/assignments`, `/api/v1/teacher/assignments/{assignmentId}`, `/api/v1/teacher/assignments/{assignmentId}/publish`, `/api/v1/teacher/attempts/pending-review`, `/api/v1/teacher/attempts/{attemptId}/review` | Mutating operations must validate request bodies with Zod and be present in OpenAPI. |
+| Legacy compatibility | `/api/student/attempts`, `/api/teacher/reviews` | Kept for compatibility; new product work should prefer `/api/v1`. |
 
 ## Adding A Route
 
@@ -60,6 +99,21 @@ env names, not secret values.
 
 Student APIs must never include `answer_json`, `solution_md`, teacher notes or
 local/internal source paths.
+
+## Contract Hardening Backlog
+
+The current contract governance blocks undocumented routes and missing auth/test
+patterns. Remaining hardening items:
+
+- add per-route success status metadata so `201` responses are represented
+  precisely, not only generic `200`;
+- map Zod request/response schemas to OpenAPI components so generated schemas
+  cannot drift from validators;
+- update the `clerkAuth` security scheme description to reflect Clerk
+  session/cookie auth plus DB role resolution;
+- keep `/api/docs` smoke coverage in tests, not only `/api/openapi.json`;
+- make new internal non-OpenAPI integration routes explicitly documented in
+  `scripts/api-governance.ts` exceptions.
 
 ## Remote DB Smoke Tests
 
