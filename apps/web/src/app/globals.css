@@ -2966,6 +2966,14 @@ textarea {
   margin-bottom: 22px;
 }
 
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .dashboard-header h1 {
   margin: 0;
   font-size: 1.8rem;
@@ -3335,6 +3343,11 @@ textarea {
 
   .dashboard-header {
     flex-direction: column;
+  }
+
+  .dashboard-header-actions {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .filter-bar {
