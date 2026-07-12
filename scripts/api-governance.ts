@@ -11,7 +11,8 @@ type Finding = {
 const root = process.cwd();
 const forbiddenStudentFields = ["answer_json", "solution_md", "teacher_notes", "local_source_path"];
 const documentedNonOpenApiRoutes = new Map([
-  ["/api/integrations/telegram/webhook", "docs/telegram-delivery.md"]
+  ["/api/integrations/telegram/webhook", "docs/telegram-delivery.md"],
+  ["/api/integrations/telegram/posts/cron", "docs/telegram-post-cron.md"]
 ]);
 
 function main() {
