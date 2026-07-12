@@ -164,7 +164,12 @@ class RepoGovernanceHarnessTest(unittest.TestCase):
     def test_task_slug_does_not_match_openai_key_prefix(self) -> None:
         with self.make_workspace() as temp:
             root = Path(temp)
-            subprocess.run(["git", "switch", "-c", "codex/task-ui"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "switch", "-c", "codex/task-ui"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
             (root / "README.md").write_text("task-bank anchor\n", encoding="utf-8")
             subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True)
             code, report = self.run_harness(root, "--mode", "check")
@@ -174,7 +179,12 @@ class RepoGovernanceHarnessTest(unittest.TestCase):
     def test_openai_key_like_diff_is_failure(self) -> None:
         with self.make_workspace() as temp:
             root = Path(temp)
-            subprocess.run(["git", "switch", "-c", "codex/secret-check"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "switch", "-c", "codex/secret-check"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
             leaked_key = "sk" + "-proj-demo1234567890"
             (root / "README.md").write_text(f"leaked {leaked_key}\n", encoding="utf-8")
             subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True)
