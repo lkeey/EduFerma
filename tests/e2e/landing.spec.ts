@@ -74,7 +74,7 @@ test("teacher opens task bank and analytics", async ({ page }) => {
 
   await page.goto("/teacher/task-bank");
   await expect(page.getByRole("heading", { name: "Банк задач" })).toBeVisible();
-  await expect(page.getByText("Анализ программ").first()).toBeVisible();
+  await expect(page.getByText("Графики").first()).toBeVisible();
 
   await page.goto("/teacher/students/demo_student_oge/analytics");
   await expect(page.getByRole("heading", { name: /Аналитика/ })).toBeVisible();

@@ -3,7 +3,7 @@ import { Badge, Panel } from "@eduferma/ui";
 import { AnswerForm } from "@/components/platform/answer-form";
 import { PlatformShell } from "@/components/platform/app-shell";
 import { requireStudentAccess } from "@/lib/platform/auth";
-import { getStudentTask, getTeacherTask } from "@/lib/platform/data";
+import { getStudentTask } from "@/lib/platform/data";
 
 export default async function StudentTaskPage({
   params,
@@ -16,8 +16,7 @@ export default async function StudentTaskPage({
   const { taskId } = await params;
   const query = searchParams ? await searchParams : {};
   const task = await getStudentTask(taskId);
-  const teacherTask = await getTeacherTask(taskId);
-  if (!task || !teacherTask) notFound();
+  if (!task) notFound();
 
   return (
     <PlatformShell role="student" title="Решение задачи" subtitle={`${task.exam ?? task.learningTrack} · ${task.topic}`}>
@@ -33,9 +32,9 @@ export default async function StudentTaskPage({
         <Panel>
           <div className="panel-header">
             <h2>Отправить ответ</h2>
-            <Badge>{teacherTask.answerJson?.type ?? "manual"}</Badge>
+            <Badge>manual</Badge>
           </div>
-          <AnswerForm taskId={task.id} assignmentId={query.assignmentId ?? "assignment_demo_1"} answerType={teacherTask.answerJson?.type ?? "manual"} />
+          <AnswerForm taskId={task.id} assignmentId={query.assignmentId ?? ""} answerType="manual" />
         </Panel>
       </div>
     </PlatformShell>
