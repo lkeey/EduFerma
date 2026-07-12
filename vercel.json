@@ -2,11 +2,5 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm turbo build --filter=@eduferma/web",
   "outputDirectory": ".next",
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/integrations/telegram/posts/cron",
-      "schedule": "0 8 * * *"
-    }
-  ]
+  "framework": "nextjs"
 }
