@@ -14,10 +14,16 @@ type OpenApiOperation = {
 
 const stringSchema = { type: "string" };
 const optionalString = { type: "string" };
+const nullableString = { type: ["string", "null"] };
+const dateTimeString = { type: "string", format: "date-time" };
 const numberSchema = { type: "number" };
 const integerSchema = { type: "integer" };
 const booleanSchema = { type: "boolean" };
 const unknownObject = { type: "object", additionalProperties: true };
+const appRoleSchema = {
+  type: "string",
+  enum: ["owner", "tutor", "teacher", "student", "guardian", "guest"]
+};
 
 function ref(name: string) {
   return { $ref: `#/components/schemas/${name}` };
@@ -94,6 +100,75 @@ const schemas: Record<string, JsonSchema> = {
   }),
   GenericObject: unknownObject,
   OpenApiDocument: unknownObject,
+  HtmlDocument: {
+    type: "string",
+    description: "Swagger UI HTML document."
+  },
+  ApiSource: objectSchema({
+    kind: {
+      type: "string",
+      enum: ["database", "demo-fallback"]
+    },
+    reason: optionalString
+  }, ["kind"]),
+  TaskSummary: objectSchema({
+    id: stringSchema,
+    taskId: stringSchema,
+    learningTrack: stringSchema,
+    exam: nullableString,
+    taskNumber: nullableString,
+    topic: nullableString,
+    prototypeId: nullableString,
+    difficultyLevel: stringSchema,
+    sourceName: stringSchema,
+    sourceUrl: nullableString,
+    status: stringSchema,
+    updatedAt: dateTimeString
+  }),
+  TaskBankResponse: objectSchema({
+    source: ref("ApiSource"),
+    totalTasks: integerSchema,
+    activeTasks: integerSchema,
+    tasks: arrayOf(ref("TaskSummary"))
+  }),
+  DiagnosticsEnvironmentSnapshot: objectSchema({
+    clerkConfigured: booleanSchema,
+    databaseConfigured: booleanSchema,
+    ownerEmailConfigured: booleanSchema
+  }),
+  DiagnosticsAccessSnapshot: objectSchema({
+    role: appRoleSchema,
+    emailMasked: nullableString,
+    authenticated: booleanSchema,
+    canViewExtended: booleanSchema
+  }),
+  DiagnosticCheck: objectSchema({
+    name: stringSchema,
+    route: stringSchema,
+    status: {
+      type: "string",
+      enum: ["ok", "warning", "error", "skipped"]
+    },
+    message: stringSchema,
+    checkedAt: dateTimeString
+  }),
+  DiagnosticsResponse: objectSchema({
+    timestamp: dateTimeString,
+    status: {
+      type: "string",
+      enum: ["ok", "warning", "error"]
+    },
+    summary: stringSchema,
+    safeForSharing: {
+      type: "boolean",
+      enum: [true],
+      description: "Diagnostics contain only booleans, masked identifiers, and sanitized messages."
+    },
+    environment: ref("DiagnosticsEnvironmentSnapshot"),
+    access: ref("DiagnosticsAccessSnapshot"),
+    likelyIssues: arrayOf(stringSchema),
+    checks: arrayOf(ref("DiagnosticCheck"))
+  }),
   HealthResponse: objectSchema({
     ok: booleanSchema,
     service: stringSchema,
@@ -302,11 +377,11 @@ function apiErrorResponse(description: string) {
   };
 }
 
-function jsonResponse(schemaName: string | undefined) {
+function jsonResponse(schemaName: string | undefined, contentType = "application/json") {
   return {
     description: "OK",
     content: {
-      "application/json": {
+      [contentType]: {
         schema: ref(schemaName ?? "GenericObject")
       }
     }
@@ -339,7 +414,7 @@ function operation(route: RouteDefinition): OpenApiOperation {
     tags: route.tags,
     summary: route.summary,
     responses: {
-      "200": jsonResponse(route.responseSchema),
+      "200": jsonResponse(route.responseSchema, route.responseContentType),
       "401": apiErrorResponse("Unauthorized"),
       "403": apiErrorResponse("Forbidden"),
       "500": apiErrorResponse("Internal error")
@@ -382,6 +457,8 @@ export function buildOpenApiDocument() {
     tags: [
       { name: "Health" },
       { name: "Auth" },
+      { name: "Docs" },
+      { name: "Diagnostics" },
       { name: "Student" },
       { name: "Teacher" },
       { name: "Tasks" },

@@ -3,7 +3,7 @@ import { requireStudentAccess } from "@/lib/platform/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function OldStudentDashboardPage() {
-  await requireStudentAccess("demo_student_oge");
+export default async function LegacyStudentDashboardPage() {
+  await requireStudentAccess();
   redirect("/student/dashboard");
 }

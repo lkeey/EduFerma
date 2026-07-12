@@ -105,6 +105,12 @@ importers:
       '@eduferma/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@eduferma/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@neondatabase/serverless@1.1.0)
     devDependencies:
       tsx:
         specifier: ^4.20.3

@@ -1,6 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 import { Badge, LinkButton } from "@eduferma/ui";
-import { getPublicConfig } from "@eduferma/config";
+import { getPublicConfig, routes } from "@eduferma/config";
 import { isDemoAuthEnabled } from "@/lib/platform/auth";
 import { getAuthSetupStatus } from "@/server/auth/setup-status";
 
@@ -17,11 +17,20 @@ export default function SignInPage() {
         {demoEnabled ? (
           <div className="stack">
             <Badge>demo auth включен</Badge>
-            <LinkButton href="/api/demo-auth/login?role=teacher" variant="primary">Войти как преподаватель</LinkButton>
-            <LinkButton href="/api/demo-auth/login?role=student" variant="secondary">Войти как ученик</LinkButton>
+            <LinkButton href="/api/demo-auth/login?role=teacher" variant="primary">
+              Войти как преподаватель
+            </LinkButton>
+            <LinkButton href="/api/demo-auth/login?role=student" variant="secondary">
+              Войти как ученик
+            </LinkButton>
           </div>
         ) : setup.clerk.configured ? (
-          <SignIn routing="path" path="/sign-in" />
+          <SignIn
+            fallbackRedirectUrl={routes.dashboard}
+            forceRedirectUrl={routes.dashboard}
+            path={routes.signIn}
+            routing="path"
+          />
         ) : (
           <div className="stack">
             <Badge>Clerk env не подключен</Badge>

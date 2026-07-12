@@ -7,6 +7,7 @@ export type RouteDefinition = {
   tags: string[];
   summary: string;
   public?: boolean;
+  responseContentType?: "application/json" | "text/html";
   requestBody?: boolean;
   requestSchema?: string;
   responseSchema?: string;
@@ -15,6 +16,7 @@ export type RouteDefinition = {
 export const routeDefinitions: RouteDefinition[] = [
   { path: "/api/health", method: "get", operationId: "getHealth", tags: ["Health"], summary: "Basic service health", public: true, responseSchema: "HealthResponse" },
   { path: "/api/health/db", method: "get", operationId: "getDatabaseHealth", tags: ["Health"], summary: "Protected database health", responseSchema: "DatabaseHealthResponse" },
+  { path: "/api/docs", method: "get", operationId: "getApiDocs", tags: ["Docs"], summary: "Swagger UI API documentation", public: true, responseContentType: "text/html", responseSchema: "HtmlDocument" },
   { path: "/api/openapi.json", method: "get", operationId: "getOpenApiDocument", tags: ["Health"], summary: "OpenAPI JSON document", public: true, responseSchema: "OpenApiDocument" },
   { path: "/api/demo-auth/login", method: "get", operationId: "loginDemoAuth", tags: ["Auth"], summary: "Development-only demo auth login", public: true, responseSchema: "DemoAuthResponse" },
   { path: "/api/demo-auth/logout", method: "get", operationId: "logoutDemoAuth", tags: ["Auth"], summary: "Development-only demo auth logout", public: true, responseSchema: "DemoAuthResponse" },
@@ -29,6 +31,8 @@ export const routeDefinitions: RouteDefinition[] = [
   { path: "/api/v1/student/tasks/{taskId}", method: "get", operationId: "getStudentTask", tags: ["Tasks", "Student"], summary: "Student-safe task detail", responseSchema: "StudentTaskResponse" },
   { path: "/api/v1/student/tasks/{taskId}/attempts", method: "post", operationId: "submitStudentAttempt", tags: ["Attempts", "Student"], summary: "Submit student attempt", requestBody: true, requestSchema: "SubmitAttemptRequest", responseSchema: "AttemptResult" },
   { path: "/api/v1/student/progress", method: "get", operationId: "getStudentProgress", tags: ["Analytics", "Student"], summary: "Student progress", responseSchema: "ProgressResponse" },
+  { path: "/api/v1/diagnostics", method: "get", operationId: "getDiagnosticsSnapshot", tags: ["Diagnostics"], summary: "Safe platform diagnostics snapshot", responseSchema: "DiagnosticsResponse" },
+  { path: "/api/v1/task-bank", method: "get", operationId: "listTaskBank", tags: ["Tasks"], summary: "Student-safe task bank summary", responseSchema: "TaskBankResponse" },
   { path: "/api/v1/teacher/dashboard", method: "get", operationId: "getTeacherDashboard", tags: ["Teacher"], summary: "Teacher dashboard", responseSchema: "TeacherDashboardResponse" },
   { path: "/api/v1/teacher/students", method: "get", operationId: "listTeacherStudents", tags: ["Teacher"], summary: "Teacher students", responseSchema: "StudentsResponse" },
   { path: "/api/v1/teacher/students/{studentId}", method: "get", operationId: "getTeacherStudent", tags: ["Teacher"], summary: "Teacher student detail", responseSchema: "StudentResponse" },

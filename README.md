@@ -14,6 +14,8 @@ shared packages, схему БД, валидаторы, import/dry-run scripts �
 - invite-only auth through Clerk with server-side role guards;
 - Drizzle ORM with Neon Postgres schema and lazy runtime client in `packages/db`;
 - remote managed Postgres for production data, local DB/mock data only for dev, tests, dry runs and seeds;
+- versioned `/api/v1/**` routes with Swagger UI at `/api/docs` and OpenAPI JSON
+  at `/api/openapi.json`;
 - shared service/domain logic in `packages/core`;
 - Zod validators and OpenAPI contract packages for API request/response schemas;
 - Vitest unit tests, Playwright e2e tests, Turbo task orchestration and project lint/self-review gates;
@@ -126,11 +128,23 @@ Quality gate:
 ```bash
 pnpm lint
 pnpm typecheck
+pnpm api:governance
 pnpm test
 pnpm build
 pnpm web:self-review
 pnpm api:governance
 ```
+
+MVP smoke checks for local, preview, or production URLs:
+
+- `/`
+- `/dashboard`
+- `/task-bank`
+- `/dashboard/teacher`
+- `/dashboard/student`
+- `/diagnostics`
+- `/api/health`
+- `/api/docs`
 
 Dry-run импорт локального task bank:
 

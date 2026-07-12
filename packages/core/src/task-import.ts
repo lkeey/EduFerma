@@ -7,6 +7,7 @@ import {
 
 export type TaskImportDecision =
   | { action: "import"; task: PlatformTask }
+  | { action: "update"; task: PlatformTask }
   | { action: "skip"; task_id?: string; reason: string }
   | { action: "manual_review"; task_id?: string; reason: string }
   | { action: "invalid"; task_id?: string; reason: string };
@@ -19,14 +20,19 @@ export type TaskImportReport = {
   duplicates: number;
   manualReview: number;
   invalid: number;
+  budgetSkipped: number;
+  payloadBytes: number;
+  payloadLimitBytes?: number;
   decisions: TaskImportDecision[];
 };
 
-export type TaskImportReviewPolicy = "strict" | "source-verified";
-
 export type TaskImportReportOptions = {
+  existingTaskIds?: ReadonlySet<string>;
+  maxPayloadBytes?: number;
   reviewPolicy?: TaskImportReviewPolicy;
 };
+
+export type TaskImportReviewPolicy = "strict" | "source-verified";
 
 export function createEmptyTaskImportReport(): TaskImportReport {
   return {
@@ -37,12 +43,15 @@ export function createEmptyTaskImportReport(): TaskImportReport {
     duplicates: 0,
     manualReview: 0,
     invalid: 0,
+    budgetSkipped: 0,
+    payloadBytes: 0,
     decisions: []
   };
 }
 
 export function buildTaskImportReport(rows: unknown[], options: TaskImportReportOptions = {}): TaskImportReport {
   const report = createEmptyTaskImportReport();
+  report.payloadLimitBytes = options.maxPayloadBytes;
   const seen = new Set<string>();
   const reviewPolicy = options.reviewPolicy || "strict";
 
@@ -82,8 +91,29 @@ export function buildTaskImportReport(rows: unknown[], options: TaskImportReport
     }
 
     if (isTaskImportableUnderPolicy(task, reviewPolicy)) {
-      report.toImport += 1;
-      report.decisions.push({ action: "import", task });
+      const estimatedBytes = estimateTaskPayloadBytes(task);
+      if (
+        options.maxPayloadBytes !== undefined &&
+        report.payloadBytes + estimatedBytes > options.maxPayloadBytes
+      ) {
+        report.skipped += 1;
+        report.budgetSkipped += 1;
+        report.decisions.push({
+          action: "skip",
+          task_id: task.task_id,
+          reason: `payload budget exceeded (${formatBytes(options.maxPayloadBytes)})`
+        });
+        continue;
+      }
+
+      report.payloadBytes += estimatedBytes;
+      if (options.existingTaskIds?.has(task.task_id)) {
+        report.toUpdate += 1;
+        report.decisions.push({ action: "update", task });
+      } else {
+        report.toImport += 1;
+        report.decisions.push({ action: "import", task });
+      }
       continue;
     }
 
@@ -92,6 +122,12 @@ export function buildTaskImportReport(rows: unknown[], options: TaskImportReport
   }
 
   return report;
+}
+
+export function getImportableTasks(report: TaskImportReport): PlatformTask[] {
+  return report.decisions.flatMap((decision) =>
+    decision.action === "import" || decision.action === "update" ? [decision.task] : []
+  );
 }
 
 export function getTaskImportReviewReasons(
@@ -134,6 +170,23 @@ export function isTaskImportableUnderPolicy(
   return task.status === "active" && getTaskImportReviewReasons(task, reviewPolicy).length === 0;
 }
 
+export function assertTaskImportReportCanApply(report: TaskImportReport): void {
+  if (report.toImport + report.toUpdate === 0) {
+    throw new Error("--apply refused: no eligible tasks matched the import filters");
+  }
+}
+
+export function summarizeTaskImportExclusions(report: TaskImportReport): Record<string, number> {
+  const summary: Record<string, number> = {};
+
+  for (const decision of report.decisions) {
+    if (decision.action === "import" || decision.action === "update") continue;
+    summary[decision.reason] = (summary[decision.reason] || 0) + 1;
+  }
+
+  return Object.fromEntries(Object.entries(summary).sort((a, b) => b[1] - a[1]));
+}
+
 export function normalizeTaskForStorage(task: PlatformTask): PlatformTask {
   return {
     ...task,
@@ -153,10 +206,45 @@ export function normalizeMarkdownForStorage(value: string): string {
     .trim();
 }
 
+export function estimateTaskPayloadBytes(task: PlatformTask): number {
+  const payload = {
+    task_id: task.task_id,
+    learning_track: task.learning_track,
+    exam: task.exam,
+    task_number: task.task_number,
+    topic: task.topic,
+    prototype_id: task.prototype_id,
+    skill_atoms: task.skill_atoms,
+    difficulty_level: task.difficulty_level,
+    source_name: task.source_name,
+    source_url: task.source_url,
+    source_task_id: task.source_task_id,
+    statement_md: task.statement_md,
+    answer: task.answer,
+    solution_md: task.solution_md,
+    verification_status: task.verification_status,
+    license_status: task.license_status,
+    status: task.status,
+    metadata: {
+      source_id: task.source_id,
+      local_source_path: task.local_source_path,
+      attachments: task.attachments,
+      solution_language: task.solution_language,
+      schema_version: task.schema_version
+    }
+  };
+
+  return new TextEncoder().encode(JSON.stringify(payload)).length;
+}
+
 function readTaskId(row: unknown): string | undefined {
   if (row && typeof row === "object" && "task_id" in row && typeof row.task_id === "string") {
     return row.task_id;
   }
 
   return undefined;
+}
+
+function formatBytes(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(2)}MB`;
 }

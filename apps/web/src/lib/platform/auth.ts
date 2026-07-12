@@ -56,8 +56,14 @@ export async function getCurrentUser(): Promise<PlatformUser | null> {
       };
     }
 
-    const appRole = resolveRoleFromEmail(email, process.env.OWNER_EMAIL);
-    const role: PlatformRole = appRole === "tutor" ? "teacher" : appRole;
+    const appRole = resolveRoleFromEmail(email, {
+      ownerEmail: process.env.OWNER_EMAIL,
+      tutorEmails: process.env.TUTOR_EMAILS,
+      teacherEmails: process.env.TEACHER_EMAILS,
+      studentEmails: process.env.STUDENT_EMAILS,
+      guardianEmails: process.env.GUARDIAN_EMAILS
+    });
+    const role = mapAppRoleToPlatformRole(appRole);
     return {
       id: clerkUser.id,
       authProviderUserId: clerkUser.id,
@@ -89,7 +95,7 @@ export async function requireTeacherAccess() {
 }
 
 export async function requireStudentAccess(studentId?: string) {
-  const user = await requireRole(["owner", "teacher", "student"]);
+  const user = await requireRole(["owner", "teacher", "student", "guardian"]);
   if (user.role === "student" && studentId && studentId !== "demo_student_oge") {
     redirect("/forbidden");
   }
@@ -107,6 +113,6 @@ export async function requireRouteAccess(pathname: string) {
 export async function getRoleRedirectPath() {
   const role = await getCurrentRole();
   if (role === "teacher" || role === "owner") return "/teacher/dashboard";
-  if (role === "student") return "/student/dashboard";
+  if (role === "student" || role === "guardian") return "/student/dashboard";
   return "/sign-in";
 }

@@ -60,4 +60,31 @@ describe("openapi contract", () => {
     expect(teacherTask.properties).toHaveProperty("teacher_notes");
     expect(teacherTask.properties).toHaveProperty("local_source_path");
   });
+
+  it("documents task-bank summaries without teacher-only fields", () => {
+    const taskSummary = openApiDocument.components.schemas.TaskSummary;
+    const taskBank = openApiDocument.components.schemas.TaskBankResponse;
+
+    expect(taskSummary.additionalProperties).toBe(false);
+    expect(taskSummary.properties).not.toHaveProperty("answer_json");
+    expect(taskSummary.properties).not.toHaveProperty("solution_md");
+    expect(taskSummary.properties).not.toHaveProperty("teacher_notes");
+    expect(taskSummary.properties).not.toHaveProperty("local_source_path");
+    expect(taskBank.properties.tasks.items.$ref).toBe("#/components/schemas/TaskSummary");
+  });
+
+  it("documents diagnostics as a safe snapshot without raw secret fields", () => {
+    const diagnostics = openApiDocument.components.schemas.DiagnosticsResponse;
+    const environment = openApiDocument.components.schemas.DiagnosticsEnvironmentSnapshot;
+    const access = openApiDocument.components.schemas.DiagnosticsAccessSnapshot;
+
+    expect(diagnostics.properties.safeForSharing.enum).toEqual([true]);
+    expect(environment.properties).toEqual({
+      clerkConfigured: { type: "boolean" },
+      databaseConfigured: { type: "boolean" },
+      ownerEmailConfigured: { type: "boolean" }
+    });
+    expect(access.properties.emailMasked).toEqual({ type: ["string", "null"] });
+    expect(JSON.stringify(diagnostics)).not.toMatch(/token|secret|password|DATABASE_URL/i);
+  });
 });

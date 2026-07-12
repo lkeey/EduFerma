@@ -18,6 +18,12 @@
       "name": "Auth"
     },
     {
+      "name": "Docs"
+    },
+    {
+      "name": "Diagnostics"
+    },
+    {
       "name": "Student"
     },
     {
@@ -94,6 +100,274 @@
       "OpenApiDocument": {
         "type": "object",
         "additionalProperties": true
+      },
+      "HtmlDocument": {
+        "type": "string",
+        "description": "Swagger UI HTML document."
+      },
+      "ApiSource": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "database",
+              "demo-fallback"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "taskId",
+          "learningTrack",
+          "exam",
+          "taskNumber",
+          "topic",
+          "prototypeId",
+          "difficultyLevel",
+          "sourceName",
+          "sourceUrl",
+          "status",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "learningTrack": {
+            "type": "string"
+          },
+          "exam": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taskNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prototypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "difficultyLevel": {
+            "type": "string"
+          },
+          "sourceName": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskBankResponse": {
+        "type": "object",
+        "required": [
+          "source",
+          "totalTasks",
+          "activeTasks",
+          "tasks"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/ApiSource"
+          },
+          "totalTasks": {
+            "type": "integer"
+          },
+          "activeTasks": {
+            "type": "integer"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskSummary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiagnosticsEnvironmentSnapshot": {
+        "type": "object",
+        "required": [
+          "clerkConfigured",
+          "databaseConfigured",
+          "ownerEmailConfigured"
+        ],
+        "properties": {
+          "clerkConfigured": {
+            "type": "boolean"
+          },
+          "databaseConfigured": {
+            "type": "boolean"
+          },
+          "ownerEmailConfigured": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiagnosticsAccessSnapshot": {
+        "type": "object",
+        "required": [
+          "role",
+          "emailMasked",
+          "authenticated",
+          "canViewExtended"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "tutor",
+              "teacher",
+              "student",
+              "guardian",
+              "guest"
+            ]
+          },
+          "emailMasked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "authenticated": {
+            "type": "boolean"
+          },
+          "canViewExtended": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiagnosticCheck": {
+        "type": "object",
+        "required": [
+          "name",
+          "route",
+          "status",
+          "message",
+          "checkedAt"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "warning",
+              "error",
+              "skipped"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiagnosticsResponse": {
+        "type": "object",
+        "required": [
+          "timestamp",
+          "status",
+          "summary",
+          "safeForSharing",
+          "environment",
+          "access",
+          "likelyIssues",
+          "checks"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "warning",
+              "error"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "safeForSharing": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Diagnostics contain only booleans, masked identifiers, and sanitized messages."
+          },
+          "environment": {
+            "$ref": "#/components/schemas/DiagnosticsEnvironmentSnapshot"
+          },
+          "access": {
+            "$ref": "#/components/schemas/DiagnosticsAccessSnapshot"
+          },
+          "likelyIssues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticCheck"
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "HealthResponse": {
         "type": "object",
@@ -1112,6 +1386,57 @@
         ]
       }
     },
+    "/api/docs": {
+      "get": {
+        "operationId": "getApiDocs",
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Swagger UI API documentation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/openapi.json": {
       "get": {
         "operationId": "getOpenApiDocument",
@@ -2008,6 +2333,138 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProgressResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diagnostics": {
+      "get": {
+        "operationId": "getDiagnosticsSnapshot",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Safe platform diagnostics snapshot",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/task-bank": {
+      "get": {
+        "operationId": "listTaskBank",
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Student-safe task bank summary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskBankResponse"
                 }
               }
             }

@@ -7,10 +7,17 @@ export const routes = {
   signIn: "/sign-in",
   signUp: "/sign-up",
   dashboard: "/dashboard",
-  studentDashboard: "/student/dashboard",
-  teacherDashboard: "/teacher/dashboard",
-  taskBank: "/teacher/task-bank",
-  analytics: "/teacher/students/demo_student_oge/analytics"
+  studentDashboard: "/dashboard/student",
+  teacherDashboard: "/dashboard/teacher",
+  taskBank: "/task-bank",
+  taskBankApi: "/api/v1/task-bank",
+  teacherStudents: "/dashboard/teacher/students",
+  teacherAssignments: "/dashboard/teacher/assignments",
+  studentAssignments: "/dashboard/student/assignments",
+  diagnostics: "/diagnostics",
+  logs: "/diagnostics",
+  apiDocs: "/api/docs",
+  analytics: "/dashboard/teacher#analytics"
 } as const;
 
 export const roleNames = {

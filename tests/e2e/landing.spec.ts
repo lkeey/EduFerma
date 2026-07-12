@@ -9,54 +9,77 @@ const expectLandingTopbarVisible = async (page: Page) => {
     .toBe(0);
 };
 
-test("landing loads and exposes Telegram CTA", async ({ page }) => {
+test("landing loads and exposes MVP entrypoints", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /EduFerma.*control room/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Записаться в Telegram" })).toHaveAttribute("href", /t\.me\/lkeyit/);
-  await expect(page.getByRole("link", { name: /Войти в кабинет/ })).toHaveAttribute("href", "/sign-in");
-  await expect(page.getByRole("link", { name: /Открыть базу задач/ })).toHaveAttribute("href", "/teacher/task-bank");
+  await expect(page.locator("header").getByRole("link", { name: "Telegram" })).toHaveAttribute(
+    "href",
+    /t\.me\/lkeyit/
+  );
+  await expect(page.getByRole("link", { name: /Открыть кабинет/ }).first()).toHaveAttribute("href", "/dashboard");
+  await expect(page.getByRole("link", { name: /Банк задач/ }).first()).toHaveAttribute("href", "/task-bank");
+  await expect(page.getByRole("link", { name: /Открыть учеников/ })).toHaveAttribute(
+    "href",
+    "/dashboard/teacher/students"
+  );
+  await expect(page.getByRole("link", { name: /Открыть мои ДЗ/ })).toHaveAttribute(
+    "href",
+    "/dashboard/student/assignments"
+  );
+  await expect(page.getByRole("link", { name: /Открыть diagnostics/ })).toHaveAttribute("href", "/diagnostics");
+  await expect(page.getByRole("link", { name: /Открыть Swagger/ })).toHaveAttribute("href", "/api/docs");
 
-  await page.locator(".landing-nav").getByRole("link", { name: "API backstage" }).click();
-  await expect(page).toHaveURL(/#backstage$/);
-  await expect(page.getByRole("heading", { name: /^Swagger и versioned API/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Swagger UI" })).toHaveAttribute("href", "/api/docs");
+  const nav = page.locator(".landing-nav");
+  await expect(nav.getByRole("link", { name: "Кабинет" })).toHaveAttribute("href", "/dashboard");
+  await expect(nav.getByRole("link", { name: "Банк задач" })).toHaveAttribute("href", "/task-bank");
+  await expect(nav.getByRole("link", { name: "Ученики" })).toHaveAttribute("href", "/dashboard/teacher/students");
+  await expect(nav.getByRole("link", { name: "ДЗ учителя" })).toHaveAttribute(
+    "href",
+    "/dashboard/teacher/assignments"
+  );
+  await expect(nav.getByRole("link", { name: "ДЗ ученика" })).toHaveAttribute(
+    "href",
+    "/dashboard/student/assignments"
+  );
+  await expect(nav.getByRole("link", { name: "Diagnostics" })).toHaveAttribute("href", "/diagnostics");
+  await expect(nav.getByRole("link", { name: "API docs" })).toHaveAttribute("href", "/api/docs");
 });
 
-test("landing anchor navigation works on mobile", async ({ page }) => {
+test("landing anchor navigation still works on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.locator(".landing-nav").getByRole("link", { name: "Кабинет" }).click();
-  await expect(page).toHaveURL(/#cabinet$/);
   await expect(page.locator(".landing-nav").getByRole("link", { name: "Кабинет" })).toHaveAttribute(
-    "aria-current",
-    "location"
+    "href",
+    "/dashboard"
   );
-  await expectLandingTopbarVisible(page);
-  await expect(page.getByRole("heading", { name: /живой учебный пульт/ })).toBeVisible();
+  await expect(page.locator(".landing-nav").getByRole("link", { name: "Банк задач" })).toHaveAttribute(
+    "href",
+    "/task-bank"
+  );
 
-  await page.locator(".landing-nav").getByRole("link", { name: "База задач" }).click();
-  await expect(page).toHaveURL(/#task-bank$/);
-  await expect(page.locator(".landing-nav").getByRole("link", { name: "База задач" })).toHaveAttribute(
+  await page.locator(".landing-nav").getByRole("link", { name: "Отзывы" }).click();
+  await expect(page).toHaveURL(/#reviews$/);
+  await expect(page.locator(".landing-nav").getByRole("link", { name: "Отзывы" })).toHaveAttribute(
     "aria-current",
     "location"
   );
   await expectLandingTopbarVisible(page);
-  await expect(page.getByRole("heading", { name: /Фильтры выглядят/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Публичный слой не обещает/ })).toBeVisible();
 });
 
 test("landing reduced-motion users keep anchor navigation state", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  await page.locator(".landing-nav").getByRole("link", { name: "API backstage" }).click();
-  await expect(page).toHaveURL(/#backstage$/);
-  await expect(page.locator(".landing-nav").getByRole("link", { name: "API backstage" })).toHaveAttribute(
+  await page.locator(".landing-nav").getByRole("link", { name: "Отзывы" }).click();
+  await expect(page).toHaveURL(/#reviews$/);
+  await expect(page.locator(".landing-nav").getByRole("link", { name: "Отзывы" })).toHaveAttribute(
     "aria-current",
     "location"
   );
   await expectLandingTopbarVisible(page);
-  await expect(page.getByRole("heading", { name: /^Swagger и versioned API/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Публичный слой не обещает/ })).toBeVisible();
 });
 
 test("student cannot access teacher routes", async ({ page }) => {

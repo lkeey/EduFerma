@@ -1,6 +1,15 @@
 # Task Bank Sync
 
-The task sync reads:
+The task update MVP has two entry points:
+
+- `pnpm tasks:sync -- --dry-run --max-mb=500` previews the local JSONL corpus only.
+- `pnpm --filter @eduferma/worker dev -- --source=local-jsonl --max-mb=500` runs the worker pipeline in dry-run mode.
+
+Both are dry-run by default. Remote DB writes require explicit `--apply`,
+`DATABASE_URL`, and the apply guard for the selected entry point. Apply mode must
+never fall back to local JSON or JSONL storage.
+
+The local JSONL source reads:
 
 ```text
 /Users/lkeey/IT/data/processed/tasks.jsonl
@@ -15,7 +24,7 @@ pnpm tasks:sync -- --dry-run --max-mb=500
 pnpm tasks:sync -- --dry-run --review-policy=strict --max-mb=500
 ```
 
-## Why the remote task bank was small
+## Why the remote task bank is small
 
 Dry-run against the local corpus on 2026-07-12 showed:
 
@@ -32,14 +41,15 @@ default `source-verified` review policy, the same corpus reports:
 - `manualReview=10034`;
 - `invalid=1`;
 - estimated normalized DB payload with storage overhead: `140.0 MiB`;
+- pipeline payload before conservative DB overhead: `66.88MB`;
 - payload budget skipped rows: `0`.
 
 The stricter `--review-policy=strict` dry-run reports `toImport=0`,
 `manualReview=24489`, and `invalid=1`, because strict mode also requires source
 license evidence to be resolved before remote DB import.
 
-The remote task bank was small because the local corpus was larger than the
-strict eligible import set. The main blockers were:
+The remote task bank is small because the local corpus is much larger than the
+currently eligible import set. The main blockers are:
 
 - schema mismatch: the corpus uses nullable optional fields such as
   `task_number: null`, `answer: null`, and `solution_md: null`;
@@ -49,7 +59,15 @@ strict eligible import set. The main blockers were:
   `verification_status=unverified`, incomplete skill mapping, or
   binary-looking text were not eligible;
 - write path: `DATABASE_URL` and `EDUFERMA_ALLOW_IMPORT_APPLY=true` are required
-  for production apply.
+  for production CLI apply;
+- source-level licensing: every current local row has
+  `license_status=needs_review`; the `source-verified` policy imports these as
+  source-backed internal task-bank rows while preserving the license status in
+  the DB;
+- worker apply path: `pnpm --filter @eduferma/worker dev -- --apply` requires
+  `DATABASE_URL` to already be present in the environment.
+
+## Current import filters
 
 The importer validates every row against the web-facing task schema and reports:
 
@@ -60,9 +78,6 @@ The importer validates every row against the web-facing task schema and reports:
 - rows safe to import;
 - rows skipped by status.
 
-`--apply` writes importable rows into the configured Postgres task bank with an
-idempotent upsert on `task_id`.
-
 `source-verified` is the default CLI policy for task-bank sync. Rows are
 eligible for remote DB in this policy only when all of these are true:
 
@@ -71,13 +86,20 @@ eligible for remote DB in this policy only when all of these are true:
 - `verification_status` is `verified`, `checked`, or `verified_by_source`;
 - `license_status` is not `restricted` or `unknown`;
 - `statement_md` does not look like binary/corrupt text;
-- `task_id` is the first occurrence in the current source run.
+- `task_id` is the first occurrence in the current source run;
+- the normalized payload still fits inside the configured payload budget.
 
 Use `--review-policy=strict` for a stricter audit. Strict mode also blocks
 `license_status=needs_review` and `skill_atoms=needs_manual_skill_mapping`.
 
-By default `--apply` is intentionally conservative: it exits with an error if
-any invalid, duplicate, or manual-review rows are present.
+Invalid rows are not written. Duplicate `task_id` rows are skipped after the
+first occurrence. Manual-review rows are reported with exact reasons and are not
+written.
+
+`--apply` writes importable rows into the configured Postgres task bank with an
+idempotent upsert on `task_id`. By default CLI apply is intentionally
+conservative: it exits with an error if any invalid, duplicate, or manual-review
+rows are present.
 
 Use `--apply --allow-partial` only after reviewing the dry-run report. Partial
 apply still writes only rows classified as `import`; invalid rows and
@@ -89,19 +111,33 @@ Production apply requires an explicit DB review gate:
 EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync -- --apply --allow-partial --max-mb=500
 ```
 
+The worker MVP apply path is also explicit and DB-only:
+
+```bash
+pnpm --filter @eduferma/worker dev -- --apply --source=local-jsonl --max-mb=500 --batch-size=500
+```
+
 ## 500MB budget
 
 Use `--max-mb=500` or `--max-db-mb=500` for every dry-run and apply. The script
 estimates the normalized DB payload and, on apply, checks the current remote DB
 size before writing. The current local JSONL is `109MB`; the current
 `source-verified` eligible payload is `140.0 MiB` with the current conservative
-storage overhead estimate.
+storage overhead estimate. The worker pipeline's mapped payload report can show
+`66.88MB` before that DB overhead estimate.
 
 PostgreSQL stores large `text` values through TOAST, so keeping statements and
 solutions as `text` is safer than gzipping them into an opaque application-only
 format. The sync also normalizes text by trimming surrounding whitespace,
 normalizing line endings, replacing non-breaking spaces, stripping trailing
 horizontal whitespace, and collapsing long blank-line runs.
+
+- normalize line endings to `\n`;
+- replace non-breaking spaces with regular spaces;
+- strip trailing horizontal whitespace before newlines;
+- collapse runs of four or more blank lines to three blank lines;
+- trim surrounding whitespace in `statement_md` and `solution_md`;
+- keep raw source files unchanged under `/Users/lkeey/IT/data/raw/**`.
 
 Do not compress away task evidence, source URLs, local source paths, task IDs,
 or skill/prototype metadata. If the eligible payload is ever over 500MB, reduce
@@ -131,3 +167,25 @@ EDUFERMA_ALLOW_IMPORT_APPLY=true pnpm tasks:sync --apply --path=packages/db/seed
 Do not use this seed as evidence that the external source corpus has been
 reviewed. The large local corpus still needs separate normalization, duplicate
 review, and source verification before production import.
+
+## External Source Adapter Stubs
+
+External source adapters exist as safe stubs for `shkolkovo`, `yandex-textbook`,
+`kpolyakov`, and `umschool`. They do not fetch network data in the MVP. Enabling
+them requires a licensed parser/fetcher, source-specific throttling, and a review
+of what fields may be stored in EduFerma.
+
+Examples:
+
+```bash
+pnpm tasks:sync -- --dry-run --max-mb=500
+pnpm tasks:sync -- --dry-run --review-policy=strict --max-mb=500
+pnpm tasks:sync -- --dry-run --max-mb=500 --limit=20
+pnpm --filter @eduferma/worker dev -- --source=local-jsonl --max-mb=500
+pnpm --filter @eduferma/worker dev -- --source=local-jsonl --max-mb=500 --limit=20
+
+# Apply only after DATABASE_URL is already exported in the shell.
+pnpm --filter @eduferma/worker dev -- --apply --source=local-jsonl --max-mb=500 --batch-size=500
+
+pnpm --filter @eduferma/worker dev -- --source=shkolkovo
+```

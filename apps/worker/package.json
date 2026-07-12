@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@eduferma/core": "workspace:*",
-    "@eduferma/db": "workspace:*"
+    "@eduferma/db": "workspace:*",
+    "@eduferma/validators": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "tsx": "^4.20.3",

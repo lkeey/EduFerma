@@ -1,26 +1,30 @@
 import {
   ArrowRight,
+  BarChart3,
   BookOpenCheck,
   CalendarClock,
   ClipboardCheck,
+  ClipboardList,
+  DatabaseZap,
   FileCheck2,
   Filter,
   Gauge,
   Layers3,
+  LayoutDashboard,
   LineChart,
   MessageCircle,
   MonitorDot,
-  Play,
   Radar,
   Search,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   Target,
   TimerReset,
   UsersRound
 } from "lucide-react";
 import { Badge, LinkButton } from "@eduferma/ui";
-import { getPublicConfig } from "@eduferma/config";
+import { getPublicConfig, routes } from "@eduferma/config";
 import { filterPublicResults } from "@eduferma/core";
 import { ParallaxTestimonials } from "@/components/landing/ParallaxTestimonials";
 import { demoResults } from "@/lib/demo-data";
@@ -28,9 +32,13 @@ import { LandingParallaxShell } from "./landing-parallax";
 
 const navItems = [
   { href: "#product", label: "Пульт" },
-  { href: "#cabinet", label: "Кабинет" },
-  { href: "#task-bank", label: "База задач" },
-  { href: "#backstage", label: "API backstage" },
+  { href: routes.dashboard, label: "Кабинет" },
+  { href: routes.taskBank, label: "Банк задач" },
+  { href: routes.teacherStudents, label: "Ученики" },
+  { href: routes.teacherAssignments, label: "ДЗ учителя" },
+  { href: routes.studentAssignments, label: "ДЗ ученика" },
+  { href: routes.diagnostics, label: "Diagnostics" },
+  { href: routes.apiDocs, label: "API docs" },
   { href: "#reviews", label: "Отзывы" }
 ];
 
@@ -42,28 +50,60 @@ const heroMetrics = [
 
 const entryCards = [
   {
-    icon: UsersRound,
-    title: "Личный кабинет",
-    text: "Вход в teacher/student dashboard, где видны маршрут, ближайший урок и очередь проверки.",
-    action: "Войти в кабинет",
-    href: "/sign-in",
+    icon: LayoutDashboard,
+    title: "Кабинет",
+    text: "Общий вход в teacher/student dashboard с маршрутом, ближайшим уроком и очередью проверки.",
+    action: "Открыть dashboard",
+    href: routes.dashboard,
     tone: "cyan"
   },
   {
-    icon: Search,
+    icon: DatabaseZap,
     title: "База задач",
     text: "Отдельный вход в task bank: экзамен, прототипы, skill atoms и quality status рядом.",
     action: "Открыть базу задач",
-    href: "/teacher/task-bank",
+    href: routes.taskBank,
     tone: "amber"
   },
   {
-    icon: MessageCircle,
-    title: "Отзывы",
-    text: "Публичные proof-card только из demo-safe или consent-first данных без teacher-only полей.",
-    action: "К отзывам",
-    href: "#reviews",
+    icon: UsersRound,
+    title: "Ученики",
+    text: "Teacher view для списка учеников, треков, ближайших тем и рисков по подготовке.",
+    action: "Открыть учеников",
+    href: routes.teacherStudents,
     tone: "coral"
+  },
+  {
+    icon: ClipboardList,
+    title: "ДЗ преподавателя",
+    text: "Очередь домашних заданий, которые нужно выдать, проверить или вернуть на доработку.",
+    action: "Открыть ДЗ",
+    href: routes.teacherAssignments,
+    tone: "cyan"
+  },
+  {
+    icon: BookOpenCheck,
+    title: "Мои ДЗ",
+    text: "Student view с активными заданиями, дедлайнами, статусами и результатами.",
+    action: "Открыть мои ДЗ",
+    href: routes.studentAssignments,
+    tone: "amber"
+  },
+  {
+    icon: Stethoscope,
+    title: "Диагностика",
+    text: "Health-check приложения, API, источников данных и статуса платформы.",
+    action: "Открыть diagnostics",
+    href: routes.diagnostics,
+    tone: "coral"
+  },
+  {
+    icon: BarChart3,
+    title: "API docs",
+    text: "Swagger UI для versioned `/api/v1/**` ручек и OpenAPI-контракта.",
+    action: "Открыть Swagger",
+    href: routes.apiDocs,
+    tone: "cyan"
   }
 ];
 
@@ -164,9 +204,9 @@ const backstageCards = [
 ];
 
 const backstageRoutes = [
+  "GET /api/v1/task-bank",
   "GET /api/v1/student/dashboard",
-  "GET /api/v1/teacher/task-bank",
-  "POST /api/v1/student/tasks/{taskId}/attempts",
+  "GET /api/v1/teacher/dashboard",
   "GET /api/openapi.json"
 ];
 
@@ -191,8 +231,12 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="landing-topbar-actions">
-            <LinkButton href="/sign-in" variant="secondary">
-              Войти
+            <LinkButton href={routes.dashboard} variant="secondary">
+              Кабинет
+            </LinkButton>
+            <LinkButton href={routes.diagnostics} variant="secondary">
+              <Stethoscope aria-hidden="true" />
+              Диагностика
             </LinkButton>
             <LinkButton href={config.telegramUrl} variant="primary">
               <MessageCircle aria-hidden="true" />
@@ -228,13 +272,16 @@ export default function LandingPage() {
               каждым уроком.
             </p>
             <div className="landing-hero-actions">
-              <LinkButton href={config.telegramUrl} variant="primary">
-                Записаться в Telegram
+              <LinkButton href={routes.dashboard} variant="primary">
+                Открыть кабинет
                 <ArrowRight aria-hidden="true" />
               </LinkButton>
-              <LinkButton href="/sign-in" variant="secondary">
-                <Play aria-hidden="true" />
-                Demo кабинет
+              <LinkButton href={routes.taskBank} variant="secondary">
+                <DatabaseZap aria-hidden="true" />
+                Банк задач
+              </LinkButton>
+              <LinkButton href={routes.apiDocs} variant="secondary">
+                API docs
               </LinkButton>
             </div>
             <div className="landing-entry-deck" aria-label="Быстрые входы EduFerma">
@@ -381,8 +428,8 @@ export default function LandingPage() {
               понять продукт: источник, сложность, качество проверки и связка с прототипом.
             </p>
             <div className="landing-task-cta">
-              <LinkButton href="/sign-in" variant="primary">
-                Открыть после входа
+              <LinkButton href={routes.taskBank} variant="primary">
+                Открыть банк задач
                 <ArrowRight aria-hidden="true" />
               </LinkButton>
             </div>
@@ -462,7 +509,7 @@ export default function LandingPage() {
               Swagger UI, а права проверяются на сервере.
             </p>
             <div className="landing-backstage-actions">
-              <LinkButton href="/api/docs" variant="primary">
+              <LinkButton href={routes.apiDocs} variant="primary">
                 Swagger UI
                 <ArrowRight aria-hidden="true" />
               </LinkButton>
@@ -525,8 +572,8 @@ export default function LandingPage() {
             <p>Маршрут, ДЗ, банк задач, skill progress, Swagger backstage и аккуратный demo-safe слой.</p>
           </div>
           <div className="landing-final-actions" data-reveal>
-            <LinkButton href="/sign-in" variant="primary">
-              Войти
+            <LinkButton href={routes.dashboard} variant="primary">
+              Открыть кабинет
             </LinkButton>
             <LinkButton href={config.telegramUrl} variant="secondary">
               <MessageCircle aria-hidden="true" />

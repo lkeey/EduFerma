@@ -12,6 +12,17 @@ pnpm build
 pnpm web:self-review
 ```
 
+MVP smoke checks:
+
+- `/`
+- `/dashboard`
+- `/task-bank`
+- `/dashboard/teacher`
+- `/dashboard/student`
+- `/diagnostics`
+- `/api/health`
+- `/api/docs`
+
 ## Resources
 
 Use free-tier resources where available:

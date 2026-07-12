@@ -44,7 +44,8 @@ The authoritative route list lives in `routeDefinitions`. Current groups:
 
 | Group | Routes | Notes |
 | --- | --- | --- |
-| Health/Auth | `/api/health`, `/api/health/db`, `/api/openapi.json`, `/api/demo-auth/*`, `/api/v1/me` | Public health/docs plus protected DB health/current user. Demo auth is development/test only. |
+| Health/Auth | `/api/health`, `/api/health/db`, `/api/openapi.json`, `/api/demo-auth/*`, `/api/v1/me`, `/api/v1/diagnostics` | Public health/docs plus protected DB health/current user and signed-in diagnostics. Demo auth is development/test only. |
+| Task bank MVP | `/api/v1/task-bank` | Signed-in users only. Student-safe payloads must omit answers, solutions, teacher notes and local/internal source paths. |
 | Student | `/api/v1/student/dashboard`, `/schedule`, `/plan`, `/assignments`, `/assignments/{assignmentId}`, `/tasks/{taskId}`, `/tasks/{taskId}/attempts`, `/progress` | Student-safe serializers must omit answers, solutions, teacher notes and local/internal source paths. |
 | Teacher | `/api/v1/teacher/dashboard`, `/students`, `/students/{studentId}`, `/students/{studentId}/plan`, `/students/{studentId}/schedule`, `/students/{studentId}/assignments`, `/students/{studentId}/analytics`, `/task-bank`, `/tasks/{taskId}` | Teacher routes require server-side teacher/owner/tutor role checks and ownership checks where a student is addressed. |
 | Assignments/Attempts | `/api/v1/teacher/assignments`, `/api/v1/teacher/assignments/{assignmentId}`, `/api/v1/teacher/assignments/{assignmentId}/publish`, `/api/v1/teacher/attempts/pending-review`, `/api/v1/teacher/attempts/{attemptId}/review` | Mutating operations must validate request bodies with Zod and be present in OpenAPI. |
