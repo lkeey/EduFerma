@@ -10,6 +10,7 @@ import {
   mistakeEvents,
   scheduleEvents,
   skillMastery,
+  studentPrototypeMastery,
   students,
   tasks,
   teacherStudentLinks,
@@ -21,7 +22,7 @@ import {
   serializeStudentTask,
   serializeTeacherTask
 } from "@eduferma/core/services";
-import { checkShortAnswer } from "@eduferma/core";
+import { checkShortAnswer, updateMastery } from "@eduferma/core";
 import type {
   AttemptResult,
   CreateAssignmentInput,
@@ -54,6 +55,10 @@ export function createDbPlatformServices() {
   return {
     common: {
       async getMe(ctx: ServiceContext) {
+        if (ctx.user.role === "guest") {
+          return { user: ctx.user };
+        }
+
         const dbUser = await requireDbUser(ctx);
         return {
           user: {
@@ -149,6 +154,15 @@ export function createDbPlatformServices() {
             mistakeTags: []
           })
           .returning();
+
+        await db
+          .update(assignments)
+          .set({ status: "submitted", updatedAt: submittedAt })
+          .where(eq(assignments.id, assignment.id));
+
+        if (typeof result?.correct === "boolean") {
+          await recordAttemptProgress(db, attempt, task, result.correct);
+        }
 
         return {
           attemptId: attempt.id,
@@ -266,6 +280,23 @@ export function createDbPlatformServices() {
         const task = await requireTaskByIdOrTaskId(getDb(), taskId);
         return { task: serializeTeacherTask(mapDbTaskToRawTask(task)) };
       },
+      async getAssignments(ctx: ServiceContext) {
+        const { db, user } = await requireTeacherDbUser(ctx);
+        return { assignments: await getAssignmentsForTeacher(db, user) };
+      },
+      async getAssignment(ctx: ServiceContext, assignmentId: string) {
+        const { db, user } = await requireTeacherDbUser(ctx);
+        const assignment = await requireTeacherAssignment(db, user, assignmentId);
+        const [tasksForAssignment, score] = await Promise.all([
+          getTasksForAssignment(db, assignment.id),
+          getAssignmentScore(db, assignment.id)
+        ]);
+
+        return {
+          assignment: mapDbAssignmentToSummary(assignment, score),
+          tasks: tasksForAssignment.map(mapDbTaskToRawTask).map(serializeTeacherTask)
+        };
+      },
       async createAssignment(ctx: ServiceContext, input: CreateAssignmentInput) {
         const { db, user } = await requireTeacherDbUser(ctx);
         const student = await requireTeacherStudent(db, user, input.studentId);
@@ -350,6 +381,18 @@ export function createDbPlatformServices() {
               notesMd: input.feedbackMd
             }))
           );
+        }
+
+        const task = attempt.taskId ? await db.query.tasks.findFirst({ where: (row) => eq(row.id, attempt.taskId ?? "") }) : undefined;
+        if (task && shouldRecordReviewedAttemptProgress(attempt)) {
+          await recordAttemptProgress(db, updated, task, input.isCorrect);
+        }
+
+        if (attempt.assignmentId) {
+          await db
+            .update(assignments)
+            .set({ status: "reviewed", updatedAt: new Date() })
+            .where(eq(assignments.id, attempt.assignmentId));
         }
 
         return { attempt: updated };
@@ -462,7 +505,26 @@ async function getAssignmentsForStudent(db: Db, studentId: string) {
     where: (row) => eq(row.studentId, studentId),
     orderBy: (row, { desc }) => [desc(row.updatedAt)]
   });
-  return rows.map((row) => mapDbAssignmentToSummary(row));
+  return Promise.all(rows.map(async (row) => mapDbAssignmentToSummary(row, await getAssignmentScore(db, row.id))));
+}
+
+async function getAssignmentsForTeacher(db: Db, user: DbUser) {
+  const rows =
+    user.role === "owner"
+      ? await db.query.assignments.findMany({ orderBy: (row, { desc }) => [desc(row.updatedAt)] })
+      : (
+          await Promise.all(
+            (await getStudentsForTeacher(db, user)).map((student) =>
+              db.query.assignments.findMany({
+                where: (row) => eq(row.studentId, student.id),
+                orderBy: (row, { desc }) => [desc(row.updatedAt)]
+              })
+            )
+          )
+        ).flat();
+
+  const sorted = rows.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  return Promise.all(sorted.map(async (row) => mapDbAssignmentToSummary(row, await getAssignmentScore(db, row.id))));
 }
 
 async function getTasksForAssignment(db: Db, assignmentId: string) {
@@ -472,6 +534,26 @@ async function getTasksForAssignment(db: Db, assignmentId: string) {
   });
   const taskRows = await Promise.all(links.map((link) => db.query.tasks.findFirst({ where: (row) => eq(row.id, link.taskId) })));
   return taskRows.filter((task): task is DbTask => Boolean(task));
+}
+
+async function getAssignmentScore(db: Db, assignmentId: string) {
+  const links = await db.query.assignmentTasks.findMany({
+    where: (row) => eq(row.assignmentId, assignmentId)
+  });
+  if (links.length === 0) return "0 / 0";
+
+  const rows = await db.query.attempts.findMany({
+    where: (row) => eq(row.assignmentId, assignmentId),
+    orderBy: (row, { desc }) => [desc(row.attemptNo), desc(row.submittedAt)]
+  });
+  const latestByTask = new Map<string, typeof rows[number]>();
+  for (const attempt of rows) {
+    if (!attempt.taskId || latestByTask.has(attempt.taskId)) continue;
+    latestByTask.set(attempt.taskId, attempt);
+  }
+
+  const correct = Array.from(latestByTask.values()).filter((attempt) => attempt.isCorrect === true).length;
+  return `${correct} / ${links.length}`;
 }
 
 async function getProgressForStudent(db: Db, studentId: string) {
@@ -544,6 +626,72 @@ async function getPendingAttemptsForTeacher(db: Db, user: DbUser) {
     }
   }
   return visible;
+}
+
+async function recordAttemptProgress(db: Db, attempt: typeof attempts.$inferSelect, task: DbTask, isCorrect: boolean) {
+  const skillAtoms = task.skillAtoms ?? [];
+  const now = new Date();
+
+  for (const skillAtom of skillAtoms) {
+    const previous = await db.query.skillMastery.findFirst({
+      where: (row) => and(eq(row.studentId, attempt.studentId), eq(row.skillAtom, skillAtom))
+    });
+    const next = updateMastery(
+      previous
+        ? {
+            skill_atom: previous.skillAtom,
+            attempts: previous.attempts,
+            correct: previous.correct,
+            level: previous.level as ReturnType<typeof updateMastery>["level"]
+          }
+        : undefined,
+      skillAtom,
+      isCorrect
+    );
+    const values = {
+      studentId: attempt.studentId,
+      skillAtom,
+      prototypeId: task.prototypeId,
+      attempts: next.attempts,
+      correct: next.correct,
+      level: next.level,
+      lastAttemptAt: attempt.submittedAt ?? now,
+      updatedAt: now
+    };
+
+    if (previous) {
+      await db.update(skillMastery).set(values).where(eq(skillMastery.id, previous.id));
+    } else {
+      await db.insert(skillMastery).values(values);
+    }
+  }
+
+  if (!task.prototypeId) return;
+
+  const previousPrototype = await db.query.studentPrototypeMastery.findFirst({
+    where: (row) => and(eq(row.studentId, attempt.studentId), eq(row.prototypeId, task.prototypeId ?? ""))
+  });
+  const prototypeAttempts = (previousPrototype?.attempts ?? 0) + 1;
+  const prototypeCorrect = (previousPrototype?.correct ?? 0) + (isCorrect ? 1 : 0);
+  const prototypeValues = {
+    studentId: attempt.studentId,
+    prototypeId: task.prototypeId,
+    attempts: prototypeAttempts,
+    correct: prototypeCorrect,
+    confidence: Math.round((prototypeCorrect / prototypeAttempts) * 100),
+    riskFlag: !isCorrect && prototypeAttempts >= 2 ? "Вернуться к признакам прототипа" : previousPrototype?.riskFlag,
+    updatedAt: now
+  };
+
+  if (previousPrototype) {
+    await db.update(studentPrototypeMastery).set(prototypeValues).where(eq(studentPrototypeMastery.id, previousPrototype.id));
+  } else {
+    await db.insert(studentPrototypeMastery).values(prototypeValues);
+  }
+}
+
+function shouldRecordReviewedAttemptProgress(attempt: typeof attempts.$inferSelect) {
+  return attempt.isCorrect === null || typeof attempt.isCorrect === "undefined" || attempt.checkStatus === "pending_review";
 }
 
 function mergePlanJson(current: unknown, input: UpdatePlanInput) {

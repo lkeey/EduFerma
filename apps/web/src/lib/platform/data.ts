@@ -225,6 +225,25 @@ export async function getTeacherStudents() {
   }));
 }
 
+export async function getTeacherAssignments() {
+  const ctx = await getContext();
+  const services = getServices();
+  const { students } = await services.teacher.getStudents(ctx);
+  const assignmentGroups = await Promise.all(
+    asArray(students).map(async (student) => {
+      const { assignments } = await services.teacher.getStudentAssignments(ctx, student.id);
+      const legacyStudent = toLegacyStudent(student);
+
+      return asArray(assignments).map((assignment) => ({
+        student: legacyStudent,
+        ...toLegacyAssignmentRow(assignment)
+      }));
+    })
+  );
+
+  return assignmentGroups.flat();
+}
+
 export async function getTeacherStudentDetail(studentId: string) {
   const ctx = await getContext();
   const services = getServices();

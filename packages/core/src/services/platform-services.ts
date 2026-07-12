@@ -143,6 +143,17 @@ export function createPlatformServices(options: ServiceOptions) {
         ensureAvailable(state);
         return { task: serializeTeacherTask(demoTasks.find((task) => task.task_id === taskId || task.id === taskId) || demoTasks[0]) };
       },
+      async getAssignments(_ctx?: ServiceContext) {
+        ensureAvailable(state);
+        return { assignments: demoAssignments };
+      },
+      async getAssignment(_ctx: ServiceContext | undefined, assignmentId: string) {
+        ensureAvailable(state);
+        return {
+          assignment: demoAssignments.find((assignment) => assignment.id === assignmentId) || demoAssignments[0],
+          tasks: demoTasks.map(serializeTeacherTask)
+        };
+      },
       async createAssignment(_ctx: ServiceContext | undefined, _input?: CreateAssignmentInput) {
         ensureAvailable(state);
         return { assignment: demoAssignments[0] };

@@ -6,18 +6,20 @@ export const routes = {
   home: "/",
   signIn: "/sign-in",
   signUp: "/sign-up",
+  afterSignIn: "/auth/after-sign-in",
+  accessPending: "/access-pending",
   dashboard: "/dashboard",
-  studentDashboard: "/dashboard/student",
-  teacherDashboard: "/dashboard/teacher",
+  studentDashboard: "/student/dashboard",
+  teacherDashboard: "/teacher/dashboard",
   taskBank: "/task-bank",
   taskBankApi: "/api/v1/task-bank",
-  teacherStudents: "/dashboard/teacher/students",
-  teacherAssignments: "/dashboard/teacher/assignments",
-  studentAssignments: "/dashboard/student/assignments",
+  teacherStudents: "/teacher/students",
+  teacherAssignments: "/teacher/assignments",
+  studentAssignments: "/student/assignments",
   diagnostics: "/diagnostics",
   logs: "/diagnostics",
   apiDocs: "/api/docs",
-  analytics: "/dashboard/teacher#analytics"
+  analytics: "/teacher/dashboard#analytics"
 } as const;
 
 export const roleNames = {

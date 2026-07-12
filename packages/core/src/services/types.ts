@@ -50,6 +50,11 @@ export type AssignmentSummary = {
   score?: string;
 };
 
+export type TeacherAssignmentDetail = {
+  assignment: AssignmentSummary;
+  tasks: TeacherTask[];
+};
+
 export type StudentSummary = {
   id: string;
   display_name: string;

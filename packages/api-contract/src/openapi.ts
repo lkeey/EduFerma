@@ -269,6 +269,10 @@ const schemas: Record<string, JsonSchema> = {
     assignment: ref("AssignmentSummary"),
     tasks: arrayOf(ref("StudentTask"))
   }),
+  TeacherAssignmentResponse: objectSchema({
+    assignment: ref("AssignmentSummary"),
+    tasks: arrayOf(ref("TeacherTask"))
+  }),
   StudentTaskResponse: objectSchema({
     task: ref("StudentTask")
   }),

@@ -1,28 +1,14 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { applyResolvedClerkEnvToProcessEnv, resolveClerkEnv } from "@/lib/clerk-env";
 
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/student(.*)",
-  "/teacher(.*)",
-  "/api/v1(.*)",
-  "/api/health/db",
-  "/api/student(.*)",
-  "/api/teacher(.*)",
-  "/api/platform(.*)"
-]);
 const clerkEnv = resolveClerkEnv();
 applyResolvedClerkEnvToProcessEnv(clerkEnv);
 const hasDemoAuth = process.env.ENABLE_DEMO_AUTH === "true" && process.env.VERCEL_ENV !== "production";
 
-const protectedProxy = clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-});
+const clerkProxy = clerkMiddleware();
 
-export default clerkEnv.configured && !hasDemoAuth ? protectedProxy : function openProxy() {
+export default clerkEnv.configured && !hasDemoAuth ? clerkProxy : function openProxy() {
   return NextResponse.next();
 };
 

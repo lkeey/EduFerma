@@ -899,6 +899,25 @@
         },
         "additionalProperties": false
       },
+      "TeacherAssignmentResponse": {
+        "type": "object",
+        "required": [
+          "assignment",
+          "tasks"
+        ],
+        "properties": {
+          "assignment": {
+            "$ref": "#/components/schemas/AssignmentSummary"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeacherTask"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "StudentTaskResponse": {
         "type": "object",
         "required": [
@@ -3348,6 +3367,71 @@
       }
     },
     "/api/v1/teacher/assignments": {
+      "get": {
+        "operationId": "listTeacherAssignments",
+        "tags": [
+          "Assignments",
+          "Teacher"
+        ],
+        "summary": "Teacher assignments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      },
       "post": {
         "operationId": "createTeacherAssignment",
         "tags": [
@@ -3425,6 +3509,81 @@
       }
     },
     "/api/v1/teacher/assignments/{assignmentId}": {
+      "get": {
+        "operationId": "getTeacherAssignment",
+        "tags": [
+          "Assignments",
+          "Teacher"
+        ],
+        "summary": "Teacher assignment detail with answer and solution",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherAssignmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
       "patch": {
         "operationId": "updateTeacherAssignment",
         "tags": [
