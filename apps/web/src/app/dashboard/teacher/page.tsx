@@ -1,10 +1,20 @@
 import { BarChart3, BookOpenCheck, DatabaseZap, Home, MessageCircle, UsersRound } from "lucide-react";
 import { Badge, LinkButton, MetricCard, Panel, ProgressBar } from "@eduferma/ui";
 import { getPublicConfig } from "@eduferma/config";
-import { masteryRows, teacherRows } from "@/lib/demo-data";
+import { getTeacherDashboardData } from "@/lib/platform/dashboard";
+import { requirePlatformPath } from "@/lib/platform/access";
+import { redirect } from "next/navigation";
 
-export default function TeacherDashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TeacherDashboardPage() {
+  const access = await requirePlatformPath("/dashboard/teacher");
+  if (!access.ok) {
+    redirect(access.redirectTo);
+  }
+
   const config = getPublicConfig();
+  const dashboard = await getTeacherDashboardData();
 
   return (
     <main className="dashboard-shell">
@@ -17,11 +27,17 @@ export default function TeacherDashboardPage() {
           <a aria-current="page" href="/dashboard/teacher">
             <Home aria-hidden="true" /> Обзор
           </a>
-          <a href="/dashboard/teacher#students">
+          <a href="/dashboard/teacher/students">
             <UsersRound aria-hidden="true" /> Ученики
           </a>
-          <a href="/dashboard/teacher#task-bank">
+          <a href="/dashboard/teacher/assignments">
+            <BookOpenCheck aria-hidden="true" /> Домашки
+          </a>
+          <a href="/task-bank">
             <DatabaseZap aria-hidden="true" /> Банк задач
+          </a>
+          <a href="/diagnostics">
+            <BarChart3 aria-hidden="true" /> Диагностика
           </a>
           <a href="/dashboard/teacher#analytics">
             <BarChart3 aria-hidden="true" /> Аналитика
@@ -32,28 +48,35 @@ export default function TeacherDashboardPage() {
       <section className="dashboard-main">
         <header className="dashboard-header">
           <div>
-            <Badge>teacher · invite-only</Badge>
+            <Badge>teacher · {dashboard.source.kind}</Badge>
             <h1>Кабинет преподавателя</h1>
             <p>Плотная панель для учеников, домашек, банка задач и прогресса по прототипам.</p>
+            {dashboard.source.reason ? <p>{dashboard.source.reason}</p> : null}
           </div>
-          <LinkButton href={config.telegramUrl} variant="secondary">
-            <MessageCircle aria-hidden="true" />
-            Telegram
-          </LinkButton>
+          <div className="topbar-actions">
+            <LinkButton href="/dashboard/teacher/assignments" variant="secondary">
+              <BookOpenCheck aria-hidden="true" />
+              Домашки
+            </LinkButton>
+            <LinkButton href={config.telegramUrl} variant="secondary">
+              <MessageCircle aria-hidden="true" />
+              Telegram
+            </LinkButton>
+          </div>
         </header>
 
         <div className="metric-grid">
-          <MetricCard label="Ученики" value="3 demo" detail="реальные только после invite" />
-          <MetricCard label="ДЗ к проверке" value="1" detail="short answer flow" />
-          <MetricCard label="Task bank" value="dry-run" detail="без прямого импорта" />
-          <MetricCard label="Consent" value="strict" detail="public only granted" />
+          <MetricCard label="Ученики" value={dashboard.metrics.students} detail="из service layer" />
+          <MetricCard label="ДЗ к проверке" value={dashboard.metrics.assignmentsToReview} detail="submitted" />
+          <MetricCard label="Task bank" value={dashboard.metrics.taskBank} detail="без ответов и решений" />
+          <MetricCard label="Consent" value={dashboard.metrics.consent} detail="public only granted" />
         </div>
 
         <div className="dashboard-grid">
           <Panel id="students">
             <div className="panel-header">
               <h2>Ученики и ближайшие шаги</h2>
-              <Badge>demo seed</Badge>
+              <Badge>{dashboard.source.kind}</Badge>
             </div>
             <table className="data-table">
               <thead>
@@ -65,7 +88,7 @@ export default function TeacherDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {teacherRows.map((row) => (
+                {dashboard.students.map((row) => (
                   <tr key={row.student}>
                     <td>{row.student}</td>
                     <td>{row.track}</td>
@@ -75,6 +98,9 @@ export default function TeacherDashboardPage() {
                 ))}
               </tbody>
             </table>
+            <LinkButton href="/dashboard/teacher/students" variant="secondary">
+              Открыть раздел учеников
+            </LinkButton>
           </Panel>
 
           <div className="stack">
@@ -84,12 +110,17 @@ export default function TeacherDashboardPage() {
                 <DatabaseZap aria-hidden="true" />
               </div>
               <p>
-                `pnpm tasks:sync --dry-run` считает import/update/skip/duplicates/manual-review и не трогает
-                локальный корпус без явного `--apply`.
+                API task bank видит {dashboard.taskBank.activeTasks} active / {dashboard.taskBank.totalTasks} total
+                задач. В payload не отдаются ответы, решения и teacher-only поля.
               </p>
-              <LinkButton href="/api/health" variant="secondary">
-                Проверить health
-              </LinkButton>
+              <div className="topbar-actions">
+                <LinkButton href="/task-bank" variant="secondary">
+                  Открыть банк задач
+                </LinkButton>
+                <LinkButton href="/api/v1/task-bank" variant="secondary">
+                  Открыть API
+                </LinkButton>
+              </div>
             </Panel>
 
             <Panel id="analytics">
@@ -98,7 +129,7 @@ export default function TeacherDashboardPage() {
                 <BookOpenCheck aria-hidden="true" />
               </div>
               <div className="stack">
-                {masteryRows.map((row) => (
+                {dashboard.mastery.map((row) => (
                   <div key={row.skill}>
                     <div className="panel-header">
                       <span>{row.skill}</span>
@@ -108,6 +139,9 @@ export default function TeacherDashboardPage() {
                   </div>
                 ))}
               </div>
+              <LinkButton href="/diagnostics" variant="secondary">
+                Перейти в diagnostics
+              </LinkButton>
             </Panel>
           </div>
         </div>

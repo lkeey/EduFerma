@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as ts from "typescript";
 
 type Check = {
   name: string;
@@ -77,10 +78,81 @@ function checkTestimonialsConsent(): Check {
 
 function checkTaskSyncDefaultsDryRun(): Check {
   const sync = read("scripts/sync-from-local-jsonl.ts");
+  const sourceFile = ts.createSourceFile(
+    "sync-from-local-jsonl.ts",
+    sync,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const dryRunInitializer = findVariableInitializer(sourceFile, "dryRun");
+  const ok = dryRunInitializer ? isDryRunDefaultExpression(dryRunInitializer) : false;
+
   return {
     name: "task-sync-dry-run-default",
-    ok: sync.includes("const dryRun = argv.includes(\"--dry-run\") || !apply")
+    ok,
+    detail: ok ? undefined : "Expected dryRun to default to true unless --apply is provided."
   };
+}
+
+function findVariableInitializer(sourceFile: ts.SourceFile, name: string): ts.Expression | undefined {
+  let initializer: ts.Expression | undefined;
+
+  function visit(node: ts.Node) {
+    if (initializer) return;
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name) {
+      initializer = node.initializer;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return initializer;
+}
+
+function isDryRunDefaultExpression(expression: ts.Expression): boolean {
+  const unwrapped = unwrapParentheses(expression);
+  if (!ts.isBinaryExpression(unwrapped) || unwrapped.operatorToken.kind !== ts.SyntaxKind.BarBarToken) {
+    return false;
+  }
+
+  return (
+    (isDryRunFlagCheck(unwrapped.left) && isNotApplyCheck(unwrapped.right)) ||
+    (isDryRunFlagCheck(unwrapped.right) && isNotApplyCheck(unwrapped.left))
+  );
+}
+
+function isDryRunFlagCheck(expression: ts.Expression): boolean {
+  const unwrapped = unwrapParentheses(expression);
+  if (!ts.isCallExpression(unwrapped) || unwrapped.arguments.length !== 1) return false;
+
+  const [argument] = unwrapped.arguments;
+  if (!ts.isStringLiteral(argument) || argument.text !== "--dry-run") return false;
+
+  const callee = unwrapped.expression;
+  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "includes") return false;
+
+  const target = unwrapParentheses(callee.expression);
+  return ts.isIdentifier(target) && (target.text === "argv" || target.text === "normalizedArgv");
+}
+
+function isNotApplyCheck(expression: ts.Expression): boolean {
+  const unwrapped = unwrapParentheses(expression);
+  if (!ts.isPrefixUnaryExpression(unwrapped) || unwrapped.operator !== ts.SyntaxKind.ExclamationToken) {
+    return false;
+  }
+
+  const operand = unwrapParentheses(unwrapped.operand);
+  return ts.isIdentifier(operand) && operand.text === "apply";
+}
+
+function unwrapParentheses<T extends ts.Expression>(expression: T): ts.Expression {
+  let current: ts.Expression = expression;
+  while (ts.isParenthesizedExpression(current)) {
+    current = current.expression;
+  }
+  return current;
 }
 
 function checkEnvIgnored(): Check {

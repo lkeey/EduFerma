@@ -9,7 +9,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@eduferma/core": "workspace:*"
+    "@eduferma/core": "workspace:*",
+    "@eduferma/db": "workspace:*",
+    "@eduferma/validators": "workspace:*",
+    "drizzle-orm": "^0.44.2"
   },
   "devDependencies": {
     "tsx": "^4.20.3",

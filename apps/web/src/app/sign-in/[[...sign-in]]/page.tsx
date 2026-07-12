@@ -1,6 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 import { Badge, LinkButton } from "@eduferma/ui";
-import { getPublicConfig } from "@eduferma/config";
+import { getPublicConfig, routes } from "@eduferma/config";
 
 export default function SignInPage() {
   const config = getPublicConfig();
@@ -11,7 +11,12 @@ export default function SignInPage() {
         <h1>Вход по приглашению</h1>
         <p>Кабинет открывается только для учеников и преподавателей, которых добавил owner.</p>
         {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
-          <SignIn routing="path" path="/sign-in" />
+          <SignIn
+            fallbackRedirectUrl={routes.dashboard}
+            forceRedirectUrl={routes.dashboard}
+            path={routes.signIn}
+            routing="path"
+          />
         ) : (
           <div className="stack">
             <Badge>Clerk env не подключен локально</Badge>

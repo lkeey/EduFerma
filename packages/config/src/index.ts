@@ -9,7 +9,14 @@ export const routes = {
   dashboard: "/dashboard",
   studentDashboard: "/dashboard/student",
   teacherDashboard: "/dashboard/teacher",
-  taskBank: "/dashboard/teacher#task-bank",
+  taskBank: "/task-bank",
+  taskBankApi: "/api/v1/task-bank",
+  teacherStudents: "/dashboard/teacher/students",
+  teacherAssignments: "/dashboard/teacher/assignments",
+  studentAssignments: "/dashboard/student/assignments",
+  diagnostics: "/diagnostics",
+  logs: "/diagnostics",
+  apiDocs: "/api/docs",
   analytics: "/dashboard/teacher#analytics"
 } as const;
 

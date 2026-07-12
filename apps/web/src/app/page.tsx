@@ -1,8 +1,60 @@
-import { ArrowRight, BarChart3, CheckCircle2, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpenCheck,
+  CheckCircle2,
+  ClipboardList,
+  DatabaseZap,
+  LayoutDashboard,
+  MessageCircle,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  UsersRound
+} from "lucide-react";
 import { Badge, LinkButton } from "@eduferma/ui";
-import { getPublicConfig } from "@eduferma/config";
+import { getPublicConfig, routes } from "@eduferma/config";
 import { filterPublicResults } from "@eduferma/core";
 import { demoResults } from "@/lib/demo-data";
+
+const quickActions = [
+  {
+    title: "Личный кабинет",
+    description: "Автоматический переход в кабинет учителя или ученика после входа.",
+    href: routes.dashboard,
+    icon: LayoutDashboard
+  },
+  {
+    title: "Банк задач",
+    description: "MVP-раздел с состоянием task bank и безопасным API без ответов.",
+    href: routes.taskBank,
+    icon: DatabaseZap
+  },
+  {
+    title: "Мои ученики",
+    description: "Для преподавателя: ученики, треки, ближайшие темы и риски.",
+    href: routes.teacherStudents,
+    icon: UsersRound
+  },
+  {
+    title: "Домашки учеников",
+    description: "Для преподавателя: быстрый вход в кабинет, где видны ДЗ к проверке.",
+    href: routes.teacherAssignments,
+    icon: ClipboardList
+  },
+  {
+    title: "Мои домашки",
+    description: "Для ученика: активные задания, дедлайны, статусы и результат.",
+    href: routes.studentAssignments,
+    icon: BookOpenCheck
+  },
+  {
+    title: "Диагностика",
+    description: "Health-check приложения и ссылка на API-документацию.",
+    href: routes.diagnostics,
+    icon: Stethoscope
+  }
+] as const;
 
 export default function LandingPage() {
   const config = getPublicConfig();
@@ -17,8 +69,12 @@ export default function LandingPage() {
             <span>{config.brandHandle}</span>
           </a>
           <div className="topbar-actions">
-            <LinkButton href="/sign-in" variant="ghost">
+            <LinkButton href={routes.dashboard} variant="ghost">
               Кабинет
+            </LinkButton>
+            <LinkButton href={routes.diagnostics} variant="secondary">
+              <Stethoscope aria-hidden="true" />
+              Диагностика
             </LinkButton>
             <LinkButton href={config.telegramUrl} variant="primary">
               <MessageCircle aria-hidden="true" />
@@ -33,96 +89,58 @@ export default function LandingPage() {
           <div>
             <div className="eyebrow">
               <Sparkles aria-hidden="true" />
-              Информатика без хаоса в материалах
+              Быстрый вход в рабочие разделы
             </div>
             <h1>lkeey</h1>
             <p className="hero-copy">
-              Премиальная подготовка по информатике с прозрачным маршрутом: занятия, домашние задания,
-              прототипы задач, прогресс по навыкам и аккуратный кабинет для ученика.
+              EduFerma MVP открывает практические разделы без лишней витрины: кабинет, банк задач,
+              ученики, домашние задания, прогресс и диагностика платформы.
             </p>
             <div className="hero-actions">
-              <LinkButton href={config.telegramUrl} variant="primary">
-                Записаться в Telegram
+              <LinkButton href={routes.dashboard} variant="primary">
+                Открыть кабинет
                 <ArrowRight aria-hidden="true" />
               </LinkButton>
-              <LinkButton href="/sign-in" variant="secondary">
-                Войти по приглашению
+              <LinkButton href={routes.taskBank} variant="secondary">
+                Банк задач
+              </LinkButton>
+              <LinkButton href={routes.apiDocs} variant="ghost">
+                API docs
               </LinkButton>
             </div>
             <div className="hero-proof" aria-label="Основные акценты">
               <div className="proof-item">
-                <strong>Invite-only</strong>
-                <span>закрытый кабинет без публичной регистрации</span>
+                <strong>Учитель</strong>
+                <span>ученики, домашки, банк задач и mastery</span>
               </div>
               <div className="proof-item">
-                <strong>Прототипы</strong>
-                <span>привязка задач к skill atoms и темам</span>
+                <strong>Ученик</strong>
+                <span>свои ДЗ, дедлайны и прогресс без teacher-only полей</span>
               </div>
               <div className="proof-item">
-                <strong>Dry-run</strong>
-                <span>импорт корпуса только после проверки</span>
+                <strong>Проверка</strong>
+                <span>health, Swagger и read-only task-bank API</span>
               </div>
             </div>
           </div>
 
-          <div className="platform-visual" aria-label="Превью кабинета EduFerma">
-            <div className="platform-window">
-              <aside className="mock-sidebar">
-                <small>EduFerma</small>
-                <div className="mock-nav">
-                  <b>Аналитика</b>
-                  <span>Ученики</span>
-                  <span>ДЗ</span>
-                  <span>Банк задач</span>
-                </div>
-              </aside>
-              <div className="mock-main">
-                <div className="mock-header">
-                  <div>
-                    <h2>Демо-панель ученика</h2>
-                    <p>ЕГЭ информатика · ближайшее занятие сегодня</p>
-                  </div>
-                  <Badge>safe demo</Badge>
-                </div>
-                <div className="mock-grid">
-                  <div className="mock-card">
-                    <span>Домашка</span>
-                    <strong>8/10</strong>
-                  </div>
-                  <div className="mock-card">
-                    <span>Skill atoms</span>
-                    <strong>42</strong>
-                  </div>
-                  <div className="mock-card">
-                    <span>Риск</span>
-                    <strong>низкий</strong>
-                  </div>
-                </div>
-                <div className="mock-table">
-                  <div className="mock-row">
-                    <span>Прототип</span>
-                    <span>Статус</span>
-                    <span>Прогресс</span>
-                  </div>
-                  <div className="mock-row">
-                    <span>Графики и таблицы</span>
-                    <span>в работе</span>
-                    <span>66%</span>
-                  </div>
-                  <div className="mock-row">
-                    <span>Python циклы</span>
-                    <span>стабильно</span>
-                    <span>88%</span>
-                  </div>
-                  <div className="mock-row">
-                    <span>Логика запросов</span>
-                    <span>повторить</span>
-                    <span>54%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <nav className="quick-action-grid" aria-label="Быстрые переходы EduFerma MVP">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+
+              return (
+                <a className="quick-action-card" href={action.href} key={action.title}>
+                  <span className="quick-action-icon">
+                    <Icon aria-hidden="true" />
+                  </span>
+                  <span className="quick-action-meta">
+                    <strong>{action.title}</strong>
+                    <span>{action.description}</span>
+                  </span>
+                </a>
+              );
+            })}
+          </nav>
         </div>
       </section>
 

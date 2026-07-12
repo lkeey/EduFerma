@@ -12,6 +12,17 @@ pnpm build
 pnpm web:self-review
 ```
 
+MVP smoke checks:
+
+- `/`
+- `/dashboard`
+- `/task-bank`
+- `/dashboard/teacher`
+- `/dashboard/student`
+- `/diagnostics`
+- `/api/health`
+- `/api/docs`
+
 ## Resources
 
 Use free-tier resources where available:
@@ -23,6 +34,7 @@ Use free-tier resources where available:
 If Marketplace provisioning is unavailable from Codex tools, create resources in
 the Vercel dashboard and add the resulting env vars to the Vercel project. Do
 not invent deployment, database, or storage URLs.
+
 ## Deployment Governance
 
 Preferred deployment path:

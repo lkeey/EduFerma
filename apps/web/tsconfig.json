@@ -4,6 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@eduferma/api-client": ["../../packages/api-client/src/index.ts"],
       "@eduferma/config": ["../../packages/config/src/index.ts"],
       "@eduferma/core": ["../../packages/core/src/index.ts"],
       "@eduferma/db": ["../../packages/db/src/index.ts"],
