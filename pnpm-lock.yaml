@@ -119,7 +119,11 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/api-client: {}
+  packages/api-client:
+    dependencies:
+      zod:
+        specifier: ^3.25.67
+        version: 3.25.76
 
   packages/api-contract:
     dependencies:
