@@ -26,8 +26,8 @@ export default function SignInPage() {
           </div>
         ) : setup.clerk.configured ? (
           <SignIn
-            fallbackRedirectUrl={routes.dashboard}
-            forceRedirectUrl={routes.dashboard}
+            fallbackRedirectUrl={routes.afterSignIn}
+            forceRedirectUrl={routes.afterSignIn}
             path={routes.signIn}
             routing="path"
           />

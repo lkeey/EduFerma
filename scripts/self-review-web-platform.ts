@@ -91,15 +91,31 @@ function main() {
 
 function checkProtectedRoutes(): Check {
   const proxy = read("apps/web/src/proxy.ts");
+  const serverAuth = read("apps/web/src/server/auth/session.ts");
+  const teacherDashboard = read("apps/web/src/app/teacher/dashboard/page.tsx");
+  const teacherAssignments = read("apps/web/src/app/teacher/assignments/page.tsx");
+  const studentDashboard = read("apps/web/src/app/student/dashboard/page.tsx");
+  const studentAssignments = read("apps/web/src/app/student/assignments/page.tsx");
+  const teacherApi = read("apps/web/src/app/api/v1/teacher/dashboard/route.ts");
+  const studentApi = read("apps/web/src/app/api/v1/student/dashboard/route.ts");
+
+  const proxyCoversAppAndApi =
+    proxy.includes("clerkMiddleware") &&
+    proxy.includes("/((?!_next") &&
+    (proxy.includes("/(api|trpc)(.*)") || proxy.includes("/api/v1(.*)"));
+  const pagesUseServerGuards =
+    teacherDashboard.includes("requireTeacherAccess") &&
+    teacherAssignments.includes("requireTeacherAccess") &&
+    studentDashboard.includes("requireStudentAccess") &&
+    studentAssignments.includes("requireStudentAccess");
+  const apisUseRoleGuards =
+    serverAuth.includes("requireApiRole") &&
+    teacherApi.includes("requireApiRole(roles.teacher") &&
+    studentApi.includes("requireApiRole(roles.student");
+
   return {
     name: "protected-student-teacher-routes",
-    ok:
-      proxy.includes("/student(.*)") &&
-      proxy.includes("/teacher(.*)") &&
-      proxy.includes("/api/v1(.*)") &&
-      proxy.includes("/api/health/db") &&
-      proxy.includes("/api/student(.*)") &&
-      proxy.includes("/api/teacher(.*)")
+    ok: proxyCoversAppAndApi && pagesUseServerGuards && apisUseRoleGuards
   };
 }
 

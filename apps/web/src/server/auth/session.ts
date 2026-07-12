@@ -7,6 +7,17 @@ import { getAuthSetupStatus } from "@/server/auth/setup-status";
 
 const teacherRoles: AppRole[] = ["owner", "teacher", "tutor"];
 const studentRoles: AppRole[] = ["owner", "tutor", "student", "guardian"];
+const authenticatedRoles: AppRole[] = ["owner", "teacher", "tutor", "student", "guardian", "guest"];
+type CurrentUserLoader = () => ReturnType<typeof currentUser>;
+let loadCurrentUser: CurrentUserLoader = currentUser;
+
+export function setCurrentUserForAuthTests(loader: CurrentUserLoader | null) {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("setCurrentUserForAuthTests can only be used in tests");
+  }
+
+  loadCurrentUser = loader ?? currentUser;
+}
 
 export function isDemoAuthEnabled() {
   return process.env.ENABLE_DEMO_AUTH === "true" && process.env.NODE_ENV !== "production";
@@ -18,7 +29,7 @@ export function hasClerkServerEnv() {
 
 function demoUser(request?: Request): ServiceUser {
   const requestedRole = request?.headers.get("x-demo-role") as AppRole | null;
-  const role: AppRole = requestedRole && ["owner", "tutor", "student", "guardian"].includes(requestedRole)
+  const role: AppRole = requestedRole && ["owner", "tutor", "teacher", "student", "guardian"].includes(requestedRole)
     ? requestedRole
     : "owner";
   const requestedId = request?.headers.get("x-demo-user-id")?.trim();
@@ -42,7 +53,7 @@ export async function getCurrentServiceUser(request?: Request): Promise<ServiceU
     return null;
   }
 
-  const user = await currentUser();
+  const user = await loadCurrentUser();
   const email = user?.primaryEmailAddress?.emailAddress;
   if (!user || !email) {
     return null;
@@ -107,5 +118,6 @@ export async function requirePageRole(pathname: string, allowedRoles: AppRole[])
 
 export const roles = {
   teacher: teacherRoles,
-  student: studentRoles
+  student: studentRoles,
+  authenticated: authenticatedRoles
 };

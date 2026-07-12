@@ -17,8 +17,10 @@ MVP smoke checks:
 - `/`
 - `/dashboard`
 - `/task-bank`
-- `/dashboard/teacher`
-- `/dashboard/student`
+- `/teacher/dashboard`
+- `/student/dashboard`
+- `/teacher/assignments`
+- `/student/assignments`
 - `/diagnostics`
 - `/api/health`
 - `/api/docs`

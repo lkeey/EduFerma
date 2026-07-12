@@ -38,6 +38,21 @@ flowchart LR
 Both paths must use the same role checks, service contracts and serializers.
 Neither path may read production data from local JSON/mock fixtures.
 
+## Auth Routing
+
+The canonical post-login target is `/auth/after-sign-in`. Clerk redirects there
+after sign-in, then the server resolves the current EduFerma role and sends
+teacher-side users to `/teacher/dashboard`, student-side users to
+`/student/dashboard`, and signed-in users without active access to
+`/access-pending`.
+
+`apps/web/src/proxy.ts` intentionally keeps Clerk middleware lightweight. Page
+authorization is enforced by server component guards such as
+`requireTeacherAccess` and `requireStudentAccess`; versioned API authorization is
+enforced inside route handlers with `requireApiRole`. This keeps `/api/v1/**`
+returning controlled JSON errors (`401`, `403`, `503`) instead of middleware
+rewrites.
+
 ## Route Matrix
 
 The authoritative route list lives in `routeDefinitions`. Current groups:
@@ -48,7 +63,7 @@ The authoritative route list lives in `routeDefinitions`. Current groups:
 | Task bank MVP | `/api/v1/task-bank` | Signed-in users only. Student-safe payloads must omit answers, solutions, teacher notes and local/internal source paths. |
 | Student | `/api/v1/student/dashboard`, `/schedule`, `/plan`, `/assignments`, `/assignments/{assignmentId}`, `/tasks/{taskId}`, `/tasks/{taskId}/attempts`, `/progress` | Student-safe serializers must omit answers, solutions, teacher notes and local/internal source paths. |
 | Teacher | `/api/v1/teacher/dashboard`, `/students`, `/students/{studentId}`, `/students/{studentId}/plan`, `/students/{studentId}/schedule`, `/students/{studentId}/assignments`, `/students/{studentId}/analytics`, `/task-bank`, `/tasks/{taskId}` | Teacher routes require server-side teacher/owner/tutor role checks and ownership checks where a student is addressed. |
-| Assignments/Attempts | `/api/v1/teacher/assignments`, `/api/v1/teacher/assignments/{assignmentId}`, `/api/v1/teacher/assignments/{assignmentId}/publish`, `/api/v1/teacher/attempts/pending-review`, `/api/v1/teacher/attempts/{attemptId}/review` | Mutating operations must validate request bodies with Zod and be present in OpenAPI. |
+| Assignments/Attempts | `/api/v1/teacher/assignments`, `/api/v1/teacher/assignments/{assignmentId}`, `/api/v1/teacher/assignments/{assignmentId}/publish`, `/api/v1/teacher/attempts/pending-review`, `/api/v1/teacher/attempts/{attemptId}/review` | Teacher assignment list/detail routes are teacher-only and ownership-scoped. Mutating operations must validate request bodies with Zod and be present in OpenAPI. |
 | Legacy compatibility | `/api/student/attempts`, `/api/teacher/reviews` | Kept for compatibility; new product work should prefer `/api/v1`. |
 
 ## Adding A Route

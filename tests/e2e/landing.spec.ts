@@ -11,37 +11,45 @@ const expectLandingTopbarVisible = async (page: Page) => {
 
 test("landing loads and exposes MVP entrypoints", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /EduFerma.*control room/ })).toBeVisible();
-  await expect(page.locator("header").getByRole("link", { name: "Telegram" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { name: "EduFerma" })).toBeVisible();
+  await expect(page.getByLabel("Превью продукта EduFerma")).toBeVisible();
+
+  const entryPanel = page.getByLabel("Быстрые входы EduFerma");
+  await expect(entryPanel.getByRole("link", { name: /Кабинет/ })).toHaveAttribute("href", "/dashboard");
+  await expect(entryPanel.getByRole("link", { name: /Банк задач/ })).toHaveAttribute("href", "/task-bank");
+  await expect(entryPanel.getByRole("link", { name: /Ученики/ })).toHaveAttribute(
     "href",
-    /t\.me\/lkeyit/
+    "/teacher/students"
   );
-  await expect(page.getByRole("link", { name: /Открыть кабинет/ }).first()).toHaveAttribute("href", "/dashboard");
-  await expect(page.getByRole("link", { name: /Банк задач/ }).first()).toHaveAttribute("href", "/task-bank");
+  await expect(entryPanel.getByRole("link", { name: /Задания/ })).toHaveAttribute(
+    "href",
+    "/teacher/assignments"
+  );
+  await expect(entryPanel.getByRole("link", { name: /Диагностика/ })).toHaveAttribute("href", "/diagnostics");
+  await expect(entryPanel.getByRole("link", { name: "API docs" })).toHaveAttribute("href", "/api/docs");
+
+  await expect(page.getByRole("link", { name: /Открыть кабинет/ })).toHaveAttribute("href", "/dashboard");
+  await expect(page.getByRole("link", { name: /Открыть банк задач/ })).toHaveAttribute("href", "/task-bank");
   await expect(page.getByRole("link", { name: /Открыть учеников/ })).toHaveAttribute(
     "href",
-    "/dashboard/teacher/students"
+    "/teacher/students"
   );
-  await expect(page.getByRole("link", { name: /Открыть мои ДЗ/ })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: /Открыть задания/ })).toHaveAttribute(
     "href",
-    "/dashboard/student/assignments"
+    "/teacher/assignments"
   );
-  await expect(page.getByRole("link", { name: /Открыть diagnostics/ })).toHaveAttribute("href", "/diagnostics");
-  await expect(page.getByRole("link", { name: /Открыть Swagger/ })).toHaveAttribute("href", "/api/docs");
+  await expect(page.getByRole("link", { name: /Мои задания/ })).toHaveAttribute(
+    "href",
+    "/student/assignments"
+  );
+  await expect(page.getByRole("link", { name: /Открыть диагностику/ })).toHaveAttribute("href", "/diagnostics");
 
   const nav = page.locator(".landing-nav");
-  await expect(nav.getByRole("link", { name: "Кабинет" })).toHaveAttribute("href", "/dashboard");
-  await expect(nav.getByRole("link", { name: "Банк задач" })).toHaveAttribute("href", "/task-bank");
-  await expect(nav.getByRole("link", { name: "Ученики" })).toHaveAttribute("href", "/dashboard/teacher/students");
-  await expect(nav.getByRole("link", { name: "ДЗ учителя" })).toHaveAttribute(
-    "href",
-    "/dashboard/teacher/assignments"
-  );
-  await expect(nav.getByRole("link", { name: "ДЗ ученика" })).toHaveAttribute(
-    "href",
-    "/dashboard/student/assignments"
-  );
-  await expect(nav.getByRole("link", { name: "Diagnostics" })).toHaveAttribute("href", "/diagnostics");
+  await expect(nav.getByRole("link", { name: "Кабинет" })).toHaveAttribute("href", "#cabinet");
+  await expect(nav.getByRole("link", { name: "Банк задач" })).toHaveAttribute("href", "#task-bank");
+  await expect(nav.getByRole("link", { name: "Ученики" })).toHaveAttribute("href", "#students");
+  await expect(nav.getByRole("link", { name: "Задания" })).toHaveAttribute("href", "#assignments");
+  await expect(nav.getByRole("link", { name: "Диагностика" })).toHaveAttribute("href", "#diagnostics");
   await expect(nav.getByRole("link", { name: "API docs" })).toHaveAttribute("href", "/api/docs");
 });
 
@@ -51,35 +59,35 @@ test("landing anchor navigation still works on mobile", async ({ page }) => {
 
   await expect(page.locator(".landing-nav").getByRole("link", { name: "Кабинет" })).toHaveAttribute(
     "href",
-    "/dashboard"
+    "#cabinet"
   );
   await expect(page.locator(".landing-nav").getByRole("link", { name: "Банк задач" })).toHaveAttribute(
     "href",
-    "/task-bank"
+    "#task-bank"
   );
 
-  await page.locator(".landing-nav").getByRole("link", { name: "Отзывы" }).click();
-  await expect(page).toHaveURL(/#reviews$/);
-  await expect(page.locator(".landing-nav").getByRole("link", { name: "Отзывы" })).toHaveAttribute(
+  await page.locator(".landing-nav").getByRole("link", { name: "Диагностика" }).click();
+  await expect(page).toHaveURL(/#diagnostics$/);
+  await expect(page.locator(".landing-nav").getByRole("link", { name: "Диагностика" })).toHaveAttribute(
     "aria-current",
     "location"
   );
   await expectLandingTopbarVisible(page);
-  await expect(page.getByRole("heading", { name: /Публичный слой не обещает/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Диагностика и API/ })).toBeVisible();
 });
 
 test("landing reduced-motion users keep anchor navigation state", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  await page.locator(".landing-nav").getByRole("link", { name: "Отзывы" }).click();
-  await expect(page).toHaveURL(/#reviews$/);
-  await expect(page.locator(".landing-nav").getByRole("link", { name: "Отзывы" })).toHaveAttribute(
+  await page.locator(".landing-nav").getByRole("link", { name: "Диагностика" }).click();
+  await expect(page).toHaveURL(/#diagnostics$/);
+  await expect(page.locator(".landing-nav").getByRole("link", { name: "Диагностика" })).toHaveAttribute(
     "aria-current",
     "location"
   );
   await expectLandingTopbarVisible(page);
-  await expect(page.getByRole("heading", { name: /Публичный слой не обещает/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Диагностика и API/ })).toBeVisible();
 });
 
 test("student cannot access teacher routes", async ({ page }) => {

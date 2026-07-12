@@ -87,4 +87,12 @@ describe("openapi contract", () => {
     expect(access.properties.emailMasked).toEqual({ type: ["string", "null"] });
     expect(JSON.stringify(diagnostics)).not.toMatch(/token|secret|password|DATABASE_URL/i);
   });
+
+  it("documents teacher assignment list and detail endpoints", () => {
+    expect(openApiDocument.paths["/api/v1/teacher/assignments"].get.operationId).toBe("listTeacherAssignments");
+    expect(openApiDocument.paths["/api/v1/teacher/assignments/{assignmentId}"].get.operationId).toBe("getTeacherAssignment");
+    expect(openApiDocument.components.schemas.TeacherAssignmentResponse.properties.tasks.items.$ref).toBe(
+      "#/components/schemas/TeacherTask"
+    );
+  });
 });

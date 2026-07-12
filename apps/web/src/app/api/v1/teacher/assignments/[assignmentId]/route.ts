@@ -5,6 +5,16 @@ import { getServices } from "@/server/services";
 
 type RouteContext = { params: Promise<{ assignmentId: string }> };
 
+export async function GET(request: Request, routeContext: RouteContext) {
+  try {
+    const context = await requireApiRole(roles.teacher, request);
+    const { assignmentId } = await routeContext.params;
+    return ok(await getServices().teacher.getAssignment(context, assignmentId));
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
 export async function PATCH(request: Request, routeContext: RouteContext) {
   try {
     const context = await requireApiRole(roles.teacher, request);

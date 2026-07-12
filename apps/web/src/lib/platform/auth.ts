@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { routes } from "@eduferma/config";
 import { canAccessRoute, resolveRoleFromEmail } from "@eduferma/core";
 import { demoUsers, type PlatformRole, type PlatformUser } from "@eduferma/core/platform";
 import { mapAppRoleToPlatformRole } from "@eduferma/core";
@@ -111,8 +112,13 @@ export async function requireRouteAccess(pathname: string) {
 }
 
 export async function getRoleRedirectPath() {
-  const role = await getCurrentRole();
-  if (role === "teacher" || role === "owner") return "/teacher/dashboard";
-  if (role === "student" || role === "guardian") return "/student/dashboard";
-  return "/sign-in";
+  const user = await getCurrentUser();
+  if (!user) return routes.signIn;
+  return getRoleRedirectPathForRole(user.role);
+}
+
+export function getRoleRedirectPathForRole(role: PlatformRole) {
+  if (role === "teacher" || role === "owner") return routes.teacherDashboard;
+  if (role === "student" || role === "guardian") return routes.studentDashboard;
+  return routes.accessPending;
 }

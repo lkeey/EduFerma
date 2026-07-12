@@ -1,4 +1,5 @@
 import { Badge, LinkButton, Panel } from "@eduferma/ui";
+import { AssignmentComposer } from "@/components/platform/assignment-composer";
 import { PlatformShell } from "@/components/platform/app-shell";
 import { requireTeacherAccess } from "@/lib/platform/auth";
 import { getTeacherTaskBank, getTeacherStudents } from "@/lib/platform/data";
@@ -9,21 +10,42 @@ export default async function TeacherNewAssignmentPage() {
   const tasks = await getTeacherTaskBank({ status: "active" });
 
   return (
-    <PlatformShell role="teacher" title="Создать ДЗ" subtitle="MVP preview: выбор ученика, дедлайна и задач">
-      <div className="dashboard-grid">
+    <PlatformShell
+      role="teacher"
+      title="Создать ДЗ"
+      subtitle="Выберите ученика, задачи и сразу выдайте домашнее задание"
+      actions={<LinkButton href="/teacher/assignments" variant="secondary">Все ДЗ</LinkButton>}
+    >
+      <div className="dashboard-grid dashboard-grid-wide">
         <Panel>
-          <div className="panel-header"><h2>Настройки</h2><Badge>preview</Badge></div>
-          <label className="field-label">Ученик</label>
-          <select className="text-field" defaultValue={students[0]?.student.id}>{students.map(({ student }) => <option key={student.id} value={student.id}>{student.displayName}</option>)}</select>
-          <label className="field-label">Название</label>
-          <input className="text-field" defaultValue="Новое домашнее задание" />
-          <label className="field-label">Дедлайн</label>
-          <input className="text-field" type="date" defaultValue="2026-07-12" />
-          <div className="hero-actions"><LinkButton href="/teacher/assignments" variant="primary">Publish demo</LinkButton></div>
-        </Panel>
-        <Panel>
-          <div className="panel-header"><h2>Задачи</h2><Badge>{tasks.length}</Badge></div>
-          {tasks.slice(0, 6).map((task) => <p key={task.id}>{task.topic} · {task.difficultyLevel}</p>)}
+          <div className="panel-header">
+            <h2>Новое домашнее задание</h2>
+            <Badge>{tasks.length} задач доступно</Badge>
+          </div>
+          {students.length > 0 && tasks.length > 0 ? (
+            <AssignmentComposer
+              students={students.map(({ student }) => ({
+                id: student.id,
+                displayName: student.displayName,
+                learningTrack: student.learningTrack
+              }))}
+              tasks={tasks.map((task) => ({
+                id: task.id,
+                taskId: task.taskId,
+                topic: task.topic,
+                exam: task.exam,
+                taskNumber: task.taskNumber,
+                difficultyLevel: task.difficultyLevel,
+                statementMd: task.statementMd,
+                skillAtoms: task.skillAtoms
+              }))}
+            />
+          ) : (
+            <div className="notice">
+              <Badge>setup</Badge>
+              <p>Для создания ДЗ нужны хотя бы один ученик и одна активная задача в банке.</p>
+            </div>
+          )}
         </Panel>
       </div>
     </PlatformShell>

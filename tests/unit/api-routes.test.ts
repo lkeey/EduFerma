@@ -1,10 +1,34 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GET as demoAuthLogin } from "../../apps/web/src/app/api/demo-auth/login/route";
 import { GET as getHealth } from "../../apps/web/src/app/api/health/route";
 import { GET as getOpenApiDocument } from "../../apps/web/src/app/api/openapi.json/route";
+import { GET as getMe } from "../../apps/web/src/app/api/v1/me/route";
 import { GET as getStudentDashboard } from "../../apps/web/src/app/api/v1/student/dashboard/route";
 import { GET as getStudentTask } from "../../apps/web/src/app/api/v1/student/tasks/[taskId]/route";
+import { GET as getTeacherAssignment } from "../../apps/web/src/app/api/v1/teacher/assignments/[assignmentId]/route";
+import { GET as getTeacherAssignments } from "../../apps/web/src/app/api/v1/teacher/assignments/route";
 import { GET as getTeacherDashboard } from "../../apps/web/src/app/api/v1/teacher/dashboard/route";
 import { GET as getTeacherTask } from "../../apps/web/src/app/api/v1/teacher/tasks/[taskId]/route";
+import { setCurrentUserForAuthTests } from "../../apps/web/src/server/auth/session";
+
+vi.mock("next/server", () => {
+  class MockNextResponse extends Response {
+    cookies = {
+      set: (name: string, value: string, options?: { path?: string }) => {
+        this.headers.append("set-cookie", `${name}=${value}; Path=${options?.path ?? "/"}`);
+      },
+      delete: (name: string) => {
+        this.headers.append("set-cookie", `${name}=; Max-Age=0; Path=/`);
+      }
+    };
+
+    static redirect(url: URL) {
+      return new MockNextResponse(null, { status: 307, headers: { location: url.toString() } });
+    }
+  }
+
+  return { NextResponse: MockNextResponse };
+});
 
 const originalEnv = { ...process.env };
 
@@ -25,6 +49,14 @@ function apiRequest(pathname: string, headers?: HeadersInit) {
   return new Request(`http://localhost${pathname}`, { headers });
 }
 
+function demoAuthRequest(url: string) {
+  const parsedUrl = new URL(url);
+  return {
+    headers: new Headers({ host: parsedUrl.host }),
+    nextUrl: parsedUrl
+  };
+}
+
 async function expectError(response: Response, status: number, code: string) {
   expect(response.status).toBe(status);
   await expect(response.json()).resolves.toMatchObject({ error: { code } });
@@ -33,16 +65,48 @@ async function expectError(response: Response, status: number, code: string) {
 describe("api route contracts", () => {
   beforeEach(() => {
     resetEnv();
+    setCurrentUserForAuthTests(null);
   });
 
   afterEach(() => {
     resetEnv();
+    setCurrentUserForAuthTests(null);
   });
 
   it("returns setup-required for protected endpoints when Clerk env is missing", async () => {
     const response = await getStudentDashboard(apiRequest("/api/v1/student/dashboard"));
 
     await expectError(response, 503, "SETUP_REQUIRED");
+  });
+
+  it("returns JSON 401 for unauthenticated API requests when Clerk env is configured", async () => {
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test";
+    process.env.CLERK_SECRET_KEY = "sk_test";
+    setCurrentUserForAuthTests(async () => null);
+
+    const response = await getStudentDashboard(apiRequest("/api/v1/student/dashboard"));
+
+    await expectError(response, 401, "UNAUTHORIZED");
+  });
+
+  it("keeps demo auth login redirecting to role dashboards", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await demoAuthLogin(demoAuthRequest("http://localhost/api/demo-auth/login?role=teacher") as never);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost/teacher/dashboard");
+    expect(response.headers.get("set-cookie")).toContain("eduferma_demo_role=teacher");
+  });
+
+  it("keeps the teacher demo API role as teacher, not owner", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getMe(apiRequest("/api/v1/me", { "x-demo-role": "teacher" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.user.role).toBe("teacher");
   });
 
   it("reports missing Clerk env names through public health without secret values", async () => {
@@ -105,6 +169,28 @@ describe("api route contracts", () => {
       solution_md: expect.any(String),
       teacher_notes: expect.any(String),
       local_source_path: expect.any(String)
+    });
+  });
+
+  it("lists and returns teacher assignment detail for teacher-owned assignments", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const listResponse = await getTeacherAssignments(apiRequest("/api/v1/teacher/assignments", { "x-demo-role": "teacher" }));
+    const listPayload = await listResponse.json();
+
+    expect(listResponse.status).toBe(200);
+    expect(listPayload.assignments[0]).toMatchObject({ id: "demo-assignment" });
+
+    const detailResponse = await getTeacherAssignment(apiRequest("/api/v1/teacher/assignments/demo-assignment", { "x-demo-role": "teacher" }), {
+      params: Promise.resolve({ assignmentId: "demo-assignment" })
+    });
+    const detailPayload = await detailResponse.json();
+
+    expect(detailResponse.status).toBe(200);
+    expect(detailPayload.assignment).toMatchObject({ id: "demo-assignment" });
+    expect(detailPayload.tasks[0]).toMatchObject({
+      answer_json: expect.any(Object),
+      solution_md: expect.any(String)
     });
   });
 
