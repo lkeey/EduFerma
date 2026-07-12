@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as demoAuthLogin } from "../../apps/web/src/app/api/demo-auth/login/route";
+import { GET as demoAuthLogout } from "../../apps/web/src/app/api/demo-auth/logout/route";
 import { GET as getHealth } from "../../apps/web/src/app/api/health/route";
 import { GET as getOpenApiDocument } from "../../apps/web/src/app/api/openapi.json/route";
 import { GET as getMe } from "../../apps/web/src/app/api/v1/me/route";
@@ -97,6 +98,15 @@ describe("api route contracts", () => {
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("http://localhost/teacher/dashboard");
     expect(response.headers.get("set-cookie")).toContain("eduferma_demo_role=teacher");
+  });
+
+  it("keeps demo auth logout clearing the demo role cookie", async () => {
+    const response = await demoAuthLogout(demoAuthRequest("http://localhost/api/demo-auth/logout") as never);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost/sign-in");
+    expect(response.headers.get("set-cookie")).toContain("eduferma_demo_role=;");
+    expect(response.headers.get("set-cookie")).toContain("Path=/");
   });
 
   it("keeps the teacher demo API role as teacher, not owner", async () => {

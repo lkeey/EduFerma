@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BookOpenCheck, CalendarDays, ClipboardCheck, DatabaseZap, Home, LineChart, UsersRound } from "lucide-react";
+import { AccountSignOutAction } from "@/components/auth/account-sign-out-action";
 
 type NavItem = {
   href: string;
@@ -61,7 +62,10 @@ export function PlatformShell({
             <h1>{title}</h1>
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          {actions}
+          <div className="dashboard-header-actions">
+            {actions}
+            <AccountSignOutAction />
+          </div>
         </header>
         {children}
       </section>

@@ -102,6 +102,7 @@ test("student cannot access teacher routes", async ({ page }) => {
 test("teacher opens task bank and analytics", async ({ page }) => {
   await page.goto("/api/demo-auth/login?role=teacher");
   await expect(page).toHaveURL(/\/teacher\/dashboard/);
+  await expect(page.getByRole("link", { name: "Выйти" })).toHaveAttribute("href", "/api/demo-auth/logout");
 
   await page.goto("/teacher/task-bank");
   await expect(page.getByRole("heading", { name: "Банк задач" })).toBeVisible();
@@ -110,6 +111,17 @@ test("teacher opens task bank and analytics", async ({ page }) => {
   await page.goto("/teacher/students/demo_student_oge/analytics");
   await expect(page.getByRole("heading", { name: /Аналитика/ })).toBeVisible();
   await expect(page.getByText("skill_atoms")).toBeVisible();
+});
+
+test("dashboard logout clears demo session", async ({ page }) => {
+  await page.goto("/api/demo-auth/login?role=student");
+  await expect(page).toHaveURL(/\/student\/dashboard/);
+
+  await page.getByRole("link", { name: "Выйти" }).click();
+  await expect(page).toHaveURL(/\/sign-in/);
+
+  await page.goto("/student/dashboard");
+  await expect(page).toHaveURL(/\/sign-in/);
 });
 
 test("student submits a short answer while answers stay hidden", async ({ page }) => {
