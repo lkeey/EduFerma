@@ -137,6 +137,8 @@ NEXT_PUBLIC_APP_URL
 
 `TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` protects the Vercel Cron/manual route, and `TELEGRAM_POSTS_AUTOSEND_ENABLED=false` keeps scheduled post generation in approval-only mode by default.
 
+When `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, public broadcast sending is limited to those chat IDs. When no allowlist is configured, the approved public broadcast goes to all active subscribers who previously started the bot.
+
 ## Bot Listener Contract
 
 The webhook listener exposes:
@@ -175,7 +177,9 @@ Manual approved copy can still be sent through the worker:
 TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:broadcast:manual --approved-text "Approved public-safe text"
 ```
 
-or through `POST /api/integrations/telegram/posts/cron` with `{ "approvedText": "..." }` and the same bearer secret.
+For an early limited rollout, set `TELEGRAM_ALLOWED_CHAT_IDS` before running the command. With an empty allowlist, the command targets all active `telegram_subscribers`.
+
+Manual approved copy can also be sent through `POST /api/integrations/telegram/posts/cron` with `{ "approvedText": "..." }` and the same bearer secret. No cron schedule is enabled in `vercel.json` in this iteration.
 
 ## Needed From The User
 

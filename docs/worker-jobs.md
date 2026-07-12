@@ -23,6 +23,7 @@ TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:b
 ```
 
 The command is disabled by default and requires explicitly approved copy. It reads active subscribers from Postgres and writes `telegram_broadcast_outbox` records before sending.
+If `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, only matching subscribers are eligible for the broadcast. With no allowlist, every active subscriber who started the bot is eligible.
 
 Vercel Cron public-post delivery is handled by the guarded Next.js route in `docs/telegram-post-cron.md`, not by a long-running worker process.
 
