@@ -39,6 +39,16 @@ export function resolveClerkEnv(env: Env = process.env): ResolvedClerkEnv {
   };
 }
 
+export function applyResolvedClerkEnvToProcessEnv(resolved: ResolvedClerkEnv, env: NodeJS.ProcessEnv = process.env) {
+  if (resolved.publishableKey && !normalizeEnvValue(env[canonicalPublishableKey])) {
+    env[canonicalPublishableKey] = resolved.publishableKey;
+  }
+
+  if (resolved.secretKey && !normalizeEnvValue(env[canonicalSecretKey])) {
+    env[canonicalSecretKey] = resolved.secretKey;
+  }
+}
+
 function readFirstEnv(env: Env, keys: string[]) {
   for (const key of keys) {
     const value = normalizeEnvValue(env[key]);

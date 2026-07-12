@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveClerkEnv } from "../../apps/web/src/lib/clerk-env";
+import { applyResolvedClerkEnvToProcessEnv, resolveClerkEnv } from "../../apps/web/src/lib/clerk-env";
 
 describe("Clerk env resolver", () => {
   it("prefers canonical Clerk env names", () => {
@@ -45,5 +45,18 @@ describe("Clerk env resolver", () => {
     expect(result.configured).toBe(false);
     expect(result.secretKey).toBeUndefined();
     expect(result.missingEnv).toEqual(["CLERK_SECRET_KEY"]);
+  });
+
+  it("copies resolved aliases to canonical process env names without overwriting canonical values", () => {
+    const env = {
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_canonical",
+      edu_ferma_auth_CLERK_SECRET_KEY: "sk_alias"
+    };
+
+    const result = resolveClerkEnv(env);
+    applyResolvedClerkEnvToProcessEnv(result, env);
+
+    expect(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).toBe("pk_canonical");
+    expect(env.CLERK_SECRET_KEY).toBe("sk_alias");
   });
 });
