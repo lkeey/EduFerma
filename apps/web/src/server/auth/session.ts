@@ -21,10 +21,14 @@ function demoUser(request?: Request): ServiceUser {
   const role: AppRole = requestedRole && ["owner", "tutor", "student", "guardian"].includes(requestedRole)
     ? requestedRole
     : "owner";
+  const requestedId = request?.headers.get("x-demo-user-id")?.trim();
+  const requestedEmail = request?.headers.get("x-demo-email")?.trim();
+  const requestedName = request?.headers.get("x-demo-name")?.trim();
+
   return {
-    id: `demo-${role}`,
-    email: `${role}@example.com`,
-    name: `Demo ${role}`,
+    id: requestedId || `demo-${role}`,
+    email: requestedEmail || `${role}@example.com`,
+    name: requestedName || `Demo ${role}`,
     role
   };
 }

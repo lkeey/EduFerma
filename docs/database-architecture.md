@@ -33,6 +33,22 @@ If the URL is missing, DB-backed flows must return a controlled setup or
 unavailable response. They must not silently read local JSON, SQLite, local
 files, or demo fixtures as a production substitute.
 
+For HTTP requests this means:
+
+```mermaid
+flowchart LR
+  Request["/api/v1 or protected page"] --> Auth["Clerk/demo-dev auth guard"]
+  Auth --> Config{"Remote DB env configured and safe?"}
+  Config -- "yes" --> Services["DB-backed services"]
+  Services --> Postgres["Remote/dev Postgres"]
+  Config -- "missing or unsafe" --> Setup["503 SETUP_REQUIRED"]
+  Auth -- "missing auth" --> AuthError["401 / 403 / setup-required auth error"]
+```
+
+`ENABLE_DEMO_AUTH=true` is allowed only outside production. In production-marked
+environments, demo auth must not become a fixture-backed substitute for remote
+DB data.
+
 When `VERCEL_ENV=production`, `EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`
 without a preview override, `DATABASE_URL` and `DIRECT_DATABASE_URL` are rejected
 if they point at `localhost`, `127.0.0.1`, `::1`, or another local host.
@@ -146,6 +162,26 @@ pnpm db:seed -- --apply
 
 For production, `pnpm db:seed -- --apply` still requires the documented
 break-glass override and backup/migration review.
+
+## Remote DB API Smoke Test
+
+After migrations are applied to a remote development or test database, use the
+gated API smoke test to verify the full route handler path:
+
+```bash
+EDUFERMA_RUN_REMOTE_DB_TESTS=true \
+EDUFERMA_DB_ENV=test \
+DATABASE_URL=<remote-dev-or-test-postgres-url> \
+pnpm test:remote-db
+```
+
+The smoke gate follows the same runtime DB env detection as the app, so it also
+runs when a supported provider alias such as `*_DATABASE_URL` or
+`*_POSTGRES_URL` is present instead of explicit `DATABASE_URL`.
+
+This test is skipped by default. It should never be pointed at the production
+database. The test also refuses to run when `VERCEL_ENV=production`,
+`EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`.
 
 ## Seed
 
