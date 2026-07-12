@@ -13,8 +13,10 @@ function resetEnv() {
   delete process.env.CLERK_SECRET_KEY;
   delete process.env.DATABASE_URL;
   delete process.env.DIRECT_DATABASE_URL;
+  delete process.env.edu_ferma_auth_CLERK_SECRET_KEY;
   delete process.env.ENABLE_DEMO_AUTH;
   delete process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  delete process.env.NEXT_PUBLIC_edu_ferma_auth_CLERK_PUBLISHABLE_KEY;
   delete process.env.OPENAPI_DOCS_ENABLED;
   delete process.env.OWNER_EMAIL;
 }
@@ -50,6 +52,18 @@ describe("api route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.clerk).toBe(false);
     expect(payload.checks.clerk.missingEnv).toEqual(["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"]);
+  });
+
+  it("accepts Vercel Clerk marketplace aliases in public health", async () => {
+    process.env.NEXT_PUBLIC_edu_ferma_auth_CLERK_PUBLISHABLE_KEY = "pk_alias";
+    process.env.edu_ferma_auth_CLERK_SECRET_KEY = "sk_alias";
+
+    const response = await getHealth();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.clerk).toBe(true);
+    expect(payload.checks.clerk.missingEnv).toEqual([]);
   });
 
   it("returns 403 when a student calls a teacher endpoint", async () => {
