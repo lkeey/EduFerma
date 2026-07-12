@@ -50,10 +50,13 @@ flowchart LR
   UI["UI dashboard or client action"] --> Route["Next.js API route<br/>/api/v1/**/route.ts"]
   Route --> Guard["Server auth, role guard<br/>and Zod validation"]
   Guard --> Services["Service contract<br/>@eduferma/core/services"]
-  Services --> DbServices["DB service adapter<br/>apps/web/src/server/services"]
+  Services --> DbUrl{"DATABASE_URL present<br/>and Postgres-safe?"}
+  DbUrl -- "yes" --> DbServices["DB service adapter<br/>apps/web/src/server/services"]
   DbServices --> Drizzle["Drizzle lazy client<br/>packages/db"]
-  Drizzle --> Neon["Remote managed Postgres<br/>Neon in production"]
-  Services --> Response["Student-safe or teacher response DTO"]
+  Drizzle --> Neon["Remote managed Postgres<br/>Neon production data store"]
+  DbUrl -- "no" --> Setup["Controlled setup/unavailable response<br/>no local JSON/SQLite fallback"]
+  DbServices --> Response["Student-safe or teacher response DTO"]
+  Setup --> Response
   Response --> UI
 ```
 

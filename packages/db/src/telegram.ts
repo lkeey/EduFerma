@@ -81,6 +81,25 @@ export async function listActiveTelegramSubscribers(db: Db = getDb()): Promise<T
   });
 }
 
+export async function deactivateTelegramSubscriber(
+  chatId: string,
+  db: Db = getDb()
+): Promise<TelegramSubscriberRecord | undefined> {
+  const now = new Date();
+  const [subscriber] = await db
+    .update(telegramSubscribers)
+    .set({
+      isActive: false,
+      unsubscribedAt: now,
+      lastCommandAt: now,
+      updatedAt: now
+    })
+    .where(eq(telegramSubscribers.chatId, chatId))
+    .returning();
+
+  return subscriber;
+}
+
 export async function enqueueTelegramBroadcastOutbox(
   input: TelegramOutboxInput,
   db: Db = getDb()

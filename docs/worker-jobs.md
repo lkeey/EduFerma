@@ -22,7 +22,7 @@ Run a guarded Telegram public broadcast:
 TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:broadcast:manual --approved-text "Approved public-safe text"
 ```
 
-The command is disabled by default and requires explicitly approved copy. It reads active subscribers from Postgres and writes `telegram_broadcast_outbox` records before sending.
+The command is disabled by default and requires explicitly approved copy. It reads only active subscribers from Postgres, writes `telegram_broadcast_outbox` records for idempotency, skips duplicate subscriber/broadcast pairs, and sends only after the public-safety guard passes.
 If `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, only matching subscribers are eligible for the broadcast. With no allowlist, every active subscriber who started the bot is eligible.
 
 Vercel Cron public-post delivery is handled by the guarded Next.js route in `docs/telegram-post-cron.md`, not by a long-running worker process.
@@ -55,6 +55,6 @@ Before private student Telegram delivery can be enabled, the platform still need
 
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` in Vercel/GitHub secrets, never in Git.
 - `TELEGRAM_ALLOWED_CHAT_IDS` for early limited rollout and `TELEGRAM_OWNER_CHAT_ID` for teacher-owned test delivery.
-- A webhook route that handles `/start <pairing_code>` and `/stop`.
+- A pairing-aware webhook route that handles `/start <pairing_code>` for private student delivery. The current public-update listener already supports `/start` and `/stop`.
 - A persisted Telegram connection table with consent status.
 - A delivery outbox with idempotency keys, retry policy, and audit trail.

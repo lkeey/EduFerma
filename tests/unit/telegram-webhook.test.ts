@@ -37,10 +37,15 @@ function update(text: string) {
 
 function deps() {
   const subscribers: unknown[] = [];
+  const deactivatedChatIds: string[] = [];
   const sent: TelegramTextSendInput[] = [];
   const subscriberStore: TelegramSubscriberStore = {
     async upsertSubscriber(input) {
       subscribers.push(input);
+      return { id: "subscriber-1" };
+    },
+    async deactivateSubscriber(chatId) {
+      deactivatedChatIds.push(chatId);
       return { id: "subscriber-1" };
     }
   };
@@ -51,7 +56,7 @@ function deps() {
     }
   };
 
-  return { subscribers, sent, subscriberStore, sender };
+  return { subscribers, deactivatedChatIds, sent, subscriberStore, sender };
 }
 
 describe("Telegram webhook", () => {
@@ -126,6 +131,29 @@ describe("Telegram webhook", () => {
     expect(d.sent[0]?.text).toContain("личный кабинет");
     expect(d.sent[0]?.text).toContain("https://eduferma.example");
     expect(d.sent[0]?.text).toContain("https://t.me/lkeyit");
+  });
+
+  it("unsubscribes Telegram chats on /stop while keeping the bot as a site entry point", async () => {
+    const d = deps();
+    const response = await handleTelegramWebhook(telegramRequest(update("/stop")), {
+      env: {
+        TELEGRAM_WEBHOOK_SECRET: "webhook-secret",
+        TELEGRAM_BOT_TOKEN: "configured",
+        NEXT_PUBLIC_APP_URL: "https://eduferma.example"
+      },
+      subscriberStore: d.subscriberStore,
+      sender: d.sender
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ ok: true, handled: true, command: "stop" });
+    expect(d.subscribers).toHaveLength(0);
+    expect(d.deactivatedChatIds).toEqual(["123456"]);
+    expect(d.sent[0]).toMatchObject({ chatId: "123456" });
+    expect(d.sent[0]?.text).toContain("больше не буду присылать");
+    expect(d.sent[0]?.text).toContain("/start");
+    expect(d.sent[0]?.text).toContain("https://eduferma.example");
   });
 
   it("validates webhook env lazily at request time", async () => {
