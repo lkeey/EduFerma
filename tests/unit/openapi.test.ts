@@ -27,4 +27,37 @@ describe("openapi contract", () => {
       expect(responses?.["503"]).toBeTruthy();
     }
   });
+
+  it("uses named schemas for every api/v1 success response", () => {
+    for (const route of routeDefinitions.filter((item) => item.path.startsWith("/api/v1"))) {
+      const schema = openApiDocument.paths[route.path]?.[route.method]?.responses?.["200"]?.content?.["application/json"]?.schema;
+
+      expect(schema).toHaveProperty("$ref");
+      expect(schema?.$ref).not.toBe("#/components/schemas/GenericObject");
+    }
+  });
+
+  it("uses named request schemas for mutating operations", () => {
+    for (const route of routeDefinitions.filter((item) => item.requestBody)) {
+      const schema = openApiDocument.paths[route.path]?.[route.method]?.requestBody?.content?.["application/json"]?.schema;
+
+      expect(schema).toHaveProperty("$ref");
+      expect(schema?.$ref).not.toBe("#/components/schemas/GenericObject");
+    }
+  });
+
+  it("documents student task payload without teacher-only fields", () => {
+    const studentTask = openApiDocument.components.schemas.StudentTask;
+    const teacherTask = openApiDocument.components.schemas.TeacherTask;
+
+    expect(studentTask.additionalProperties).toBe(false);
+    expect(studentTask.properties).not.toHaveProperty("answer_json");
+    expect(studentTask.properties).not.toHaveProperty("solution_md");
+    expect(studentTask.properties).not.toHaveProperty("teacher_notes");
+    expect(studentTask.properties).not.toHaveProperty("local_source_path");
+    expect(teacherTask.properties).toHaveProperty("answer_json");
+    expect(teacherTask.properties).toHaveProperty("solution_md");
+    expect(teacherTask.properties).toHaveProperty("teacher_notes");
+    expect(teacherTask.properties).toHaveProperty("local_source_path");
+  });
 });

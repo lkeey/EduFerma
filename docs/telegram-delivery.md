@@ -1,8 +1,8 @@
 # Telegram Delivery Architecture
 
-EduFerma uses an EduFerma-owned Telegram bot as an additional entry point to the site. The first live iteration accepts Telegram webhook updates, stores users who run `/start` as broadcast subscribers, and can reply to `/start`, `/about`, and `/info`.
+EduFerma uses an EduFerma-owned Telegram bot as an additional entry point to the site. The first live iteration accepts Telegram webhook updates, stores users who run `/start` as broadcast subscribers, lets them opt out with `/stop`, and can reply to `/start`, `/about`, and `/info`.
 
-Assignment/task delivery remains a dry-run contract. Public social-post broadcast is guarded, disabled by default, and may only send explicitly approved public-safe text to subscribers.
+Assignment/task delivery remains a dry-run contract. Public social-post broadcast is guarded, disabled by default, and can send either explicitly approved public-safe text or a guarded daily Vercel Cron post to active subscribers.
 
 ## Destination And Sender
 
@@ -11,7 +11,7 @@ Assignment/task delivery remains a dry-run contract. Public social-post broadcas
 - Trigger: a future assignment publication or task assignment worker job should render a Telegram message from student-safe task data, enqueue it in an outbox, and let the sender adapter process it.
 - Current adapter: `createTelegramDryRunSender` in `apps/worker/src/telegram-delivery.ts`. It returns `dry_run` or `blocked` and never performs a network request.
 - Live webhook: `POST /api/integrations/telegram/webhook`, authenticated with `X-Telegram-Bot-Api-Secret-Token`.
-- Live public broadcast: `telegram:broadcast:manual`, disabled unless `TELEGRAM_BROADCAST_ENABLED=true` and approved copy is passed explicitly.
+- Live public broadcast: `telegram:broadcast:manual` or `GET/POST /api/integrations/telegram/posts/cron`, disabled unless `TELEGRAM_BROADCAST_ENABLED=true` and approved public-safe copy or explicit cron autosend is configured.
 
 Dry-run command:
 
@@ -26,7 +26,7 @@ First iteration:
 1. A Telegram user opens the bot and sends `/start`.
 2. The webhook verifies the Telegram secret header.
 3. EduFerma stores `telegram_user_id`, `chat_id`, chat type and public profile fields in `telegram_subscribers`.
-4. New public-safe broadcast posts may be sent to active subscribers who have ever started the bot.
+4. New public-safe broadcast posts may be sent only to active subscribers who have started the bot and have not later sent `/stop`.
 
 This first iteration does not link Telegram users to EduFerma student records and does not send private student tasks or personal plan data over Telegram.
 
@@ -61,6 +61,7 @@ Teachers should not manually paste student chat IDs as the primary linking mecha
 ## Commands
 
 - `/start`: subscribes the Telegram chat/user for public EduFerma updates and replies with the site entry point.
+- `/stop`: deactivates the current chat in `telegram_subscribers`, sets `is_active=false`, records unsubscribe and last-command timestamps, and confirms that public updates are disabled. Sending `/start` reactivates the chat.
 - `/about` or `/info`: describes EduFerma as preparation with a teacher, personal plans, task bank, homework and personal account; includes the site URL and `https://t.me/lkeyit`.
 - Unknown commands: reply with a short help message.
 
@@ -126,6 +127,7 @@ TELEGRAM_BOT_TOKEN
 TELEGRAM_WEBHOOK_SECRET
 TELEGRAM_BROADCAST_ENABLED
 TELEGRAM_POSTS_CRON_SECRET
+TELEGRAM_POSTS_AUTOSEND_ENABLED
 TELEGRAM_ALLOWED_CHAT_IDS
 TELEGRAM_OWNER_CHAT_ID
 TELEGRAM_DELIVERY_SEND_ENABLED
@@ -134,7 +136,9 @@ NEXT_PUBLIC_APP_URL
 
 `TELEGRAM_DELIVERY_SEND_ENABLED` is a future explicit safety flag. The current worker adapter remains dry-run even if a token and this flag are configured.
 
-`TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` is reserved for a future Vercel Cron/manual route guard; this repository does not schedule a spammy cron by default.
+`TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` protects the Vercel Cron/manual route, and `TELEGRAM_POSTS_AUTOSEND_ENABLED=false` keeps scheduled post generation in approval-only mode by default.
+
+When `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, public broadcast sending is limited to those chat IDs. When no allowlist is configured, the approved public broadcast goes to all active subscribers who previously started the bot.
 
 ## Bot Listener Contract
 
@@ -148,6 +152,7 @@ Header: X-Telegram-Bot-Api-Secret-Token: <TELEGRAM_WEBHOOK_SECRET>
 Supported update handling:
 
 - `/start`: store the Telegram user/chat as a public-update subscriber.
+- `/stop`: mark the Telegram subscriber inactive by `chat_id`; future public broadcasts skip that chat until `/start` is sent again.
 - `/about` or `/info`: send site and teacher-contact information.
 - Unknown messages: respond with a short help message, without exposing assignments or answers.
 
@@ -157,13 +162,26 @@ The listener should accept Telegram updates, validate the secret header, normali
 
 Vercel deployments should not run an infinite polling process for Telegram. Incoming messages are handled by Telegram webhooks through the Next.js route above.
 
-Periodic public posts should be triggered either by a manual worker command:
+Periodic public posts can be triggered by the Vercel Cron route:
+
+```text
+GET /api/integrations/telegram/posts/cron
+Authorization: Bearer <CRON_SECRET or TELEGRAM_POSTS_CRON_SECRET>
+```
+
+The intended production cadence is daily at `0 8 * * *`. Keep the schedule out of `vercel.json` until Vercel cron provisioning is confirmed for the project; otherwise preview deployments can fail before build logs are available. Configure the schedule in Vercel or an external scheduler with the same bearer secret.
+
+With `TELEGRAM_POSTS_AUTOSEND_ENABLED=false`, the route only creates an approval-required draft and returns counts. With both `TELEGRAM_POSTS_AUTOSEND_ENABLED=true` and `TELEGRAM_BROADCAST_ENABLED=true`, it sends the public-safe post to active subscribers and writes `telegram_broadcast_outbox` rows. If `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, cron/manual post sending is limited to those chat IDs.
+
+Manual approved copy can still be sent through the worker:
 
 ```bash
 TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:broadcast:manual --approved-text "Approved public-safe text"
 ```
 
-or by a future Vercel Cron/worker route protected by `TELEGRAM_POSTS_CRON_SECRET`. No cron schedule is enabled in `vercel.json` in this iteration.
+For an early limited rollout, set `TELEGRAM_ALLOWED_CHAT_IDS` before running the command. With an empty allowlist, the command targets all active `telegram_subscribers`.
+
+Manual approved copy can also be sent through `POST /api/integrations/telegram/posts/cron` with `{ "approvedText": "..." }` and the same bearer secret. No cron schedule is enabled in `vercel.json` in this iteration.
 
 ## Needed From The User
 

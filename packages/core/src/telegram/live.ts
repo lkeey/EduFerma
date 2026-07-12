@@ -29,7 +29,7 @@ export type TelegramWebhookUpdate = {
   message?: TelegramWebhookMessage;
 };
 
-export type TelegramCommandName = "start" | "about" | "info" | "unknown";
+export type TelegramCommandName = "start" | "stop" | "about" | "info" | "unknown";
 
 export type TelegramCommand = {
   name: TelegramCommandName;
@@ -54,7 +54,7 @@ export function readTelegramCommand(text: string | undefined): TelegramCommand |
   const [rawCommand = "", ...args] = rawText.split(/\s+/);
   const command = rawCommand.replace(/^\/+/, "").split("@")[0]?.toLowerCase();
 
-  if (command === "start" || command === "about" || command === "info") {
+  if (command === "start" || command === "stop" || command === "about" || command === "info") {
     return { name: command, rawText, args: args.join(" ") };
   }
 
@@ -105,9 +105,21 @@ export function createTelegramAboutReply(appUrl?: string): string {
   return lines.join("\n");
 }
 
+export function createTelegramStopReply(appUrl?: string): string {
+  const lines = [
+    "Готово, я больше не буду присылать публичные обновления EduFerma в этот чат.",
+    "",
+    "Чтобы подписаться снова, отправь /start.",
+    appUrl ? `Сайт EduFerma: ${appUrl}` : undefined,
+    "Telegram преподавателя: https://t.me/lkeyit"
+  ].filter((line): line is string => line !== undefined);
+
+  return lines.join("\n");
+}
+
 export function createTelegramUnknownCommandReply(appUrl?: string): string {
   const lines = [
-    "Я понимаю команды /start и /about.",
+    "Я понимаю команды /start, /stop, /about и /info.",
     appUrl ? `Сайт EduFerma: ${appUrl}` : undefined,
     "Telegram преподавателя: https://t.me/lkeyit"
   ].filter((line): line is string => line !== undefined);

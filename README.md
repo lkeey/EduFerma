@@ -42,24 +42,42 @@ See [docs/api.md](docs/api.md) and
 
 ## Runtime Request Flow
 
-API-backed platform data should move through route handlers, service methods and
-the DB package instead of bypassing the API contract.
+API-backed platform data should move through shared API/service contracts and
+the DB package instead of bypassing the platform layer. There are two supported
+runtime paths:
+
+- Browser clients, external integrations, mobile/PWA and future automations use
+  versioned HTTP routes under `/api/v1`.
+- Next.js Server Components may call the same server service layer directly to
+  avoid a loopback HTTP request. They must still use the shared serializers,
+  auth context and DB-backed services, not local JSON/mock fixtures in
+  production.
 
 ```mermaid
 flowchart LR
-  UI["UI dashboard or client action"] --> Route["Next.js API route<br/>/api/v1/**/route.ts"]
-  Route --> Guard["Server auth, role guard<br/>and Zod validation"]
+  Browser["Browser client<br/>API client / external consumer"] --> Route["Next.js API route<br/>/api/v1/**/route.ts"]
+  ServerPage["Server Component page<br/>student/teacher dashboard"] --> PageGuard["Server page guard<br/>requirePageRole"]
+  Route --> Guard["API auth, role guard<br/>and Zod validation"]
+  PageGuard --> Services["Service contract<br/>@eduferma/core/services"]
   Guard --> Services["Service contract<br/>@eduferma/core/services"]
-  Services --> DbServices["DB service adapter<br/>apps/web/src/server/services"]
+  Services --> DbUrl{"DATABASE_URL present<br/>and Postgres-safe?"}
+  DbUrl -- "yes" --> DbServices["DB service adapter<br/>apps/web/src/server/services"]
   DbServices --> Drizzle["Drizzle lazy client<br/>packages/db"]
-  Drizzle --> Neon["Remote managed Postgres<br/>Neon in production"]
-  Services --> Response["Student-safe or teacher response DTO"]
-  Response --> UI
+  Drizzle --> Neon["Remote managed Postgres<br/>Neon production data store"]
+  DbUrl -- "no" --> Setup["Controlled setup/unavailable response<br/>no local JSON/SQLite fallback"]
+  DbServices --> Response["Student-safe or teacher DTO serializers"]
+  Setup --> Response
+  Response --> Browser
+  Response --> ServerPage
 ```
 
 When `DATABASE_URL` is absent, DB-backed flows must return a controlled setup or
 unavailable response. They must not silently fall back to local JSON, SQLite or
 demo fixtures as a production substitute.
+
+The contract boundary is therefore `route handler -> auth/validation -> service
+-> serializer -> DB` for HTTP consumers and `server page -> page auth -> service
+-> serializer -> DB` for server-rendered pages.
 
 ## Auth And Role Guards
 

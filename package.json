@@ -9,6 +9,7 @@
     "lint": "tsx scripts/lint-project.ts",
     "typecheck": "turbo typecheck",
     "test": "vitest run",
+    "test:remote-db": "vitest run --config vitest.remote-db.config.ts",
     "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
     "api:openapi:generate": "tsx scripts/api-governance.ts generate",
@@ -23,6 +24,7 @@
     "access:bootstrap": "tsx scripts/bootstrap-account-access.ts",
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
+    "production:verify": "tsx scripts/verify-production-setup.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {

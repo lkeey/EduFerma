@@ -65,15 +65,932 @@
             ],
             "properties": {
               "code": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "VALIDATION_ERROR",
+                  "CONFLICT",
+                  "RATE_LIMITED",
+                  "SETUP_REQUIRED",
+                  "INTERNAL_ERROR"
+                ]
               },
               "message": {
                 "type": "string"
               },
               "details": {}
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenericObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "OpenApiDocument": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "service",
+          "version",
+          "time",
+          "database",
+          "clerk",
+          "checks"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "database": {
+            "type": "boolean"
+          },
+          "clerk": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DatabaseHealthResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "configured"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "latencyMs": {
+            "type": "number"
+          },
+          "size": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "DemoAuthResponse": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string"
+          },
+          "redirectTo": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ServiceUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "dbUserId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "teacher",
+              "tutor",
+              "student",
+              "guardian",
+              "guest"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CurrentUserResponse": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/ServiceUser"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "due_at": {
+            "type": "string"
+          },
+          "score": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "learning_track"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "learning_track": {
+            "type": "string"
+          },
+          "next_topic": {
+            "type": "string"
+          },
+          "risk": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleEvent": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "duration_minutes",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string"
+          },
+          "duration_minutes": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlanSummary": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "title",
+          "milestones"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
-        }
+        },
+        "additionalProperties": false
+      },
+      "ProgressSummary": {
+        "type": "object",
+        "required": [
+          "skill_atom",
+          "value"
+        ],
+        "properties": {
+          "skill_atom": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentTask": {
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "learning_track",
+          "skill_atoms",
+          "difficulty_level",
+          "source_name",
+          "statement_md",
+          "verification_status",
+          "license_status",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "learning_track": {
+            "type": "string"
+          },
+          "exam": {
+            "type": "string"
+          },
+          "task_number": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "prototype_id": {
+            "type": "string"
+          },
+          "skill_atoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "difficulty_level": {
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "statement_md": {
+            "type": "string"
+          },
+          "verification_status": {
+            "type": "string"
+          },
+          "license_status": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeacherTask": {
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "learning_track",
+          "skill_atoms",
+          "difficulty_level",
+          "source_name",
+          "statement_md",
+          "verification_status",
+          "license_status",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "learning_track": {
+            "type": "string"
+          },
+          "exam": {
+            "type": "string"
+          },
+          "task_number": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "prototype_id": {
+            "type": "string"
+          },
+          "skill_atoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "difficulty_level": {
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "statement_md": {
+            "type": "string"
+          },
+          "verification_status": {
+            "type": "string"
+          },
+          "license_status": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "answer_json": {},
+          "solution_md": {
+            "type": "string"
+          },
+          "teacher_notes": {
+            "type": "string"
+          },
+          "local_source_path": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentDashboardResponse": {
+        "type": "object",
+        "required": [
+          "assignments",
+          "progress",
+          "schedule"
+        ],
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSummary"
+            }
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressSummary"
+            }
+          },
+          "schedule": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEvent"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeacherDashboardResponse": {
+        "type": "object",
+        "required": [
+          "students",
+          "pendingReview",
+          "progress"
+        ],
+        "properties": {
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentSummary"
+            }
+          },
+          "pendingReview": {
+            "type": "integer"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressSummary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleResponse": {
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEvent"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleEventResponse": {
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/ScheduleEvent"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlanResponse": {
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PlanSummary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentsResponse": {
+        "type": "object",
+        "required": [
+          "assignments"
+        ],
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSummary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignmentResponse": {
+        "type": "object",
+        "required": [
+          "assignment"
+        ],
+        "properties": {
+          "assignment": {
+            "$ref": "#/components/schemas/AssignmentSummary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentAssignmentResponse": {
+        "type": "object",
+        "required": [
+          "assignment",
+          "tasks"
+        ],
+        "properties": {
+          "assignment": {
+            "$ref": "#/components/schemas/AssignmentSummary"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentTask"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentTaskResponse": {
+        "type": "object",
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/StudentTask"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeacherTaskResponse": {
+        "type": "object",
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TeacherTask"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TeacherTaskBankResponse": {
+        "type": "object",
+        "required": [
+          "tasks",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeacherTask"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentsResponse": {
+        "type": "object",
+        "required": [
+          "students"
+        ],
+        "properties": {
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentSummary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentResponse": {
+        "type": "object",
+        "required": [
+          "student"
+        ],
+        "properties": {
+          "student": {
+            "$ref": "#/components/schemas/StudentSummary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProgressResponse": {
+        "type": "object",
+        "required": [
+          "progress"
+        ],
+        "properties": {
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressSummary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttemptResult": {
+        "type": "object",
+        "required": [
+          "attemptId",
+          "checkStatus",
+          "nextAllowedAction"
+        ],
+        "properties": {
+          "attemptId": {
+            "type": "string"
+          },
+          "checkStatus": {
+            "type": "string",
+            "enum": [
+              "checked",
+              "pending_review"
+            ]
+          },
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "nextAllowedAction": {
+            "type": "string",
+            "enum": [
+              "continue",
+              "wait_review"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PendingReviewAttempt": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "PendingReviewAttemptsResponse": {
+        "type": "object",
+        "required": [
+          "attempts"
+        ],
+        "properties": {
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingReviewAttempt"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttemptReviewResponse": {
+        "type": "object",
+        "required": [
+          "attempt"
+        ],
+        "properties": {
+          "attempt": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubmitAttemptRequest": {
+        "type": "object",
+        "required": [
+          "assignmentId",
+          "answer"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "timeSpentSec": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LegacySubmitAttemptRequest": {
+        "type": "object",
+        "required": [
+          "assignmentId",
+          "taskId",
+          "answer"
+        ],
+        "properties": {
+          "assignmentId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "timeSpentSec": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateAssignmentRequest": {
+        "type": "object",
+        "required": [
+          "studentId",
+          "title",
+          "taskIds"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "descriptionMd": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string"
+          },
+          "taskIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateAssignmentRequest": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "descriptionMd": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string"
+          },
+          "taskIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdatePlanRequest": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lessonStatus": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateScheduleEventRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "durationMinutes"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewAttemptRequest": {
+        "type": "object",
+        "required": [
+          "isCorrect",
+          "mistakeTags"
+        ],
+        "properties": {
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "scoreAwarded": {
+            "type": "number"
+          },
+          "feedbackMd": {
+            "type": "string"
+          },
+          "mistakeTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "LegacyReviewAttemptRequest": {
+        "type": "object",
+        "required": [
+          "attemptId",
+          "isCorrect",
+          "mistakeTags"
+        ],
+        "properties": {
+          "attemptId": {
+            "type": "string"
+          },
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "scoreAwarded": {
+            "type": "number"
+          },
+          "feedbackMd": {
+            "type": "string"
+          },
+          "mistakeTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -91,7 +1008,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }
@@ -142,7 +1059,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DatabaseHealthResponse"
                 }
               }
             }
@@ -208,7 +1125,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/OpenApiDocument"
                 }
               }
             }
@@ -259,7 +1176,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DemoAuthResponse"
                 }
               }
             }
@@ -310,7 +1227,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DemoAuthResponse"
                 }
               }
             }
@@ -362,7 +1279,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AttemptResult"
                 }
               }
             }
@@ -418,7 +1335,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/LegacySubmitAttemptRequest"
               }
             }
           }
@@ -439,7 +1356,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AttemptReviewResponse"
                 }
               }
             }
@@ -495,7 +1412,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/LegacyReviewAttemptRequest"
               }
             }
           }
@@ -515,7 +1432,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             }
@@ -581,7 +1498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudentDashboardResponse"
                 }
               }
             }
@@ -648,7 +1565,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ScheduleResponse"
                 }
               }
             }
@@ -715,7 +1632,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PlanResponse"
                 }
               }
             }
@@ -782,7 +1699,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AssignmentsResponse"
                 }
               }
             }
@@ -849,7 +1766,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudentAssignmentResponse"
                 }
               }
             }
@@ -926,7 +1843,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudentTaskResponse"
                 }
               }
             }
@@ -1003,7 +1920,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AttemptResult"
                 }
               }
             }
@@ -1069,7 +1986,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/SubmitAttemptRequest"
               }
             }
           }
@@ -1090,7 +2007,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProgressResponse"
                 }
               }
             }
@@ -1156,7 +2073,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TeacherDashboardResponse"
                 }
               }
             }
@@ -1222,7 +2139,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudentsResponse"
                 }
               }
             }
@@ -1288,7 +2205,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudentResponse"
                 }
               }
             }
@@ -1365,7 +2282,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PlanResponse"
                 }
               }
             }
@@ -1440,7 +2357,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PlanResponse"
                 }
               }
             }
@@ -1506,7 +2423,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/UpdatePlanRequest"
               }
             }
           }
@@ -1527,7 +2444,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ScheduleResponse"
                 }
               }
             }
@@ -1602,7 +2519,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ScheduleEventResponse"
                 }
               }
             }
@@ -1668,7 +2585,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CreateScheduleEventRequest"
               }
             }
           }
@@ -1689,7 +2606,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AssignmentsResponse"
                 }
               }
             }
@@ -1766,7 +2683,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProgressResponse"
                 }
               }
             }
@@ -1843,7 +2760,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TeacherTaskBankResponse"
                 }
               }
             }
@@ -1910,7 +2827,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TeacherTaskResponse"
                 }
               }
             }
@@ -1987,7 +2904,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AssignmentResponse"
                 }
               }
             }
@@ -2043,7 +2960,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CreateAssignmentRequest"
               }
             }
           }
@@ -2064,7 +2981,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AssignmentResponse"
                 }
               }
             }
@@ -2130,7 +3047,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/UpdateAssignmentRequest"
               }
             }
           }
@@ -2151,7 +3068,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AssignmentResponse"
                 }
               }
             }
@@ -2228,7 +3145,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PendingReviewAttemptsResponse"
                 }
               }
             }
@@ -2295,7 +3212,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AttemptReviewResponse"
                 }
               }
             }
@@ -2361,7 +3278,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ReviewAttemptRequest"
               }
             }
           }

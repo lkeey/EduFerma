@@ -1,157 +1,284 @@
+import "server-only";
+
+import type { MistakeTag, TaskAttempt } from "@eduferma/core/platform";
+import { getCurrentServiceUser } from "@/server/auth/session";
+import { getServices } from "@/server/services";
 import {
-  checkAnswer,
-  demoAssignments,
-  demoAttempts,
-  demoPlan,
-  demoPrototypeMastery,
-  demoSchedule,
-  demoSkillMastery,
-  demoStudents,
-  demoTasks,
-  demoUsers,
-  getAssignmentProgress,
-  getSafeTaskForStudent,
-  getTaskForTeacher
-} from "@eduferma/core/platform";
-import type { MistakeTag, PlatformTask, TaskAttempt } from "@eduferma/core/platform";
+  emptyAssignmentProgress,
+  type LegacyAssignment,
+  type LegacyScheduleEvent,
+  type LegacyTask,
+  toLegacyAssignment,
+  toLegacyAssignmentRow,
+  toLegacyPlan,
+  toLegacyScheduleEvent,
+  toLegacySkill,
+  toLegacyStudent,
+  toLegacyTask
+} from "./page-data-adapters";
+
+type LegacyPracticeTask = LegacyTask & { assignmentId?: string };
+
+type LegacyAttempt = {
+  id: string;
+  taskId?: string;
+  answerJson?: { value?: string };
+  checkStatus?: string;
+  feedbackMd?: string;
+};
+
+async function getContext() {
+  const user = await getCurrentServiceUser();
+  if (!user) {
+    throw new Error("Authenticated user is required before reading platform data");
+  }
+  return { user };
+}
+
+function getDisplayName(emailOrName: string | undefined) {
+  return emailOrName?.trim() || "Ученик";
+}
+
+function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function toLegacyAttempt(attempt: Record<string, unknown>): LegacyAttempt {
+  return {
+    id: String(attempt.id ?? "attempt"),
+    taskId: typeof attempt.taskId === "string" ? attempt.taskId : typeof attempt.task_id === "string" ? attempt.task_id : undefined,
+    answerJson: typeof attempt.answerJson === "object" && attempt.answerJson
+      ? attempt.answerJson as { value?: string }
+      : typeof attempt.answer_json === "object" && attempt.answer_json
+        ? attempt.answer_json as { value?: string }
+        : undefined,
+    checkStatus: typeof attempt.checkStatus === "string" ? attempt.checkStatus : typeof attempt.check_status === "string" ? attempt.check_status : undefined,
+    feedbackMd: typeof attempt.feedbackMd === "string" ? attempt.feedbackMd : typeof attempt.feedback_md === "string" ? attempt.feedback_md : undefined
+  };
+}
+
+function toProgressSummary(progressRows: Array<{ skill_atom: string; value: number }>, assignments: Array<{ status?: string }> = []) {
+  const skillMastery = progressRows.map(toLegacySkill);
+  const weakSkills = skillMastery.filter((item) => item.confidence < 0.6);
+
+  return {
+    solved: 0,
+    correct: 0,
+    correctRate: 0,
+    activeAssignments: assignments.filter((assignment) => assignment.status === "assigned").length,
+    skillMastery,
+    prototypeMastery: [] as Array<{ prototypeId: string; confidence: number; riskFlag?: string }>,
+    weakSkills,
+    recentAttempts: [] as LegacyAttempt[]
+  };
+}
 
 export function getDemoTeacher() {
-  return demoUsers.find((user) => user.role === "teacher")!;
+  return {
+    id: "current_teacher",
+    email: "",
+    name: "Преподаватель",
+    role: "teacher" as const
+  };
 }
 
 export function getDemoStudent() {
-  return demoStudents[0]!;
+  return toLegacyStudent(undefined, "Ученик");
 }
 
-export async function getStudentDashboard(studentId = "demo_student_oge") {
-  const student = demoStudents.find((item) => item.id === studentId)!;
-  const assignments = demoAssignments.filter((assignment) => assignment.studentId === studentId);
-  const nextLesson = demoSchedule.find((event) => event.studentId === studentId && event.status === "planned");
-  const latestAttempts = demoAttempts.filter((attempt) => attempt.studentId === studentId).slice(-5).reverse();
-  const activeAssignment = assignments[0];
+export async function getStudentProfile() {
+  const ctx = await getContext();
+  return toLegacyStudent(undefined, getDisplayName(ctx.user.name ?? ctx.user.email));
+}
+
+export async function getStudentDashboard() {
+  const ctx = await getContext();
+  const [{ assignments, progress, schedule }, student] = await Promise.all([
+    getServices().student.getDashboard(ctx),
+    getStudentProfile()
+  ]);
+  const legacyAssignments = asArray(assignments).map(toLegacyAssignment);
+  const activeAssignment = legacyAssignments[0];
+  const weakSkills = asArray(progress).map(toLegacySkill).filter((item) => item.confidence < 0.6);
 
   return {
     student,
-    nextLesson,
+    nextLesson: asArray(schedule).map(toLegacyScheduleEvent)[0],
     activeAssignment,
-    activeAssignmentProgress: activeAssignment ? getAssignmentProgress(activeAssignment, demoAttempts) : null,
-    latestAttempts,
-    weakSkills: demoSkillMastery.filter((item) => item.studentId === studentId && item.confidence < 0.6)
+    activeAssignmentProgress: activeAssignment ? emptyAssignmentProgress(activeAssignment.score) : null,
+    latestAttempts: [] as LegacyAttempt[],
+    weakSkills
   };
 }
 
-export async function getStudentSchedule(studentId = "demo_student_oge") {
-  return demoSchedule.filter((event) => event.studentId === studentId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+export async function getStudentSchedule() {
+  const ctx = await getContext();
+  const { events } = await getServices().student.getSchedule(ctx);
+  return asArray(events).map(toLegacyScheduleEvent);
 }
 
-export async function getStudentPlan(studentId = "demo_student_oge") {
-  return demoPlan.studentId === studentId ? demoPlan : null;
+export async function getStudentPlan() {
+  const ctx = await getContext();
+  const { plan } = await getServices().student.getPlan(ctx);
+  return toLegacyPlan(plan);
 }
 
-export async function getStudentAssignments(studentId = "demo_student_oge") {
-  return demoAssignments
-    .filter((assignment) => assignment.studentId === studentId)
-    .map((assignment) => ({
-      assignment,
-      progress: getAssignmentProgress(assignment, demoAttempts)
-    }));
+export async function getStudentAssignments() {
+  const ctx = await getContext();
+  const { assignments } = await getServices().student.getAssignments(ctx);
+  return asArray(assignments).map(toLegacyAssignmentRow);
 }
 
-export async function getAssignmentDetail(assignmentId: string, studentView = true) {
-  const assignment = demoAssignments.find((item) => item.id === assignmentId);
-  if (!assignment) return null;
+export async function getStudentPracticeTasks() {
+  const ctx = await getContext();
+  const { assignments } = await getServices().student.getAssignments(ctx);
+  const taskGroups = await Promise.all(
+    asArray(assignments).map(async (assignment) => {
+      const detail = await getServices().student.getAssignment(ctx, assignment.id);
+      return asArray(detail.tasks).map((task): LegacyPracticeTask => ({
+        ...toLegacyTask(task, { studentSafe: true }),
+        assignmentId: assignment.id
+      }));
+    })
+  );
+  const seen = new Set<string>();
 
-  const tasks = assignment.taskIds
-    .map((taskId) => demoTasks.find((task) => task.id === taskId))
-    .filter((task): task is PlatformTask => Boolean(task))
-    .map((task) => (studentView ? getSafeTaskForStudent(task) : getTaskForTeacher(task)));
-
-  const attempts = demoAttempts.filter((attempt) => attempt.assignmentId === assignmentId);
-
-  return {
-    assignment,
-    tasks,
-    attempts,
-    progress: getAssignmentProgress(assignment, demoAttempts)
-  };
-}
-
-export async function getStudentTask(taskId: string) {
-  const task = demoTasks.find((item) => item.id === taskId || item.taskId === taskId);
-  return task ? getSafeTaskForStudent(task) : null;
-}
-
-export async function getTeacherTask(taskId: string) {
-  return demoTasks.find((item) => item.id === taskId || item.taskId === taskId) ?? null;
-}
-
-export async function getStudentProgress(studentId = "demo_student_oge") {
-  const attempts = demoAttempts.filter((attempt) => attempt.studentId === studentId);
-  const solved = attempts.filter((attempt) => attempt.submittedAt).length;
-  const correct = attempts.filter((attempt) => attempt.isCorrect).length;
-  return {
-    solved,
-    correct,
-    correctRate: solved === 0 ? 0 : Math.round((correct / solved) * 100),
-    activeAssignments: demoAssignments.filter((assignment) => assignment.studentId === studentId && assignment.status === "assigned").length,
-    skillMastery: demoSkillMastery.filter((item) => item.studentId === studentId),
-    prototypeMastery: demoPrototypeMastery.filter((item) => item.studentId === studentId),
-    weakSkills: demoSkillMastery.filter((item) => item.studentId === studentId && item.confidence < 0.6),
-    recentAttempts: attempts.slice(-5).reverse()
-  };
-}
-
-export async function getTeacherDashboard() {
-  const pendingReview = demoAttempts.filter((attempt) => attempt.checkStatus === "pending_review");
-  return {
-    students: demoStudents,
-    nextLessons: demoSchedule.filter((event) => event.status === "planned"),
-    pendingReview,
-    recentAttempts: demoAttempts.slice(-5).reverse(),
-    riskyStudents: demoStudents.filter((student) => student.riskLevel !== "low"),
-    needsReviewTasks: demoTasks.filter((task) => task.status === "needs_review" || task.verificationStatus === "needs_review")
-  };
-}
-
-export async function getTeacherStudents() {
-  return demoStudents.map((student) => ({
-    student,
-    nextLesson: demoSchedule.find((event) => event.studentId === student.id && event.status === "planned"),
-    activeAssignments: demoAssignments.filter((assignment) => assignment.studentId === student.id && assignment.status === "assigned"),
-    progress: demoSkillMastery.filter((item) => item.studentId === student.id)
-  }));
-}
-
-export async function getTeacherStudentDetail(studentId: string) {
-  const student = demoStudents.find((item) => item.id === studentId);
-  if (!student) return null;
-  return {
-    student,
-    plan: demoPlan,
-    schedule: await getStudentSchedule(studentId),
-    assignments: await getStudentAssignments(studentId),
-    attempts: demoAttempts.filter((attempt) => attempt.studentId === studentId),
-    mastery: await getStudentProgress(studentId)
-  };
-}
-
-export async function getTeacherTaskBank(filters: Record<string, string | undefined> = {}) {
-  return demoTasks.filter((task) => {
-    if (filters.learning_track && task.learningTrack !== filters.learning_track) return false;
-    if (filters.exam && task.exam !== filters.exam) return false;
-    if (filters.task_number && task.taskNumber !== filters.task_number) return false;
-    if (filters.difficulty_level && task.difficultyLevel !== filters.difficulty_level) return false;
-    if (filters.status && task.status !== filters.status) return false;
-    if (filters.q) {
-      const q = filters.q.toLowerCase();
-      return `${task.statementMd} ${task.topic} ${task.skillAtoms.join(" ")}`.toLowerCase().includes(q);
-    }
+  return taskGroups.flat().filter((task) => {
+    if (seen.has(task.id)) return false;
+    seen.add(task.id);
     return true;
   });
 }
 
+export async function getAssignmentDetail(assignmentId: string, studentView = true) {
+  const ctx = await getContext();
+  if (!studentView) return null;
+  const detail = await getServices().student.getAssignment(ctx, assignmentId);
+
+  if (!detail.assignment) return null;
+  const assignment = toLegacyAssignment(detail.assignment);
+  const tasks = asArray(detail.tasks).map((task) => toLegacyTask(task, { studentSafe: true }));
+
+  return {
+    assignment,
+    tasks,
+    attempts: [] as LegacyAttempt[],
+    progress: emptyAssignmentProgress(assignment.score)
+  };
+}
+
+export async function getStudentTask(taskId: string) {
+  const ctx = await getContext();
+  const { task } = await getServices().student.getTask(ctx, taskId);
+  return task ? toLegacyTask(task, { studentSafe: true }) : null;
+}
+
+export async function getTeacherTask(taskId: string) {
+  const ctx = await getContext();
+  const { task } = await getServices().teacher.getTask(ctx, taskId);
+  return task ? toLegacyTask(task) : null;
+}
+
+export async function getStudentProgress() {
+  const ctx = await getContext();
+  const [{ progress }, { assignments }] = await Promise.all([
+    getServices().student.getProgress(ctx),
+    getServices().student.getAssignments(ctx)
+  ]);
+  return toProgressSummary(asArray(progress), asArray(assignments));
+}
+
+export async function getTeacherDashboard() {
+  const ctx = await getContext();
+  const [dashboard, pendingReview, taskBank] = await Promise.all([
+    getServices().teacher.getDashboard(ctx),
+    getServices().teacher.getPendingReviewAttempts(ctx),
+    getServices().teacher.getTaskBank(ctx)
+  ]);
+  const students = asArray(dashboard.students).map((student) => toLegacyStudent(student));
+  const attempts = asArray(pendingReview.attempts as Array<Record<string, unknown>>).map(toLegacyAttempt);
+  const tasks = asArray(taskBank.tasks).map((task) => toLegacyTask(task));
+
+  return {
+    students,
+    nextLessons: [],
+    pendingReview: attempts,
+    recentAttempts: attempts.slice(0, 5),
+    riskyStudents: students.filter((student) => student.riskLevel !== "low"),
+    needsReviewTasks: tasks.filter((task) => task.status === "needs_review" || task.verificationStatus === "needs_review")
+  };
+}
+
+export async function getTeacherStudents() {
+  const ctx = await getContext();
+  const { students } = await getServices().teacher.getStudents(ctx);
+  return asArray(students).map((student): {
+    student: ReturnType<typeof toLegacyStudent>;
+    nextLesson?: LegacyScheduleEvent;
+    activeAssignments: LegacyAssignment[];
+    progress: Array<{ skillAtom: string; confidence: number; riskFlag?: string }>;
+  } => ({
+    student: toLegacyStudent(student),
+    nextLesson: undefined,
+    activeAssignments: [],
+    progress: []
+  }));
+}
+
+export async function getTeacherStudentDetail(studentId: string) {
+  const ctx = await getContext();
+  const services = getServices();
+  const [studentResponse, planResponse, scheduleResponse, assignmentResponse, analyticsResponse, pendingReview] = await Promise.all([
+    services.teacher.getStudent(ctx, studentId),
+    services.teacher.getStudentPlan(ctx, studentId),
+    services.teacher.getStudentSchedule(ctx, studentId),
+    services.teacher.getStudentAssignments(ctx, studentId),
+    services.teacher.getStudentAnalytics(ctx, studentId),
+    services.teacher.getPendingReviewAttempts(ctx)
+  ]);
+
+  if (!studentResponse.student) return null;
+  const assignments = asArray(assignmentResponse.assignments).map(toLegacyAssignmentRow);
+  const attempts = asArray(pendingReview.attempts as Array<Record<string, unknown>>).map(toLegacyAttempt);
+
+  return {
+    student: toLegacyStudent(studentResponse.student),
+    plan: toLegacyPlan(planResponse.plan) ?? {
+      id: `plan_${studentId}`,
+      studentId,
+      strategy: "План пока не создан",
+      title: "План пока не создан",
+      versionNo: 0,
+      status: "missing",
+      lessons: []
+    },
+    schedule: asArray(scheduleResponse.events).map(toLegacyScheduleEvent),
+    assignments,
+    attempts,
+    mastery: toProgressSummary(asArray(analyticsResponse.progress), assignments.map((row) => row.assignment))
+  };
+}
+
+export async function getTeacherTaskBank(filters: Record<string, string | undefined> = {}) {
+  const ctx = await getContext();
+  const { tasks } = await getServices().teacher.getTaskBank(ctx);
+  return asArray(tasks)
+    .map((task) => toLegacyTask(task))
+    .filter((task) => {
+      if (filters.learning_track && task.learningTrack !== filters.learning_track) return false;
+      if (filters.exam && task.exam !== filters.exam) return false;
+      if (filters.task_number && task.taskNumber !== filters.task_number) return false;
+      if (filters.difficulty_level && task.difficultyLevel !== filters.difficulty_level) return false;
+      if (filters.status && task.status !== filters.status) return false;
+      if (filters.q) {
+        const q = filters.q.toLowerCase();
+        return `${task.statementMd ?? ""} ${task.topic ?? ""} ${(task.skillAtoms ?? []).join(" ")}`.toLowerCase().includes(q);
+      }
+      return true;
+    });
+}
+
 export async function submitTaskAttempt({
-  studentId,
   assignmentId,
   taskId,
   answer
@@ -161,22 +288,26 @@ export async function submitTaskAttempt({
   taskId: string;
   answer: string;
 }) {
-  const task = demoTasks.find((item) => item.id === taskId || item.taskId === taskId);
-  if (!task) throw new Error("Task not found");
-  const result = checkAnswer(task.answerJson, answer);
+  const ctx = await getContext();
+  const result = await getServices().student.submitAttempt(ctx, { assignmentId, taskId, answer });
+  const legacyCheckStatus: TaskAttempt["checkStatus"] = result.checkStatus === "pending_review"
+    ? "pending_review"
+    : result.isCorrect
+      ? "auto_correct"
+      : "auto_incorrect";
   const attempt: TaskAttempt = {
-    id: `attempt_${Date.now()}`,
-    studentId,
+    id: result.attemptId,
+    studentId: ctx.user.id,
     assignmentId,
-    taskId: task.id,
-    attemptNo: demoAttempts.filter((item) => item.studentId === studentId && item.taskId === task.id).length + 1,
+    taskId,
+    attemptNo: 1,
     startedAt: new Date().toISOString(),
     submittedAt: new Date().toISOString(),
     answerJson: { value: answer },
     isCorrect: result.isCorrect,
-    scoreAwarded: result.scoreAwarded,
-    checkStatus: result.checkStatus,
-    feedbackMd: result.feedbackMd,
+    scoreAwarded: result.isCorrect ? 1 : 0,
+    checkStatus: legacyCheckStatus,
+    feedbackMd: result.feedback,
     mistakeTags: []
   };
 
@@ -196,16 +327,7 @@ export async function reviewAttempt({
   mistakeTags: MistakeTag[];
   isCorrect: boolean;
 }) {
-  const attempt = demoAttempts.find((item) => item.id === attemptId);
-  if (!attempt) throw new Error("Attempt not found");
-
-  return {
-    ...attempt,
-    scoreAwarded,
-    feedbackMd,
-    mistakeTags,
-    isCorrect,
-    checkStatus: isCorrect ? "reviewed_correct" : "reviewed_incorrect",
-    checkedBy: "user_teacher_demo"
-  } satisfies TaskAttempt;
+  const ctx = await getContext();
+  const { attempt } = await getServices().teacher.reviewAttempt(ctx, attemptId, { scoreAwarded, feedbackMd, mistakeTags, isCorrect });
+  return attempt;
 }

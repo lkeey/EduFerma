@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { resolveClerkEnv } from "@/lib/clerk-env";
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -11,16 +12,19 @@ const isProtectedRoute = createRouteMatcher([
   "/api/teacher(.*)",
   "/api/platform(.*)"
 ]);
-const hasClerkEnv = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+const clerkEnv = resolveClerkEnv();
 const hasDemoAuth = process.env.ENABLE_DEMO_AUTH === "true" && process.env.VERCEL_ENV !== "production";
 
 const protectedProxy = clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
+}, {
+  publishableKey: clerkEnv.publishableKey,
+  secretKey: clerkEnv.secretKey
 });
 
-export default hasClerkEnv && !hasDemoAuth ? protectedProxy : function openProxy() {
+export default clerkEnv.configured && !hasDemoAuth ? protectedProxy : function openProxy() {
   return NextResponse.next();
 };
 

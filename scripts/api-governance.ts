@@ -11,7 +11,8 @@ type Finding = {
 const root = process.cwd();
 const forbiddenStudentFields = ["answer_json", "solution_md", "teacher_notes", "local_source_path"];
 const documentedNonOpenApiRoutes = new Map([
-  ["/api/integrations/telegram/webhook", "docs/telegram-delivery.md"]
+  ["/api/integrations/telegram/webhook", "docs/telegram-delivery.md"],
+  ["/api/integrations/telegram/posts/cron", "docs/telegram-post-cron.md"]
 ]);
 
 function main() {
@@ -48,6 +49,7 @@ function checkOpenApi(): Finding[] {
   const findings: Finding[] = [];
   const generatedPath = join(root, "packages/api-contract/openapi.json");
   const paths = openApiDocument.paths as Record<string, Record<string, unknown>>;
+  const schemas = (openApiDocument.components as { schemas?: Record<string, unknown> }).schemas ?? {};
   const seenOperationIds = new Set<string>();
 
   for (const route of routeDefinitions) {
@@ -66,11 +68,29 @@ function checkOpenApi(): Finding[] {
     }
     if (!operation.summary) findings.push({ severity: "ERROR", path: route.path, message: "summary missing" });
     if (!operation.responses) findings.push({ severity: "ERROR", path: route.path, message: "responses missing" });
+    const successSchema = getJsonSchema(operation, ["responses", "200", "content", "application/json", "schema"]);
+    if (route.path.startsWith("/api/v1") && isGenericObjectSchema(successSchema)) {
+      findings.push({ severity: "ERROR", path: route.path, message: "api/v1 success response must use a named OpenAPI schema" });
+    }
+    const responseRef = schemaRefName(successSchema);
+    if (responseRef && !schemas[responseRef]) {
+      findings.push({ severity: "ERROR", path: route.path, message: `success response references missing schema ${responseRef}` });
+    }
     if (!route.public && !operation.security) {
       findings.push({ severity: "ERROR", path: route.path, message: "protected operation missing security" });
     }
     if (route.requestBody && !operation.requestBody) {
       findings.push({ severity: "ERROR", path: route.path, message: "mutating operation missing requestBody" });
+    }
+    if (route.requestBody) {
+      const requestSchema = getJsonSchema(operation, ["requestBody", "content", "application/json", "schema"]);
+      if (isGenericObjectSchema(requestSchema)) {
+        findings.push({ severity: "ERROR", path: route.path, message: "mutating operation requestBody must use a named OpenAPI schema" });
+      }
+      const requestRef = schemaRefName(requestSchema);
+      if (requestRef && !schemas[requestRef]) {
+        findings.push({ severity: "ERROR", path: route.path, message: `requestBody references missing schema ${requestRef}` });
+      }
     }
   }
 
@@ -83,6 +103,29 @@ function checkOpenApi(): Finding[] {
   }
 
   return findings;
+}
+
+function getJsonSchema(source: unknown, path: string[]) {
+  let current = source;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || !(key in current)) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+function schemaRefName(schema: unknown) {
+  if (!schema || typeof schema !== "object") return undefined;
+  const value = (schema as Record<string, unknown>).$ref;
+  if (typeof value !== "string") return undefined;
+  return value.replace("#/components/schemas/", "");
+}
+
+function isGenericObjectSchema(schema: unknown) {
+  if (!schema || typeof schema !== "object") return true;
+  const fields = schema as Record<string, unknown>;
+  if (fields.$ref) return schemaRefName(fields) === "GenericObject";
+  return fields.type === "object" && !fields.properties && !fields.required;
 }
 
 function checkRoutes(): Finding[] {
