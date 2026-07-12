@@ -141,6 +141,7 @@ describe("Telegram post cron route", () => {
     expect(outboxIds).toEqual(["outbox-subscriber-1", "outbox-subscriber-2"]);
     expect(sent.map((message) => message.chatId)).toEqual(["1001", "1002"]);
     expect(sent[0]?.text).toContain("EduFerma");
+    expect(sent[0]?.text).not.toContain("ручного утверждения");
     expect(sent[0]?.text).not.toContain("answer_json");
     expect(sent[0]?.text).not.toContain("solution_md");
   });

@@ -24,6 +24,8 @@ TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:b
 
 The command is disabled by default and requires explicitly approved copy. It reads active subscribers from Postgres and writes `telegram_broadcast_outbox` records before sending.
 
+Vercel Cron public-post delivery is handled by the guarded Next.js route in `docs/telegram-post-cron.md`, not by a long-running worker process.
+
 Run social post draft generation:
 
 ```bash

@@ -2,7 +2,7 @@
 
 EduFerma uses an EduFerma-owned Telegram bot as an additional entry point to the site. The first live iteration accepts Telegram webhook updates, stores users who run `/start` as broadcast subscribers, and can reply to `/start`, `/about`, and `/info`.
 
-Assignment/task delivery remains a dry-run contract. Public social-post broadcast is guarded, disabled by default, and may only send explicitly approved public-safe text to subscribers.
+Assignment/task delivery remains a dry-run contract. Public social-post broadcast is guarded, disabled by default, and can send either explicitly approved public-safe text or a guarded daily Vercel Cron post to active subscribers.
 
 ## Destination And Sender
 
@@ -11,7 +11,7 @@ Assignment/task delivery remains a dry-run contract. Public social-post broadcas
 - Trigger: a future assignment publication or task assignment worker job should render a Telegram message from student-safe task data, enqueue it in an outbox, and let the sender adapter process it.
 - Current adapter: `createTelegramDryRunSender` in `apps/worker/src/telegram-delivery.ts`. It returns `dry_run` or `blocked` and never performs a network request.
 - Live webhook: `POST /api/integrations/telegram/webhook`, authenticated with `X-Telegram-Bot-Api-Secret-Token`.
-- Live public broadcast: `telegram:broadcast:manual`, disabled unless `TELEGRAM_BROADCAST_ENABLED=true` and approved copy is passed explicitly.
+- Live public broadcast: `telegram:broadcast:manual` or `GET/POST /api/integrations/telegram/posts/cron`, disabled unless `TELEGRAM_BROADCAST_ENABLED=true` and approved public-safe copy or explicit cron autosend is configured.
 
 Dry-run command:
 
@@ -126,6 +126,7 @@ TELEGRAM_BOT_TOKEN
 TELEGRAM_WEBHOOK_SECRET
 TELEGRAM_BROADCAST_ENABLED
 TELEGRAM_POSTS_CRON_SECRET
+TELEGRAM_POSTS_AUTOSEND_ENABLED
 TELEGRAM_ALLOWED_CHAT_IDS
 TELEGRAM_OWNER_CHAT_ID
 TELEGRAM_DELIVERY_SEND_ENABLED
@@ -134,7 +135,7 @@ NEXT_PUBLIC_APP_URL
 
 `TELEGRAM_DELIVERY_SEND_ENABLED` is a future explicit safety flag. The current worker adapter remains dry-run even if a token and this flag are configured.
 
-`TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` is reserved for a future Vercel Cron/manual route guard; this repository does not schedule a spammy cron by default.
+`TELEGRAM_BROADCAST_ENABLED=false` is the default. Set it to `true` only after the bot token, database migration, webhook secret and subscriber policy are configured. `TELEGRAM_POSTS_CRON_SECRET` protects the Vercel Cron/manual route, and `TELEGRAM_POSTS_AUTOSEND_ENABLED=false` keeps scheduled post generation in approval-only mode by default.
 
 ## Bot Listener Contract
 
@@ -157,13 +158,22 @@ The listener should accept Telegram updates, validate the secret header, normali
 
 Vercel deployments should not run an infinite polling process for Telegram. Incoming messages are handled by Telegram webhooks through the Next.js route above.
 
-Periodic public posts should be triggered either by a manual worker command:
+Periodic public posts can be triggered by the Vercel Cron route:
+
+```text
+GET /api/integrations/telegram/posts/cron
+Authorization: Bearer <CRON_SECRET or TELEGRAM_POSTS_CRON_SECRET>
+```
+
+`vercel.json` schedules that route daily at `0 8 * * *` on production deployments. With `TELEGRAM_POSTS_AUTOSEND_ENABLED=false`, the route only creates an approval-required draft and returns counts. With both `TELEGRAM_POSTS_AUTOSEND_ENABLED=true` and `TELEGRAM_BROADCAST_ENABLED=true`, it sends the public-safe post to active subscribers and writes `telegram_broadcast_outbox` rows.
+
+Manual approved copy can still be sent through the worker:
 
 ```bash
 TELEGRAM_BROADCAST_ENABLED=true pnpm --filter @eduferma/worker dev -- telegram:broadcast:manual --approved-text "Approved public-safe text"
 ```
 
-or by a future Vercel Cron/worker route protected by `TELEGRAM_POSTS_CRON_SECRET`. No cron schedule is enabled in `vercel.json` in this iteration.
+or through `POST /api/integrations/telegram/posts/cron` with `{ "approvedText": "..." }` and the same bearer secret.
 
 ## Needed From The User
 

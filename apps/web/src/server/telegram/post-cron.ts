@@ -68,6 +68,8 @@ const ManualTelegramPostRequestSchema = z.object({
   approvedText: z.string().trim().min(1).max(4000)
 });
 
+const GENERATED_DRAFT_INTERNAL_FOOTERS = new Set(["Пост требует ручного утверждения перед публикацией."]);
+
 export async function handleTelegramPostCron(
   request: Request,
   deps: TelegramPostBroadcastDeps = {}
@@ -158,17 +160,27 @@ export async function runTelegramPostCron(
     });
   }
 
-  const hashtags = draft.hashtags.filter(Boolean).join(" ");
   return broadcastTelegramPostText(
     {
       ...options,
       job: "telegram:posts:cron",
-      approvedText: [draft.body, hashtags].filter(Boolean).join("\n\n"),
+      approvedText: createTelegramCronBroadcastText(draft.body, draft.hashtags),
       metadata: { source: "telegram:posts:cron", draftId: draft.draftId },
       schedule: options.schedule
     },
     config
   );
+}
+
+function createTelegramCronBroadcastText(body: string, hashtags: string[]): string {
+  const publicBody = body
+    .split(/\n{2,}/)
+    .map((section) => section.trim())
+    .filter((section) => section && !GENERATED_DRAFT_INTERNAL_FOOTERS.has(section))
+    .join("\n\n");
+  const hashtagText = hashtags.filter(Boolean).join(" ");
+
+  return [publicBody, hashtagText].filter(Boolean).join("\n\n");
 }
 
 function readTelegramPostCronConfig(env: Env): TelegramPostCronConfig {
