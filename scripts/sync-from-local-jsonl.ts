@@ -6,7 +6,8 @@ import {
   evaluateDbSizeLimit,
   formatBytes,
   megabytesToBytes,
-  type TaskImportDecision
+  type TaskImportDecision,
+  type TaskImportReviewPolicy
 } from "@eduferma/core";
 import {
   productionLicenseStatuses,
@@ -22,12 +23,14 @@ type Args = {
   dryRun: boolean;
   limit?: number;
   maxDbMb: number;
+  reviewPolicy: TaskImportReviewPolicy;
   sourcePath: string;
 };
 
 type TaskInsert = typeof tasks.$inferInsert;
 
 const DEFAULT_SOURCE = "/Users/lkeey/IT/data/processed/tasks.jsonl";
+const DEFAULT_REVIEW_POLICY: TaskImportReviewPolicy = "source-verified";
 
 async function main() {
   loadWorkspaceEnv();
@@ -38,7 +41,7 @@ async function main() {
   }
 
   const rows = await readJsonl(args.sourcePath, args.limit);
-  const report = buildTaskImportReport(rows);
+  const report = buildTaskImportReport(rows, { reviewPolicy: args.reviewPolicy });
   const importableTasks = report.decisions.filter(isImportDecision).map((decision) => decision.task);
   const estimatedImportBytes = estimateImportStorageBytes(importableTasks);
   const sizeLimitBytes = megabytesToBytes(args.maxDbMb);
@@ -46,9 +49,17 @@ async function main() {
     sourcePath: args.sourcePath,
     mode: args.apply ? "apply" : "dry-run",
     importPolicy: {
+      reviewPolicy: args.reviewPolicy,
       verifiedOnly: true,
-      allowedVerificationStatuses: productionVerificationStatuses,
-      allowedLicenseStatuses: productionLicenseStatuses
+      allowedVerificationStatuses:
+        args.reviewPolicy === "source-verified"
+          ? [...productionVerificationStatuses, "verified_by_source"]
+          : productionVerificationStatuses,
+      allowedLicenseStatuses:
+        args.reviewPolicy === "source-verified"
+          ? [...productionLicenseStatuses, "needs_review"]
+          : productionLicenseStatuses,
+      allowsPendingSkillMapping: args.reviewPolicy === "source-verified"
     },
     scanned: report.scanned,
     toImport: report.toImport,
@@ -74,6 +85,10 @@ async function main() {
   console.log(JSON.stringify(printable, null, 2));
 
   if (args.apply) {
+    if (importableTasks.length === 0) {
+      throw new Error("--apply refused: no eligible tasks matched the import filters");
+    }
+
     if (!args.allowPartial && (report.invalid > 0 || report.manualReview > 0 || report.duplicates > 0)) {
       throw new Error("--apply refused: invalid, duplicate, or manual-review tasks are present");
     }
@@ -110,12 +125,16 @@ async function main() {
 }
 
 function parseArgs(argv: string[]): Args {
-  const apply = argv.includes("--apply");
-  const allowPartial = argv.includes("--allow-partial");
-  const dryRun = argv.includes("--dry-run") || !apply;
-  const limitFlag = argv.find((arg) => arg.startsWith("--limit="));
-  const maxDbFlag = argv.find((arg) => arg.startsWith("--max-db-mb="));
-  const pathFlag = argv.find((arg) => arg.startsWith("--path="));
+  const normalizedArgv = argv.filter((arg) => arg !== "--");
+  const apply = normalizedArgv.includes("--apply");
+  const allowPartial = normalizedArgv.includes("--allow-partial");
+  const dryRun = normalizedArgv.includes("--dry-run") || !apply;
+  const limitFlag = normalizedArgv.find((arg) => arg.startsWith("--limit="));
+  const maxDbFlag =
+    normalizedArgv.find((arg) => arg.startsWith("--max-db-mb=")) ||
+    normalizedArgv.find((arg) => arg.startsWith("--max-mb="));
+  const reviewPolicyFlag = normalizedArgv.find((arg) => arg.startsWith("--review-policy="));
+  const pathFlag = normalizedArgv.find((arg) => arg.startsWith("--path="));
 
   return {
     apply,
@@ -123,8 +142,15 @@ function parseArgs(argv: string[]): Args {
     dryRun,
     limit: limitFlag ? Number(limitFlag.split("=")[1]) : undefined,
     maxDbMb: maxDbFlag ? Number(maxDbFlag.split("=")[1]) : Number(process.env.EDUFERMA_DB_SIZE_LIMIT_MB || 500),
+    reviewPolicy: parseReviewPolicy(reviewPolicyFlag?.split("=")[1]),
     sourcePath: pathFlag?.split("=")[1] || process.env.EDUFERMA_LOCAL_TASKS_PATH || DEFAULT_SOURCE
   };
+}
+
+function parseReviewPolicy(value: string | undefined): TaskImportReviewPolicy {
+  if (!value) return DEFAULT_REVIEW_POLICY;
+  if (value === "strict" || value === "source-verified") return value;
+  throw new Error(`Unknown --review-policy=${value}; expected strict or source-verified`);
 }
 
 export function estimateImportStorageBytes(importableTasks: PlatformTask[]) {

@@ -53,6 +53,76 @@ describe("buildTaskImportReport", () => {
     });
   });
 
+  it("normalizes source-verified nullable fields before import decisions", () => {
+    const report = buildTaskImportReport(
+      [
+        {
+          ...baseTask,
+          task_number: null,
+          answer: null,
+          solution_md: null,
+          license_status: "needs_review",
+          verification_status: "verified_by_source",
+          skill_atoms: ["needs_manual_skill_mapping"]
+        }
+      ],
+      { reviewPolicy: "source-verified" }
+    );
+
+    expect(report.invalid).toBe(0);
+    expect(report.manualReview).toBe(0);
+    expect(report.toImport).toBe(1);
+  });
+
+  it("keeps strict review policy conservative for source-verified rows", () => {
+    const report = buildTaskImportReport([
+      {
+        ...baseTask,
+        task_id: "demo-source-verified",
+        license_status: "needs_review",
+        verification_status: "verified_by_source",
+        skill_atoms: ["needs_manual_skill_mapping"]
+      }
+    ]);
+
+    expect(report.toImport).toBe(0);
+    expect(report.manualReview).toBe(1);
+    expect(report.decisions[0]).toMatchObject({
+      action: "manual_review",
+      reason:
+        "license_status=needs_review; verification_status=verified_by_source; skill_atoms includes needs_manual_skill_mapping"
+    });
+  });
+
+  it("excludes unverified rows in source-verified policy", () => {
+    const report = buildTaskImportReport(
+      [
+        {
+          ...baseTask,
+          task_id: "demo-source-verified",
+          license_status: "needs_review",
+          verification_status: "verified_by_source",
+          skill_atoms: ["needs_manual_skill_mapping"]
+        },
+        {
+          ...baseTask,
+          task_id: "demo-unverified",
+          license_status: "needs_review",
+          verification_status: "unverified",
+          skill_atoms: ["source_mapped"]
+        }
+      ],
+      { reviewPolicy: "source-verified" }
+    );
+
+    expect(report.toImport).toBe(1);
+    expect(report.manualReview).toBe(1);
+    expect(report.decisions[1]).toMatchObject({
+      action: "manual_review",
+      reason: "verification_status=unverified"
+    });
+  });
+
   it("keeps the curated original task bank fully importable", () => {
     const seedPath = new URL("../../packages/db/seed/task-bank-curated-original.jsonl", import.meta.url);
     const rows = readFileSync(seedPath, "utf8")
