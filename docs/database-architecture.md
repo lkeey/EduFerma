@@ -175,6 +175,10 @@ DATABASE_URL=<remote-dev-or-test-postgres-url> \
 pnpm test:remote-db
 ```
 
+The smoke gate follows the same runtime DB env detection as the app, so it also
+runs when a supported provider alias such as `*_DATABASE_URL` or
+`*_POSTGRES_URL` is present instead of explicit `DATABASE_URL`.
+
 This test is skipped by default. It should never be pointed at the production
 database. The test also refuses to run when `VERCEL_ENV=production`,
 `EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`.

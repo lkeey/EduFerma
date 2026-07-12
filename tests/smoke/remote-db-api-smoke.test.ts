@@ -7,7 +7,7 @@ import { GET as getStudentTask } from "../../apps/web/src/app/api/v1/student/tas
 import { POST as submitStudentAttempt } from "../../apps/web/src/app/api/v1/student/tasks/[taskId]/attempts/route";
 import { GET as getTeacherTaskBank } from "../../apps/web/src/app/api/v1/teacher/task-bank/route";
 import { GET as getTeacherTask } from "../../apps/web/src/app/api/v1/teacher/tasks/[taskId]/route";
-import { isProductionDatabaseEnvironment } from "../../packages/db/src/config";
+import { hasRuntimeDatabaseEnv, isProductionDatabaseEnvironment } from "../../packages/db/src/config";
 import { getDb } from "../../packages/db/src/client";
 import {
   assignmentTasks,
@@ -21,8 +21,7 @@ import {
   users
 } from "../../packages/db/src/schema";
 
-const shouldRunRemoteDbSmoke =
-  process.env.EDUFERMA_RUN_REMOTE_DB_TESTS === "true" && Boolean(process.env.DATABASE_URL?.trim());
+const shouldRunRemoteDbSmoke = process.env.EDUFERMA_RUN_REMOTE_DB_TESTS === "true" && hasRuntimeDatabaseEnv();
 
 const runRemoteDbSmoke = shouldRunRemoteDbSmoke ? describe : describe.skip;
 
@@ -281,7 +280,7 @@ async function seedSmokeRows() {
 }
 
 async function cleanupSmokeRows() {
-  if (!shouldRunRemoteDbSmoke || !process.env.DATABASE_URL?.trim()) return;
+  if (!shouldRunRemoteDbSmoke || !hasRuntimeDatabaseEnv()) return;
   if (isProductionDatabaseEnvironment()) return;
   const db = getDb();
 
