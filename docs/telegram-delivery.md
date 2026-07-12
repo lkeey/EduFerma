@@ -165,7 +165,7 @@ GET /api/integrations/telegram/posts/cron
 Authorization: Bearer <CRON_SECRET or TELEGRAM_POSTS_CRON_SECRET>
 ```
 
-`vercel.json` schedules that route daily at `0 8 * * *` on production deployments. With `TELEGRAM_POSTS_AUTOSEND_ENABLED=false`, the route only creates an approval-required draft and returns counts. With both `TELEGRAM_POSTS_AUTOSEND_ENABLED=true` and `TELEGRAM_BROADCAST_ENABLED=true`, it sends the public-safe post to active subscribers and writes `telegram_broadcast_outbox` rows.
+`vercel.json` schedules that route daily at `0 8 * * *` on production deployments. With `TELEGRAM_POSTS_AUTOSEND_ENABLED=false`, the route only creates an approval-required draft and returns counts. With both `TELEGRAM_POSTS_AUTOSEND_ENABLED=true` and `TELEGRAM_BROADCAST_ENABLED=true`, it sends the public-safe post to active subscribers and writes `telegram_broadcast_outbox` rows. If `TELEGRAM_ALLOWED_CHAT_IDS` or `TELEGRAM_OWNER_CHAT_ID` is configured, cron/manual post sending is limited to those chat IDs.
 
 Manual approved copy can still be sent through the worker:
 

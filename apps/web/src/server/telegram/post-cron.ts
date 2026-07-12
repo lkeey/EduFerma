@@ -28,6 +28,7 @@ type TelegramPostCronConfig = {
   botToken?: string;
   broadcastEnabled: boolean;
   autosendEnabled: boolean;
+  allowedChatIds: string[];
   appUrl?: string;
 };
 
@@ -192,6 +193,10 @@ function readTelegramPostCronConfig(env: Env): TelegramPostCronConfig {
     botToken: normalizeEnvValue(env.TELEGRAM_BOT_TOKEN),
     broadcastEnabled: normalizeEnvValue(env.TELEGRAM_BROADCAST_ENABLED) === "true",
     autosendEnabled: normalizeEnvValue(env.TELEGRAM_POSTS_AUTOSEND_ENABLED) === "true",
+    allowedChatIds: unique([
+      ...parseCsvEnv(env.TELEGRAM_ALLOWED_CHAT_IDS),
+      normalizeEnvValue(env.TELEGRAM_OWNER_CHAT_ID)
+    ]),
     appUrl: normalizeEnvValue(env.NEXT_PUBLIC_APP_URL)
   };
 }
@@ -252,7 +257,9 @@ async function broadcastTelegramPostText(
   const markSent = options.markSent ?? markTelegramBroadcastOutboxSent;
   const markFailed = options.markFailed ?? markTelegramBroadcastOutboxFailed;
   const sender = options.sender ?? createTelegramBotApiTextSender(config.botToken!);
-  const subscribers = await listSubscribers();
+  const subscribers = (await listSubscribers()).filter((subscriber) =>
+    isTelegramChatAllowed(subscriber.chatId, config.allowedChatIds)
+  );
   const broadcastKey = buildTelegramBroadcastKey(messageText, generatedAt);
 
   let sentCount = 0;
@@ -403,6 +410,19 @@ function hasErrorCode(error: unknown, code: string) {
 function normalizeEnvValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function parseCsvEnv(value: string | undefined): string[] {
+  return value
+    ? value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function isTelegramChatAllowed(chatId: string, allowedChatIds: string[]): boolean {
+  return allowedChatIds.length === 0 || allowedChatIds.includes(chatId);
 }
 
 function unique(values: Array<string | undefined>) {

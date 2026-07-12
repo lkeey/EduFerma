@@ -146,6 +146,42 @@ describe("Telegram post cron route", () => {
     expect(sent[0]?.text).not.toContain("solution_md");
   });
 
+  it("limits cron sends to the configured Telegram allowlist", async () => {
+    const sent: TelegramTextSendInput[] = [];
+    const outboxChatIds: string[] = [];
+
+    const result = await runTelegramPostCron({
+      env: {
+        TELEGRAM_POSTS_CRON_SECRET: "cron-secret",
+        TELEGRAM_BOT_TOKEN: "configured",
+        TELEGRAM_BROADCAST_ENABLED: "true",
+        TELEGRAM_POSTS_AUTOSEND_ENABLED: "true",
+        TELEGRAM_ALLOWED_CHAT_IDS: "1002",
+        NEXT_PUBLIC_APP_URL: "https://eduferma.example"
+      },
+      now: "2026-07-11T10:00:00.000Z",
+      async listSubscribers() {
+        return [subscriber("subscriber-1", "1001"), subscriber("subscriber-2", "1002")];
+      },
+      async enqueueOutbox(input) {
+        outboxChatIds.push(input.chatId);
+        return { id: `outbox-${input.subscriberId}` };
+      },
+      async markSent() {},
+      async markFailed() {},
+      sender: sender(sent)
+    });
+
+    expect(result).toMatchObject({
+      mode: "sent",
+      subscriberCount: 1,
+      sentCount: 1,
+      failedCount: 0
+    });
+    expect(outboxChatIds).toEqual(["1002"]);
+    expect(sent.map((message) => message.chatId)).toEqual(["1002"]);
+  });
+
   it("sends manually approved public text via POST", async () => {
     const sent: TelegramTextSendInput[] = [];
 
