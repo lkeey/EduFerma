@@ -15,6 +15,7 @@ export const LicenseStatusSchema = z.enum([
 ]);
 export const VerificationStatusSchema = z.enum([
   "verified",
+  "verified_by_source",
   "checked",
   "needs_review",
   "unverified",
@@ -23,6 +24,18 @@ export const VerificationStatusSchema = z.enum([
 export const TaskStatusSchema = z.enum(["active", "draft", "archived", "needs_review"]);
 
 const stringArray = z.array(z.string().min(1)).default([]);
+const nullableOptionalString = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.string().optional()
+);
+const TaskNumberSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.union([z.string(), z.number()]).optional()
+);
+const AnswerSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.union([z.string(), z.number(), z.array(z.string())]).optional()
+);
 
 export const PlatformTaskSchema = z
   .object({
@@ -32,9 +45,9 @@ export const PlatformTaskSchema = z
       .optional()
       .transform((value) => (value === undefined ? undefined : String(value))),
     learning_track: z.string().min(1),
-    exam: z.string().optional(),
-    task_number: z.union([z.string(), z.number()]).optional(),
-    topic: z.string().optional(),
+    exam: nullableOptionalString,
+    task_number: TaskNumberSchema,
+    topic: nullableOptionalString,
     prototype_id: z
       .string()
       .nullable()
@@ -45,12 +58,12 @@ export const PlatformTaskSchema = z
     source_id: z.string().min(1),
     source_name: z.string().min(1),
     source_url: z.string().url().optional().or(z.literal("")),
-    source_task_id: z.string().optional(),
-    local_source_path: z.string().optional(),
+    source_task_id: nullableOptionalString,
+    local_source_path: nullableOptionalString,
     statement_md: z.string().min(8),
-    answer: z.union([z.string(), z.number(), z.array(z.string())]).optional(),
-    solution_md: z.string().optional(),
-    solution_language: z.string().optional(),
+    answer: AnswerSchema,
+    solution_md: nullableOptionalString,
+    solution_language: nullableOptionalString,
     attachments: z.array(z.unknown()).default([]),
     verification_status: VerificationStatusSchema.default("unknown"),
     license_status: LicenseStatusSchema.default("unknown"),
@@ -84,19 +97,43 @@ export function validatePlatformTask(input: unknown): TaskValidationResult {
 }
 
 export function needsManualTaskReview(task: PlatformTask): boolean {
-  return (
-    task.status === "needs_review" ||
+  return getManualTaskReviewReasons(task).length > 0;
+}
+
+export function getManualTaskReviewReasons(task: PlatformTask): string[] {
+  const reasons: string[] = [];
+
+  if (task.status === "needs_review") {
+    reasons.push("status=needs_review");
+  }
+
+  if (
     task.license_status === "needs_review" ||
     task.license_status === "restricted" ||
     task.license_status === "unknown" ||
-    !productionLicenseStatusSet.has(task.license_status) ||
+    !productionLicenseStatusSet.has(task.license_status)
+  ) {
+    reasons.push(`license_status=${task.license_status}`);
+  }
+
+  if (
     task.verification_status === "needs_review" ||
     task.verification_status === "unverified" ||
     task.verification_status === "unknown" ||
-    !productionVerificationStatusSet.has(task.verification_status) ||
-    task.skill_atoms.includes("needs_manual_skill_mapping") ||
-    looksLikeBinaryText(task.statement_md)
-  );
+    !productionVerificationStatusSet.has(task.verification_status)
+  ) {
+    reasons.push(`verification_status=${task.verification_status}`);
+  }
+
+  if (task.skill_atoms.includes("needs_manual_skill_mapping")) {
+    reasons.push("skill_atoms includes needs_manual_skill_mapping");
+  }
+
+  if (looksLikeBinaryText(task.statement_md)) {
+    reasons.push("statement_md looks like binary text");
+  }
+
+  return reasons;
 }
 
 export function isImportableTask(task: PlatformTask): boolean {

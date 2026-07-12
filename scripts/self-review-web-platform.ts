@@ -160,9 +160,10 @@ function checkTestimonialsConsent(): Check {
 
 function checkTaskSyncDefaultsDryRun(): Check {
   const sync = read("scripts/sync-from-local-jsonl.ts");
+  const dryRunDefault = /const\s+dryRun\s*=\s*[^;]*\.includes\("--dry-run"\)\s*\|\|\s*!apply/.test(sync);
   return {
     name: "task-sync-dry-run-default",
-    ok: sync.includes("const dryRun = argv.includes(\"--dry-run\") || !apply")
+    ok: dryRunDefault
   };
 }
 
