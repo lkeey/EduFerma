@@ -74,6 +74,10 @@ DATABASE_URL=<remote-dev-or-test-postgres-url> \
 pnpm test:remote-db
 ```
 
+The smoke gate uses the same runtime DB env detection as the API service path:
+explicit `DATABASE_URL`/`POSTGRES_URL` values and supported Vercel/Neon
+provider aliases are accepted.
+
 The smoke test creates unique `smoke_*` users, student, task, assignment,
 schedule, progress and attempt rows, calls representative `/api/v1` route
 handlers, verifies student payloads omit teacher-only fields, verifies teacher
