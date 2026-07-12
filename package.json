@@ -9,6 +9,7 @@
     "lint": "tsx scripts/lint-project.ts",
     "typecheck": "turbo typecheck",
     "test": "vitest run",
+    "test:remote-db": "vitest run --config vitest.remote-db.config.ts",
     "e2e": "playwright test",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
     "api:openapi:generate": "tsx scripts/api-governance.ts generate",

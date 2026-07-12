@@ -60,3 +60,22 @@ env names, not secret values.
 
 Student APIs must never include `answer_json`, `solution_md`, teacher notes or
 local/internal source paths.
+
+## Remote DB Smoke Tests
+
+The default test suite does not touch a real database. To prove that route
+handlers can read and write through the remote Postgres service path, run the
+gated smoke test against a development or test database only:
+
+```bash
+EDUFERMA_RUN_REMOTE_DB_TESTS=true \
+EDUFERMA_DB_ENV=test \
+DATABASE_URL=<remote-dev-or-test-postgres-url> \
+pnpm test:remote-db
+```
+
+The smoke test creates unique `smoke_*` users, student, task, assignment,
+schedule, progress and attempt rows, calls representative `/api/v1` route
+handlers, verifies student payloads omit teacher-only fields, verifies teacher
+payloads include them, and then deletes only the rows it created. It refuses to
+run when the environment is marked production.

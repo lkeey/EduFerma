@@ -103,6 +103,15 @@ describe("api route contracts", () => {
     await expectError(response, 503, "SETUP_REQUIRED");
   });
 
+  it("does not allow demo auth as a production API fallback", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+    process.env.NODE_ENV = "production";
+
+    const response = await getStudentDashboard(apiRequest("/api/v1/student/dashboard", { "x-demo-role": "student" }));
+
+    await expectError(response, 503, "SETUP_REQUIRED");
+  });
+
   it("serves OpenAPI JSON when docs are enabled", async () => {
     const response = await getOpenApiDocument();
     const payload = await response.json();

@@ -147,6 +147,22 @@ pnpm db:seed -- --apply
 For production, `pnpm db:seed -- --apply` still requires the documented
 break-glass override and backup/migration review.
 
+## Remote DB API Smoke Test
+
+After migrations are applied to a remote development or test database, use the
+gated API smoke test to verify the full route handler path:
+
+```bash
+EDUFERMA_RUN_REMOTE_DB_TESTS=true \
+EDUFERMA_DB_ENV=test \
+DATABASE_URL=<remote-dev-or-test-postgres-url> \
+pnpm test:remote-db
+```
+
+This test is skipped by default. It should never be pointed at the production
+database. The test also refuses to run when `VERCEL_ENV=production`,
+`EDUFERMA_DB_ENV=production`, or `NODE_ENV=production`.
+
 ## Seed
 
 Dry-run seed preview:
