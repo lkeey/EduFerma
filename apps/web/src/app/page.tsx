@@ -27,7 +27,8 @@ import { demoResults } from "@/lib/demo-data";
 import { LandingParallaxShell } from "./landing-parallax";
 
 const navItems = [
-  { href: "#product", label: "Кабинет" },
+  { href: "#product", label: "Пульт" },
+  { href: "#cabinet", label: "Кабинет" },
   { href: "#task-bank", label: "База задач" },
   { href: "#backstage", label: "API backstage" },
   { href: "#reviews", label: "Отзывы" }
@@ -37,6 +38,42 @@ const heroMetrics = [
   { label: "Сегодня", value: "19:00", detail: "урок + ДЗ" },
   { label: "Skill graph", value: "72%", detail: "graph_reading" },
   { label: "Review queue", value: "2", detail: "попытки ждут разбора" }
+];
+
+const entryCards = [
+  {
+    icon: UsersRound,
+    title: "Личный кабинет",
+    text: "Вход в teacher/student dashboard, где видны маршрут, ближайший урок и очередь проверки.",
+    action: "Войти в кабинет",
+    href: "/sign-in",
+    tone: "cyan"
+  },
+  {
+    icon: Search,
+    title: "База задач",
+    text: "Отдельный вход в task bank: экзамен, прототипы, skill atoms и quality status рядом.",
+    action: "Открыть базу задач",
+    href: "/teacher/task-bank",
+    tone: "amber"
+  },
+  {
+    icon: MessageCircle,
+    title: "Отзывы",
+    text: "Публичные proof-card только из demo-safe или consent-first данных без teacher-only полей.",
+    action: "К отзывам",
+    href: "#reviews",
+    tone: "coral"
+  }
+];
+
+const signalWords = [
+  "личный кабинет",
+  "банк задач",
+  "skill atoms",
+  "Swagger",
+  "remote DB",
+  "review queue"
 ];
 
 const cockpitRows = [
@@ -140,6 +177,7 @@ export default function LandingPage() {
   return (
     <LandingParallaxShell>
       <header className="landing-topbar">
+        <div className="landing-scroll-progress" aria-hidden="true" />
         <div className="landing-container landing-topbar-inner">
           <a className="landing-brand" href="/" aria-label={`EduFerma · ${config.brandHandle}`}>
             <span className="landing-brand-icon">EF</span>
@@ -199,6 +237,27 @@ export default function LandingPage() {
                 Demo кабинет
               </LinkButton>
             </div>
+            <div className="landing-entry-deck" aria-label="Быстрые входы EduFerma">
+              {entryCards.map((entry) => {
+                const Icon = entry.icon;
+
+                return (
+                  <a
+                    className={`landing-entry-card landing-entry-card-${entry.tone}`}
+                    href={entry.href}
+                    key={entry.title}
+                  >
+                    <Icon aria-hidden="true" />
+                    <strong>{entry.title}</strong>
+                    <span>{entry.text}</span>
+                    <small>
+                      {entry.action}
+                      <ArrowRight aria-hidden="true" />
+                    </small>
+                  </a>
+                );
+              })}
+            </div>
             <div className="landing-hero-proof-strip" aria-label="Ключевые сигналы продукта">
               {heroMetrics.map((metric) => (
                 <div className="landing-hero-proof" key={metric.label}>
@@ -208,10 +267,18 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+            <div className="landing-signal-strip" aria-hidden="true">
+              <div className="landing-signal-track">
+                {[...signalWords, ...signalWords].map((word, index) => (
+                  <span key={`${word}-${index}`}>{word}</span>
+                ))}
+              </div>
+            </div>
           </div>
 
           <aside className="landing-stage" aria-label="Превью интерфейса EduFerma" data-reveal>
             <div className="landing-stage-grid" aria-hidden="true" />
+            <div className="landing-stage-vignette" aria-hidden="true" />
             <div className="landing-floating-object landing-floating-object-a">
               <Radar aria-hidden="true" />
               <span>skill radar</span>
@@ -219,6 +286,14 @@ export default function LandingPage() {
             <div className="landing-floating-object landing-floating-object-b">
               <Gauge aria-hidden="true" />
               <span>72%</span>
+            </div>
+            <div className="landing-artifact landing-artifact-a" aria-hidden="true">
+              <span>API</span>
+              <strong>200</strong>
+            </div>
+            <div className="landing-artifact landing-artifact-b" aria-hidden="true">
+              <span>DB</span>
+              <strong>remote</strong>
             </div>
             <div className="landing-monitor">
               <div className="landing-monitor-header">
