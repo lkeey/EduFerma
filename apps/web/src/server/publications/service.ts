@@ -27,6 +27,23 @@ import {
   type UpdatePublicationTargetRequest
 } from "@eduferma/validators";
 import { ApiError } from "@/server/api/responses";
+import {
+  archiveDemoPublicationTarget,
+  cancelDemoPublicationSchedule,
+  createDemoPublication,
+  createDemoPublicationTarget,
+  getDemoProviderHealth,
+  getDemoPublication,
+  isPublicationDemoMode,
+  listDemoPublications,
+  listDemoPublicationTargets,
+  processDemoPublications,
+  publishDemoPublication,
+  retryDemoPublication,
+  scheduleDemoPublication,
+  updateDemoPublication,
+  updateDemoPublicationTarget
+} from "@/server/publications/demo-store";
 
 type Db = ReturnType<typeof getDb>;
 type DbPublicationTarget = typeof publicationTargets.$inferSelect;
@@ -69,7 +86,7 @@ type PublishMutationResult = {
 
 type TargetMutationResult = {
   target: PublicationTargetSummary;
-  action: "created" | "updated";
+  action: "created" | "updated" | "archived";
 };
 
 type ProcessOptions = {
@@ -80,6 +97,9 @@ type ProcessOptions = {
 };
 
 export async function listTeacherPublications(): Promise<{ posts: PublicationSummary[] }> {
+  if (isPublicationDemoMode()) {
+    return listDemoPublications();
+  }
   const db = getDbSafe();
   const posts = await db.query.socialPosts.findMany({
     orderBy: (row, { desc: orderDesc }) => [orderDesc(row.updatedAt)],
@@ -93,13 +113,23 @@ export async function createTeacherPublication(
   ctx: ServiceContext,
   input: CreatePublicationRequest
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return createDemoPublication(ctx, input);
+  }
   const db = getDbSafe();
   const scheduledFor = input.scheduledFor ? new Date(input.scheduledFor) : null;
+  if (scheduledFor && !input.publishAllowed) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Scheduled publications must be explicitly approved for delivery"
+    );
+  }
   const now = new Date();
   const [post] = await db
     .insert(socialPosts)
     .values({
-      createdByUserId: ctx.user.id,
+      createdByUserId: dbActorUserId(ctx),
       duplicateOfPostId: null,
       revision: 1,
       title: input.title.trim(),
@@ -118,7 +148,7 @@ export async function createTeacherPublication(
   await replacePostTargets(db, post, input.targetIds, scheduledFor ? "scheduled" : "pending", scheduledFor ?? undefined);
   await insertPublicationEvent(db, {
     socialPostId: post.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "created",
     payload: { targetIds: input.targetIds }
   });
@@ -130,6 +160,9 @@ export async function createTeacherPublication(
 }
 
 export async function getTeacherPublication(postId: string): Promise<{ publication: PublicationDetail }> {
+  if (isPublicationDemoMode()) {
+    return getDemoPublication(postId);
+  }
   const db = getDbSafe();
   return { publication: await mapPublicationDetail(db, postId) };
 }
@@ -139,6 +172,9 @@ export async function updateTeacherPublication(
   postId: string,
   input: UpdatePublicationRequest
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return updateDemoPublication(ctx, postId, input);
+  }
   const db = getDbSafe();
   const post = await requireEditablePost(db, postId);
   const nextScheduledFor = input.scheduledFor === undefined
@@ -147,6 +183,14 @@ export async function updateTeacherPublication(
       ? null
       : new Date(input.scheduledFor);
   const nextStatus: PublicationPostStatus = post.status === "scheduled" || nextScheduledFor ? "scheduled" : "draft";
+  const nextPublishAllowed = input.publishAllowed ?? post.publishAllowed;
+  if (nextScheduledFor && !nextPublishAllowed) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Scheduled publications must be explicitly approved for delivery"
+    );
+  }
 
   const [updated] = await db
     .update(socialPosts)
@@ -158,7 +202,7 @@ export async function updateTeacherPublication(
       contentHash: hashContent(input.title?.trim() ?? post.title, input.bodyMd?.trim() ?? post.bodyMd),
       status: nextStatus,
       scheduledFor: nextScheduledFor,
-      publishAllowed: input.publishAllowed ?? post.publishAllowed,
+      publishAllowed: nextPublishAllowed,
       metadata: input.metadata ?? post.metadata,
       updatedAt: new Date()
     })
@@ -173,7 +217,7 @@ export async function updateTeacherPublication(
 
   await insertPublicationEvent(db, {
     socialPostId: updated.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "updated",
     payload: { updatedFields: Object.keys(input) }
   });
@@ -189,6 +233,9 @@ export async function publishTeacherPublication(
   postId: string,
   targetIds?: string[]
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return publishDemoPublication(ctx, postId, targetIds);
+  }
   const db = getDbSafe();
   const post = await requirePublishablePost(db, postId);
   if (!post.publishAllowed) {
@@ -209,12 +256,16 @@ export async function publishTeacherPublication(
 
   await insertPublicationEvent(db, {
     socialPostId: updated.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "publish_started",
     payload: { targetIds: resolvedTargetIds }
   });
 
-  await processSpecificTargets(resolvedTargetIds, { env: process.env, fetchImpl: fetch, workerId: `teacher:${ctx.user.id}` });
+  await processSpecificTargets(updated.id, {
+    env: process.env,
+    fetchImpl: fetch,
+    workerId: `teacher:${ctx.user.id}`
+  });
 
   return {
     publication: await mapPublicationDetail(db, updated.id),
@@ -228,6 +279,9 @@ export async function scheduleTeacherPublication(
   scheduledFor: string,
   targetIds?: string[]
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return scheduleDemoPublication(ctx, postId, scheduledFor, targetIds);
+  }
   const db = getDbSafe();
   const post = await requireEditablePost(db, postId);
   const when = new Date(scheduledFor);
@@ -254,7 +308,7 @@ export async function scheduleTeacherPublication(
 
   await insertPublicationEvent(db, {
     socialPostId: updated.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "scheduled",
     payload: { scheduledFor }
   });
@@ -269,6 +323,9 @@ export async function cancelTeacherPublicationSchedule(
   ctx: ServiceContext,
   postId: string
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return cancelDemoPublicationSchedule(ctx, postId);
+  }
   const db = getDbSafe();
   const post = await requireEditablePost(db, postId);
   if (post.status !== "scheduled") {
@@ -284,7 +341,7 @@ export async function cancelTeacherPublicationSchedule(
 
   await insertPublicationEvent(db, {
     socialPostId: updated.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "schedule_cancelled",
     payload: {}
   });
@@ -300,6 +357,9 @@ export async function retryTeacherPublication(
   postId: string,
   input: PublicationRetryRequest
 ): Promise<PublishMutationResult> {
+  if (isPublicationDemoMode()) {
+    return retryDemoPublication(ctx, postId, input);
+  }
   const db = getDbSafe();
   const original = await requirePost(db, postId);
   if (original.status !== "published" && original.status !== "failed") {
@@ -313,7 +373,7 @@ export async function retryTeacherPublication(
   const [copy] = await db
     .insert(socialPosts)
     .values({
-      createdByUserId: ctx.user.id,
+      createdByUserId: dbActorUserId(ctx),
       duplicateOfPostId: original.id,
       revision: original.revision + 1,
       title: original.title,
@@ -332,7 +392,7 @@ export async function retryTeacherPublication(
   await replacePostTargets(db, copy, resolvedTargetIds, scheduledFor ? "scheduled" : "pending", scheduledFor ?? undefined);
   await insertPublicationEvent(db, {
     socialPostId: copy.id,
-    actorUserId: ctx.user.id,
+    actorUserId: dbActorUserId(ctx),
     eventType: "retried",
     payload: { sourcePostId: original.id }
   });
@@ -348,6 +408,9 @@ export async function retryTeacherPublication(
 }
 
 export async function listTeacherPublicationTargets(): Promise<{ targets: PublicationTargetSummary[]; health: PublicationProviderHealth[] }> {
+  if (isPublicationDemoMode()) {
+    return listDemoPublicationTargets(false);
+  }
   const db = getDbSafe();
   const health = await getProviderHealth(process.env, fetch);
   const targets = await listPublicationTargets(db, false, health);
@@ -355,10 +418,16 @@ export async function listTeacherPublicationTargets(): Promise<{ targets: Public
 }
 
 export async function getPublicationProviderHealth(): Promise<{ health: PublicationProviderHealth[] }> {
+  if (isPublicationDemoMode()) {
+    return getDemoProviderHealth();
+  }
   return { health: await getProviderHealth(process.env, fetch) };
 }
 
 export async function listOwnerPublicationTargets(): Promise<{ targets: PublicationTargetSummary[]; health: PublicationProviderHealth[] }> {
+  if (isPublicationDemoMode()) {
+    return listDemoPublicationTargets(true);
+  }
   const db = getDbSafe();
   const health = await getProviderHealth(process.env, fetch);
   const targets = await listPublicationTargets(db, true, health);
@@ -366,9 +435,12 @@ export async function listOwnerPublicationTargets(): Promise<{ targets: Publicat
 }
 
 export async function createOwnerPublicationTarget(
-  _ctx: ServiceContext,
+  ctx: ServiceContext,
   input: CreatePublicationTargetRequest
 ): Promise<TargetMutationResult> {
+  if (isPublicationDemoMode()) {
+    return createDemoPublicationTarget(ctx, input);
+  }
   const db = getDbSafe();
   validateTargetConfig(input.provider, input.config, process.env);
   const [target] = await db
@@ -390,10 +462,13 @@ export async function createOwnerPublicationTarget(
 }
 
 export async function updateOwnerPublicationTarget(
-  _ctx: ServiceContext,
+  ctx: ServiceContext,
   targetId: string,
   input: UpdatePublicationTargetRequest
 ): Promise<TargetMutationResult> {
+  if (isPublicationDemoMode()) {
+    return updateDemoPublicationTarget(ctx, targetId, input);
+  }
   const db = getDbSafe();
   const existing = await db.query.publicationTargets.findFirst({
     where: (row) => eq(row.id, targetId)
@@ -421,7 +496,58 @@ export async function updateOwnerPublicationTarget(
   };
 }
 
+export async function archiveOwnerPublicationTarget(
+  ctx: ServiceContext,
+  targetId: string
+): Promise<TargetMutationResult> {
+  if (isPublicationDemoMode()) {
+    return archiveDemoPublicationTarget(ctx, targetId);
+  }
+  const db = getDbSafe();
+  const existing = await db.query.publicationTargets.findFirst({
+    where: (row) => eq(row.id, targetId)
+  });
+  if (!existing) {
+    throw new ApiError(404, "NOT_FOUND", "Publication target not found");
+  }
+
+  const actionableLinks = await db.query.socialPostTargets.findMany({
+    where: (row) =>
+      and(
+        eq(row.publicationTargetId, targetId),
+        inArray(row.status, ["pending", "scheduled", "publishing"])
+      ),
+    limit: 1
+  });
+  if (actionableLinks.length > 0) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Publication target has pending or scheduled deliveries and cannot be archived"
+    );
+  }
+
+  const [archived] = await db
+    .update(publicationTargets)
+    .set({ status: "archived", updatedAt: new Date() })
+    .where(eq(publicationTargets.id, targetId))
+    .returning();
+
+  return {
+    target: await mapPublicationTarget(
+      db,
+      archived,
+      true,
+      await getProviderHealth(process.env, fetch)
+    ),
+    action: "archived"
+  };
+}
+
 export async function processInternalPublications(options: ProcessOptions = {}): Promise<ProcessPublicationsResponse> {
+  if (isPublicationDemoMode()) {
+    return processDemoPublications(options.limit ?? 20);
+  }
   const db = getDbSafe();
   const workerId = options.workerId ?? "cron";
   const dueTargets = await claimDueTargets(db, options.limit ?? 20, workerId);
@@ -454,10 +580,18 @@ export function renderPublicationPreview(bodyMd: string, excerpt?: string | null
   return pieces.join("\n\n");
 }
 
-export async function processSpecificTargets(targetIds: string[], options: ProcessOptions = {}) {
+export async function processSpecificTargets(postId: string, options: ProcessOptions = {}) {
   const db = getDbSafe();
-  for (const targetId of targetIds) {
-    const claimed = await claimSpecificTarget(db, targetId, options.workerId ?? "manual");
+  const postTargets = await db.query.socialPostTargets.findMany({
+    where: (row) => eq(row.socialPostId, postId),
+    orderBy: (row, { asc: orderAsc }) => [orderAsc(row.createdAt)]
+  });
+  for (const postTarget of postTargets) {
+    const claimed = await claimSpecificTarget(
+      db,
+      postTarget.id,
+      options.workerId ?? "manual"
+    );
     if (!claimed) continue;
     await deliverClaimedTarget(db, claimed.post, claimed.target, {
       env: options.env ?? process.env,
@@ -496,8 +630,14 @@ async function requireEditablePost(db: Db, postId: string) {
 
 async function requirePublishablePost(db: Db, postId: string) {
   const post = await requirePost(db, postId);
-  if (post.status === "published") {
-    throw new ApiError(409, "CONFLICT", "Published publications are immutable");
+  if (post.status !== "draft" && post.status !== "scheduled") {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      post.status === "failed"
+        ? "Failed publications must be resent through retry"
+        : "Published or in-flight publications are immutable"
+    );
   }
   return post;
 }
@@ -519,6 +659,13 @@ async function replacePostTargets(
   });
   if (targets.length !== targetIds.length) {
     throw new ApiError(400, "VALIDATION_ERROR", "One or more publication targets do not exist");
+  }
+  if (targets.some((target) => target.status !== "active")) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Only active publication targets can be selected for delivery"
+    );
   }
 
   await db.delete(socialPostTargets).where(eq(socialPostTargets.socialPostId, post.id));
@@ -717,7 +864,8 @@ export function createTelegramProvider(env: NodeJS.ProcessEnv, fetchImpl: Option
     return doFetch(`${baseUrl}/${path}`, {
       method: body ? "POST" : "GET",
       headers: body ? { "content-type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(8_000)
     });
   }
 
@@ -919,6 +1067,26 @@ async function deliverClaimedTarget(
     await markTargetFailed(db, post, postTarget, "TARGET_NOT_FOUND", "Publication target no longer exists");
     return "failed";
   }
+  if (!post.publishAllowed) {
+    await markTargetFailed(
+      db,
+      post,
+      postTarget,
+      "PUBLISH_NOT_APPROVED",
+      "Publication is not approved for delivery"
+    );
+    return "failed";
+  }
+  if (target.status !== "active") {
+    await markTargetFailed(
+      db,
+      post,
+      postTarget,
+      "TARGET_INACTIVE",
+      "Publication target is not active"
+    );
+    return "failed";
+  }
 
   const idempotencyKey = buildDeliveryKey(post.id, target.id, post.revision);
   const delivery = await ensureDeliveryRecord(db, postTarget, target.targetType as PublicationProvider, idempotencyKey, options.workerId);
@@ -1118,6 +1286,14 @@ function readAllowedChatIds(env: NodeJS.ProcessEnv) {
 function normalizeEnvValue(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function dbActorUserId(ctx: ServiceContext) {
+  const value = ctx.user.dbUserId ?? ctx.user.id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new SetupRequiredError("A database-backed user identity is required");
+  }
+  return value;
 }
 
 function normalizeNullableText(value: string | null | undefined) {

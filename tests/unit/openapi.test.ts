@@ -165,6 +165,27 @@ describe("openapi contract", () => {
     ).not.toHaveProperty("teacher_notes");
   });
 
+  it("documents publication CMS, provider health, owner CRUD, and cron methods", () => {
+    expect(
+      openApiDocument.paths["/api/v1/teacher/publication-providers/health"].get
+        .operationId
+    ).toBe("getPublicationProviderHealth");
+    expect(
+      openApiDocument.paths["/api/v1/owner/publication-targets/{targetId}"].delete
+        .operationId
+    ).toBe("archiveOwnerPublicationTarget");
+    expect(
+      openApiDocument.paths["/api/v1/internal/publications/process"].get.operationId
+    ).toBe("processInternalPublicationsCron");
+    expect(
+      openApiDocument.paths["/api/v1/internal/publications/process"].get.security
+    ).toEqual([{ cronSecret: [] }]);
+    expect(
+      openApiDocument.paths["/api/v1/internal/publications/process"].post
+        .requestBody.content["application/json"].schema.$ref
+    ).toBe("#/components/schemas/ProcessPublicationsRequest");
+  });
+
   it("matches the checked-in generated openapi document", () => {
     const generated = readFileSync(join(process.cwd(), "packages/api-contract/openapi.json"), "utf8").trim();
 

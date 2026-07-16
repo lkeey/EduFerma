@@ -49,6 +49,15 @@
     },
     {
       "name": "Analytics"
+    },
+    {
+      "name": "Publications"
+    },
+    {
+      "name": "Owner"
+    },
+    {
+      "name": "Internal"
     }
   ],
   "components": {
@@ -57,6 +66,11 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Clerk session"
+      },
+      "cronSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "CRON_SECRET"
       }
     },
     "schemas": {
@@ -4138,7 +4152,8 @@
             "type": "string",
             "enum": [
               "created",
-              "updated"
+              "updated",
+              "archived"
             ]
           }
         },
@@ -9471,7 +9486,7 @@
         ]
       }
     },
-    "/api/v1/teacher/publication-targets/health": {
+    "/api/v1/teacher/publication-providers/health": {
       "get": {
         "operationId": "getPublicationProviderHealth",
         "tags": [
@@ -9765,9 +9780,139 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "archiveOwnerPublicationTarget",
+        "tags": [
+          "Publications",
+          "Owner"
+        ],
+        "summary": "Archive an unused publication target",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationTargetMutationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "targetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/v1/internal/publications/process": {
+      "get": {
+        "operationId": "processInternalPublicationsCron",
+        "tags": [
+          "Internal",
+          "Publications"
+        ],
+        "summary": "Process due publication deliveries from Vercel or GitHub cron",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessPublicationsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ]
+      },
       "post": {
         "operationId": "processInternalPublications",
         "tags": [
@@ -9817,6 +9962,11 @@
             }
           }
         },
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

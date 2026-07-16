@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { POST as processPublications } from "../../apps/web/src/app/api/v1/internal/publications/process/route";
+import {
+  GET as processPublicationsCron,
+  POST as processPublications
+} from "../../apps/web/src/app/api/v1/internal/publications/process/route";
+import { DELETE as archiveOwnerTarget } from "../../apps/web/src/app/api/v1/owner/publication-targets/[targetId]/route";
 import { GET as ownerTargets } from "../../apps/web/src/app/api/v1/owner/publication-targets/route";
+import { GET as providerHealth } from "../../apps/web/src/app/api/v1/teacher/publication-providers/health/route";
 
 const originalEnv = { ...process.env };
 
@@ -40,6 +45,20 @@ describe("publication route guards", () => {
     expect(payload.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("protects the GET cron endpoint used by Vercel and GitHub Actions", async () => {
+    process.env.CRON_SECRET = "right-secret";
+
+    const response = await processPublicationsCron(
+      request("/api/v1/internal/publications/process?limit=5", {
+        headers: { authorization: "Bearer wrong-secret" }
+      })
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe("UNAUTHORIZED");
+  });
+
   it("keeps owner publication targets owner-only", async () => {
     process.env.ENABLE_DEMO_AUTH = "true";
 
@@ -50,5 +69,25 @@ describe("publication route guards", () => {
 
     expect(response.status).toBe(403);
     expect(payload.error.code).toBe("FORBIDDEN");
+  });
+
+  it("keeps target archive owner-only and provider health teacher-only", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const archiveResponse = await archiveOwnerTarget(
+      request("/api/v1/owner/publication-targets/demo-target", {
+        method: "DELETE",
+        headers: { "x-demo-role": "teacher" }
+      }),
+      { params: Promise.resolve({ targetId: "demo-target" }) }
+    );
+    const healthResponse = await providerHealth(
+      request("/api/v1/teacher/publication-providers/health", {
+        headers: { "x-demo-role": "student" }
+      })
+    );
+
+    expect(archiveResponse.status).toBe(403);
+    expect(healthResponse.status).toBe(403);
   });
 });

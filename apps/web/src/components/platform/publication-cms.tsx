@@ -72,7 +72,7 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
     const [postsResponse, targetsResponse, healthResponse] = await Promise.all([
       fetch("/api/v1/teacher/publications"),
       fetch(isOwner ? "/api/v1/owner/publication-targets" : "/api/v1/teacher/publication-targets"),
-      fetch("/api/v1/teacher/publication-targets/health")
+      fetch("/api/v1/teacher/publication-providers/health")
     ]);
     const postsPayload = await postsResponse.json();
     const targetsPayload = await targetsResponse.json();
@@ -82,10 +82,25 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
     if (!targetsResponse.ok) throw new Error(targetsPayload.error?.message ?? "Не удалось обновить цели публикации");
     if (!healthResponse.ok) throw new Error(healthPayload.error?.message ?? "Не удалось обновить health providers");
 
-    setPosts(postsPayload.posts);
+    const detailedPosts = await Promise.all(
+      postsPayload.posts.map(async (post: { id: string }) => {
+        const response = await fetch(
+          `/api/v1/teacher/publications/${encodeURIComponent(post.id)}`
+        );
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            payload.error?.message ?? "Не удалось загрузить публикацию"
+          );
+        }
+        return payload.publication as PublicationDetail;
+      })
+    );
+
+    setPosts(detailedPosts);
     setTargets(targetsPayload.targets);
     setHealth(healthPayload.health);
-    if (!selectedId && postsPayload.posts[0]?.id) setSelectedId(postsPayload.posts[0].id);
+    if (!selectedId && detailedPosts[0]?.id) setSelectedId(detailedPosts[0].id);
   }
 
   async function createDraft(event: FormEvent) {
@@ -153,6 +168,7 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message ?? "Не удалось выполнить действие");
       await refresh();
+      setSelectedId(payload.publication.id);
       setNotice({ kind: "success", message: actionLabel(action) });
     } catch (error) {
       setNotice({ kind: "error", message: error instanceof Error ? error.message : "Ошибка действия" });
@@ -196,6 +212,53 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
       setNotice({ kind: "success", message: "Цель публикации создана." });
     } catch (error) {
       setNotice({ kind: "error", message: error instanceof Error ? error.message : "Ошибка создания цели" });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function mutateOwnerTarget(
+    targetId: string,
+    action: "activate" | "pause" | "archive"
+  ) {
+    if (!isOwner) return;
+    setPending(true);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/v1/owner/publication-targets/${encodeURIComponent(targetId)}`,
+        action === "archive"
+          ? { method: "DELETE" }
+          : {
+              method: "PATCH",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                status: action === "activate" ? "active" : "paused"
+              })
+            }
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          payload.error?.message ?? "Не удалось изменить publication target"
+        );
+      }
+      await refresh();
+      setNotice({
+        kind: "success",
+        message:
+          action === "archive"
+            ? "Publication target архивирован."
+            : action === "activate"
+              ? "Publication target активирован."
+              : "Publication target приостановлен."
+      });
+    } catch (error) {
+      setNotice({
+        kind: "error",
+        message:
+          error instanceof Error ? error.message : "Ошибка изменения publication target"
+      });
     } finally {
       setPending(false);
     }
@@ -273,6 +336,9 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
               <label className="task-picker-item" key={target.id}>
                 <input
                   checked={draft.targetIds.includes(target.id)}
+                  disabled={
+                    target.status !== "active" && !draft.targetIds.includes(target.id)
+                  }
                   type="checkbox"
                   onChange={() => setDraft((current) => ({
                     ...current,
@@ -283,7 +349,7 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
                 />
                 <span>
                   <strong>{target.title}</strong>
-                  <small>{target.provider} · {target.recipientMode} · {target.recipientCount} получателей</small>
+                  <small>{target.provider} · {target.status} · {target.recipientMode} · {target.recipientCount} получателей</small>
                   <small>{target.healthStatus}: {target.healthMessage}</small>
                 </span>
               </label>
@@ -293,7 +359,15 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
           <div className="assignment-composer-footer">
             {selected ? (
               <>
-                <Button type="button" onClick={saveSelected} disabled={pending || !selected || selected.status === "published"}>
+                <Button
+                  type="button"
+                  onClick={saveSelected}
+                  disabled={
+                    pending ||
+                    !selected ||
+                    !["draft", "scheduled"].includes(selected.status)
+                  }
+                >
                   {pending ? "Сохраняем..." : "Сохранить"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => runAction("publish")} disabled={pending || !draft.publishAllowed}>
@@ -396,7 +470,7 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
             ))}
           </tbody>
         </table>
-        {notice ? <div className="notice"><p>{notice.message}</p></div> : null}
+        {notice ? <div aria-live="polite" className="notice"><p>{notice.message}</p></div> : null}
       </Panel>
 
       {isOwner ? (
@@ -406,23 +480,77 @@ export function PublicationCms({ initial, isOwner }: PublicationCmsProps) {
             <Badge>owner</Badge>
           </div>
           <form className="stack" onSubmit={createOwnerTarget}>
-            <input className="text-field" value={ownerTarget.slug} onChange={(event) => setOwnerTarget((current) => ({ ...current, slug: event.target.value }))} placeholder="slug" />
-            <input className="text-field" value={ownerTarget.title} onChange={(event) => setOwnerTarget((current) => ({ ...current, title: event.target.value }))} placeholder="Display title" />
-            <select className="text-field" value={ownerTarget.provider} onChange={(event) => setOwnerTarget((current) => ({ ...current, provider: event.target.value }))}>
+            <label className="field-label" htmlFor="publication-target-slug">Slug</label>
+            <input id="publication-target-slug" className="text-field" value={ownerTarget.slug} onChange={(event) => setOwnerTarget((current) => ({ ...current, slug: event.target.value }))} placeholder="slug" />
+            <label className="field-label" htmlFor="publication-target-title">Название цели</label>
+            <input id="publication-target-title" className="text-field" value={ownerTarget.title} onChange={(event) => setOwnerTarget((current) => ({ ...current, title: event.target.value }))} placeholder="Display title" />
+            <label className="field-label" htmlFor="publication-target-provider">Provider</label>
+            <select id="publication-target-provider" className="text-field" value={ownerTarget.provider} onChange={(event) => setOwnerTarget((current) => ({ ...current, provider: event.target.value }))}>
               <option value="telegram">telegram</option>
               <option value="vk">vk</option>
             </select>
-            <select className="text-field" value={ownerTarget.recipientMode} onChange={(event) => setOwnerTarget((current) => ({ ...current, recipientMode: event.target.value }))}>
+            <label className="field-label" htmlFor="publication-target-recipient-mode">Режим получателей</label>
+            <select id="publication-target-recipient-mode" className="text-field" value={ownerTarget.recipientMode} onChange={(event) => setOwnerTarget((current) => ({ ...current, recipientMode: event.target.value }))}>
               <option value="static">static</option>
               <option value="subscriber-opt-in">subscriber-opt-in</option>
             </select>
             {ownerTarget.provider === "telegram" && ownerTarget.recipientMode === "static" ? (
-              <input className="text-field" value={ownerTarget.chatId} onChange={(event) => setOwnerTarget((current) => ({ ...current, chatId: event.target.value }))} placeholder="Allowed Telegram chat id" />
+              <>
+                <label className="field-label" htmlFor="publication-target-chat-id">Telegram chat ID</label>
+                <input id="publication-target-chat-id" className="text-field" value={ownerTarget.chatId} onChange={(event) => setOwnerTarget((current) => ({ ...current, chatId: event.target.value }))} placeholder="Allowed Telegram chat id" />
+              </>
             ) : null}
             <Button type="submit" disabled={pending || !ownerTarget.slug.trim() || !ownerTarget.title.trim()}>
               Создать target
             </Button>
           </form>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>Provider</th>
+                <th>Статус</th>
+                <th>Управление</th>
+              </tr>
+            </thead>
+            <tbody>
+              {targets.map((target) => (
+                <tr key={target.id}>
+                  <td>{target.title}<br /><small>{target.slug}</small></td>
+                  <td>{target.provider}</td>
+                  <td><Badge>{target.status}</Badge></td>
+                  <td>
+                    <div className="filter-bar">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={pending || target.status === "active"}
+                        onClick={() => mutateOwnerTarget(target.id, "activate")}
+                      >
+                        Активировать
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={pending || target.status !== "active"}
+                        onClick={() => mutateOwnerTarget(target.id, "pause")}
+                      >
+                        Пауза
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        disabled={pending || target.status === "archived"}
+                        onClick={() => mutateOwnerTarget(target.id, "archive")}
+                      >
+                        Архивировать
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Panel>
       ) : null}
     </div>
@@ -457,7 +585,7 @@ function fromDateTimeLocal(value: string) {
 }
 
 function actionLabel(action: "publish" | "cancel-schedule" | "retry" | "schedule") {
-  if (action === "publish") return "Публикация отправлена в доставку.";
+  if (action === "publish") return "Публикация обработана. Проверьте статус доставки.";
   if (action === "schedule") return "Публикация поставлена в расписание.";
   if (action === "retry") return "Создана новая ревизия публикации.";
   return "Расписание публикации отменено.";

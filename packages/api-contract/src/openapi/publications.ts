@@ -127,7 +127,7 @@ export const publicationSchemas: Record<string, JsonSchema> = {
   }),
   PublicationTargetMutationResponse: objectSchema({
     target: ref("PublicationTargetSummary"),
-    action: { type: "string", enum: ["created", "updated"] }
+    action: { type: "string", enum: ["created", "updated", "archived"] }
   }),
   ProcessPublicationsResponse: objectSchema({
     ok: booleanSchema,

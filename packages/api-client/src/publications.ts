@@ -64,7 +64,7 @@ export class EduFermaPublicationsApiClient extends EduFermaApiClient {
   }
 
   getTeacherPublicationProviderHealth() {
-    return this.get("/api/v1/teacher/publication-targets/health")
+    return this.get("/api/v1/teacher/publication-providers/health")
       .then((payload) => PublicationProviderHealthResponseSchema.parse(payload));
   }
 
@@ -80,6 +80,12 @@ export class EduFermaPublicationsApiClient extends EduFermaApiClient {
   updateOwnerPublicationTarget(targetId: string, input: UpdatePublicationTargetRequest) {
     return this.patch(`/api/v1/owner/publication-targets/${encodeURIComponent(targetId)}`, UpdatePublicationTargetRequestSchema.parse(input))
       .then((payload) => PublicationTargetMutationResponseSchema.parse(payload));
+  }
+
+  archiveOwnerPublicationTarget(targetId: string) {
+    return this.request(`/api/v1/owner/publication-targets/${encodeURIComponent(targetId)}`, {
+      method: "DELETE"
+    }).then((payload) => PublicationTargetMutationResponseSchema.parse(payload));
   }
 
   processInternalPublications(input: ProcessPublicationsRequest = {}) {

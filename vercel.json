@@ -2,11 +2,5 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm turbo build --filter=@eduferma/web",
   "outputDirectory": ".next",
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/v1/internal/publications/process",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "framework": "nextjs"
 }

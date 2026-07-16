@@ -124,7 +124,7 @@ export const PublicationTargetResponseSchema = z.object({
 
 export const PublicationTargetMutationResponseSchema = z.object({
   target: PublicationTargetSummarySchema,
-  action: z.enum(["created", "updated"])
+  action: z.enum(["created", "updated", "archived"])
 });
 
 export const PublicationProviderHealthResponseSchema = z.object({

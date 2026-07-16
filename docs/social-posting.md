@@ -1,48 +1,73 @@
-# Social Posting MVP
+# Publication CMS
 
-EduFerma can prepare regular social media post drafts from educational context, but the MVP does not publish anything to real social networks.
+EduFerma provides a teacher CMS at `/teacher/publications` for reviewed public
+content. It supports drafts, preview, target selection, scheduling, cancellation,
+delivery history, and retry through a new immutable revision.
 
-## Scope
+## API
 
-- Build a content plan item for a public-safe educational topic.
-- Convert the plan item into a prompt input.
-- Run a privacy guard before draft generation.
-- Generate a deterministic draft for dry-run review.
-- Keep every generated draft in `approval_required` until a teacher explicitly approves it in a future workflow.
+- `GET/POST /api/v1/teacher/publications`
+- `GET/PATCH /api/v1/teacher/publications/{postId}`
+- `POST /api/v1/teacher/publications/{postId}/publish`
+- `POST /api/v1/teacher/publications/{postId}/schedule`
+- `POST /api/v1/teacher/publications/{postId}/cancel-schedule`
+- `POST /api/v1/teacher/publications/{postId}/retry`
+- `GET /api/v1/teacher/publication-targets`
+- `GET /api/v1/teacher/publication-providers/health`
+- owner CRUD under `/api/v1/owner/publication-targets`
+- protected `GET/POST /api/v1/internal/publications/process`
 
-## Safe Content Sources
+Published posts are immutable. Retry creates a new `social_posts` row with
+`duplicate_of_post_id` and a new revision. Every post/target/revision delivery
+uses a unique idempotency key and an atomic scheduled-to-publishing claim.
 
-Recommended post themes:
+## Telegram
 
-- short tips for EGE/OGE informatics tasks;
-- anonymized solution patterns;
-- progress summaries without learner names, contacts, IDs, schedules, or family details;
-- study habits and mini-checklists.
+Telegram uses the official Bot API:
 
-Do not pass private student records, emails, phone numbers, Telegram/VK handles, parent or guardian details, source paths with personal names, or answer-only teacher notes into the prompt input.
+- health: `getMe`;
+- delivery: `sendMessage`;
+- the returned Telegram `message_id` is stored in `social_deliveries`.
 
-## Pipeline
+Static targets are owner-managed and accepted only when their `chatId` is in
+`TELEGRAM_ALLOWED_CHAT_IDS`. Subscriber targets read only active private opt-in
+subscribers from Postgres. Browser requests never supply an arbitrary chat ID.
 
-1. `SocialContentPlanItem` describes the public topic, audience, schedule, source summary, learning outcome, and optional example task.
-2. `createSocialPostPromptInput` reduces that item to a generation input.
-3. `runSocialPostPrivacyGuard` blocks obvious personal data and learner metadata.
-4. `generateSocialPostDraft` returns either:
-   - `blocked_privacy_review` with an empty body; or
-   - `approval_required` with `publishAllowed: false`.
-5. `buildSocialPostsDryRun` in the worker module creates dry-run output only. It never calls social network APIs.
+Required production values:
 
-Run the current worker dry-run:
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_OWNER_CHAT_ID`
+- `TELEGRAM_ALLOWED_CHAT_IDS`
 
-```bash
-pnpm --filter @eduferma/worker dev -- social:posts:dry-run
-```
+## VK
 
-## Future Integrations
+VK implements the same provider contract. Health is `setup_required` until
+`VK_ACCESS_TOKEN` and `VK_GROUP_ID` are configured. Live VK delivery remains
+disabled; acceptance is based on provider contract tests and setup UI.
 
-Future publication integrations must add:
+## Five-Minute Processor
 
-- explicit teacher approval storage;
-- per-channel formatting rules;
-- audit log for source input, reviewer, approval time, and destination;
-- opt-in secrets configured outside the repository;
-- tests proving student-only fields cannot reach published content.
+Vercel invokes configured cron routes with an HTTP `GET` request and
+`Authorization: Bearer $CRON_SECRET`. Hobby projects allow only one cron run per
+day, so this repository uses `.github/workflows/publications-cron.yml` as the
+five-minute fallback.
+
+Configure:
+
+- GitHub secret `CRON_SECRET`;
+- GitHub variable `PUBLICATIONS_CRON_FALLBACK_ENABLED=true`.
+
+The workflow calls the fixed public EduFerma production processor URL. It does
+not accept a variable destination that could receive the bearer secret.
+
+If the Vercel project is upgraded to Pro, the same GET endpoint can be registered
+as `*/5 * * * *` in Vercel and the GitHub fallback variable can be disabled.
+Concurrent invocations are safe because target claiming and delivery keys are
+idempotent.
+
+## Privacy
+
+Only reviewed public copy should be placed in `bodyMd`. Student answers,
+solutions, teacher notes, private profile data, and local source paths must
+never be published. Tokens and provider credentials remain environment-only and
+are redacted from delivery errors.
