@@ -32,6 +32,7 @@ Use free-tier resources where available:
 - Clerk for invite-only auth;
 - Neon Postgres for relational data;
 - Vercel Blob for future file storage.
+- a private Vercel Blob store for raw task-import files.
 
 If Marketplace provisioning is unavailable from Codex tools, create resources in
 the Vercel dashboard and add the resulting env vars to the Vercel project. Do
@@ -46,6 +47,17 @@ For private dashboards, production must have these auth env vars configured:
 If `/api/health` reports `database:true` and `clerk:false`, the app has remote
 DB access but cannot authenticate real users. Add the Clerk env vars in Vercel
 and keep server-side role guards enabled.
+
+## Task Import Storage
+
+Production task imports require a private Vercel Blob store connected to the
+project and `BLOB_READ_WRITE_TOKEN`. Raw uploads and URL responses are stored
+with `access: private`; production does not fall back to local disk.
+
+The built-in URL allowlist contains Kompege, KPolyakov, `3.shkolkovo.online`
+and FIPI. Add explicitly reviewed domains through the comma-separated
+`TASK_IMPORT_ALLOWLIST_DOMAINS` variable. Localhost, literal IP URLs, private
+DNS results, non-standard ports, cookies and unchecked redirects are rejected.
 
 ## Telegram
 

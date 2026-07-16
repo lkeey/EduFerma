@@ -24,7 +24,7 @@ export class EduFermaApiClient {
     return this.request<T>(path, { method: "PATCH", body: body === undefined ? undefined : JSON.stringify(body) });
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  async request<T>(path: string, init: RequestInit): Promise<T> {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       ...init,
       headers: {

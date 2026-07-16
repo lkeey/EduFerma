@@ -83,7 +83,8 @@ function checkOpenApi(): Finding[] {
       findings.push({ severity: "ERROR", path: route.path, message: "mutating operation missing requestBody" });
     }
     if (route.requestBody) {
-      const requestSchema = getJsonSchema(operation, ["requestBody", "content", "application/json", "schema"]);
+      const requestContentType = route.requestContentType ?? "application/json";
+      const requestSchema = getJsonSchema(operation, ["requestBody", "content", requestContentType, "schema"]);
       if (isGenericObjectSchema(requestSchema)) {
         findings.push({ severity: "ERROR", path: route.path, message: "mutating operation requestBody must use a named OpenAPI schema" });
       }
@@ -157,8 +158,18 @@ function checkRoutes(): Finding[] {
       if (!definition.public && !source.includes("requireApiRole")) {
         findings.push({ severity: "ERROR", path: relative(root, file), message: "protected route does not call requireApiRole" });
       }
-      if (definition.requestBody && !source.includes("parseJson")) {
-        findings.push({ severity: "ERROR", path: relative(root, file), message: "mutating route does not validate JSON body" });
+      if (definition.requestBody) {
+        const validationMarker =
+          (definition.requestContentType ?? "application/json") === "application/json"
+            ? "parseJson"
+            : "validateImportUploadRequest";
+        if (!source.includes(validationMarker)) {
+          findings.push({
+            severity: "ERROR",
+            path: relative(root, file),
+            message: `mutating route does not validate ${definition.requestContentType ?? "application/json"} body`
+          });
+        }
       }
       if (apiPath.includes("/student/") && forbiddenStudentFields.some((field) => source.includes(field))) {
         findings.push({ severity: "ERROR", path: relative(root, file), message: "student route references forbidden teacher-only fields" });

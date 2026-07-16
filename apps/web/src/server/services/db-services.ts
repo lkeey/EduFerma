@@ -24,6 +24,7 @@ import {
 } from "@eduferma/core/services";
 import type { OwnerAccessListQuery, ApproveAccessRequest, RejectAccessRequest, UpdateOwnerUserAccessRequest } from "@eduferma/validators";
 import { checkShortAnswer, updateMastery } from "@eduferma/core";
+import { createTeacherImportServices } from "@/server/imports/service";
 import type {
   AttemptResult,
   CreateAssignmentInput,
@@ -62,6 +63,13 @@ type DbTask = typeof tasks.$inferSelect;
 const teacherRoles = new Set(["owner", "teacher", "tutor"]);
 
 export function createDbPlatformServices() {
+  const teacherImportServices = createTeacherImportServices(
+    getDb(),
+    requireTeacherDbUser,
+    requireTaskByIdOrTaskId,
+    mapDbTaskToRawTask,
+    serializeTeacherTask
+  );
   return {
     common: {
       async getMe(ctx: ServiceContext) {
@@ -193,6 +201,7 @@ export function createDbPlatformServices() {
       }
     },
     teacher: {
+      ...teacherImportServices,
       async getDashboard(ctx: ServiceContext) {
         const { db, user } = await requireTeacherDbUser(ctx);
         const [dbStudents, pendingAttempts, progress] = await Promise.all([
@@ -281,14 +290,6 @@ export function createDbPlatformServices() {
         const { db, user } = await requireTeacherDbUser(ctx);
         const student = await requireTeacherStudent(db, user, studentId);
         return { progress: await getProgressForStudent(db, student.id) };
-      },
-      async getTaskBank(ctx: ServiceContext) {
-        await requireTeacherDbUser(ctx);
-        const taskRows = await getDb().query.tasks.findMany({
-          orderBy: (row, { desc }) => [desc(row.updatedAt)],
-          limit: 50
-        });
-        return { tasks: taskRows.map(mapDbTaskToRawTask).map(serializeTeacherTask), page: 1, pageSize: 50, total: taskRows.length };
       },
       async getTask(ctx: ServiceContext, taskId: string) {
         await requireTeacherDbUser(ctx);
