@@ -14,6 +14,7 @@ import {
   type ClerkE2EIdentity,
   type ClerkE2ERole
 } from "./lib/clerk-e2e-identities";
+import { createTransactionalDb } from "./lib/transactional-db";
 
 const clerkApiUrl = "https://api.clerk.com";
 const applyConfirmation = "PROVISION PRODUCTION CLERK E2E";
@@ -34,7 +35,8 @@ type ProvisionResult = {
 };
 
 type Db = ReturnType<typeof getDb>;
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+type TransactionalDb = ReturnType<typeof createTransactionalDb>["db"];
+type Tx = Parameters<Parameters<TransactionalDb["transaction"]>[0]>[0];
 type DbUser = typeof users.$inferSelect;
 
 async function main() {
@@ -86,53 +88,44 @@ async function main() {
     }))
   );
 
-  const dbResults = await db.transaction(async (tx) => {
-    const upserted = new Map<
+  const transactionClient = createTransactionalDb();
+  let dbResults: {
+    upserted: Map<
       ClerkE2ERole,
       { user: DbUser; existed: boolean; studentProfileUpserted: boolean }
-    >();
+    >;
+    teacherStudentLinkUpserted: boolean;
+  };
+  try {
+    dbResults = await transactionClient.db.transaction(async (tx) => {
+      const upserted = new Map<
+        ClerkE2ERole,
+        { user: DbUser; existed: boolean; studentProfileUpserted: boolean }
+      >();
 
-    for (const entry of clerkUsers) {
-      const result = await upsertDbIdentity(
-        tx,
-        entry.identity,
-        entry.user,
-        existingDbUsers.find(
-          (existing) =>
-            existing?.email.toLowerCase() === entry.identity.email.toLowerCase()
-        )
-      );
-      upserted.set(entry.identity.role, result);
-    }
+      for (const entry of clerkUsers) {
+        const result = await upsertDbIdentity(
+          tx,
+          entry.identity,
+          entry.user,
+          existingDbUsers.find(
+            (existing) =>
+              existing?.email.toLowerCase() === entry.identity.email.toLowerCase()
+          )
+        );
+        upserted.set(entry.identity.role, result);
+      }
 
-    const owner = upserted.get("owner")!.user;
-    for (const entry of clerkUsers) {
-      const target = upserted.get(entry.identity.role)!.user;
-      await tx
-        .insert(accessRequests)
-        .values({
-          clerkSubject: entry.user.id,
-          requestedByUserId: owner.id,
-          targetUserId: target.id,
-          requestKind: "access",
-          requestedRole: entry.identity.role,
-          requesterEmail: entry.identity.email,
-          requesterName: entry.identity.displayName,
-          status: "approved",
-          reviewedByUserId: owner.id,
-          reviewedAt: new Date(),
-          decisionNoteMd: "Dedicated isolated production E2E identity.",
-          lastSeenAt: new Date(),
-          metadata: {
-            edufermaE2E: true,
-            isolated: true,
-            provisioner: "scripts/provision-clerk-e2e-users.ts"
-          }
-        })
-        .onConflictDoUpdate({
-          target: accessRequests.clerkSubject,
-          set: {
+      const owner = upserted.get("owner")!.user;
+      for (const entry of clerkUsers) {
+        const target = upserted.get(entry.identity.role)!.user;
+        await tx
+          .insert(accessRequests)
+          .values({
+            clerkSubject: entry.user.id,
+            requestedByUserId: owner.id,
             targetUserId: target.id,
+            requestKind: "access",
             requestedRole: entry.identity.role,
             requesterEmail: entry.identity.email,
             requesterName: entry.identity.displayName,
@@ -145,31 +138,52 @@ async function main() {
               edufermaE2E: true,
               isolated: true,
               provisioner: "scripts/provision-clerk-e2e-users.ts"
-            },
-            updatedAt: new Date()
-          }
-        });
-    }
+            }
+          })
+          .onConflictDoUpdate({
+            target: accessRequests.clerkSubject,
+            set: {
+              targetUserId: target.id,
+              requestedRole: entry.identity.role,
+              requesterEmail: entry.identity.email,
+              requesterName: entry.identity.displayName,
+              status: "approved",
+              reviewedByUserId: owner.id,
+              reviewedAt: new Date(),
+              decisionNoteMd: "Dedicated isolated production E2E identity.",
+              lastSeenAt: new Date(),
+              metadata: {
+                edufermaE2E: true,
+                isolated: true,
+                provisioner: "scripts/provision-clerk-e2e-users.ts"
+              },
+              updatedAt: new Date()
+            }
+          });
+      }
 
-    const teacher = upserted.get("teacher")!.user;
-    const studentUser = upserted.get("student")!.user;
-    const student = await tx.query.students.findFirst({
-      where: (row) => eq(row.userId, studentUser.id)
+      const teacher = upserted.get("teacher")!.user;
+      const studentUser = upserted.get("student")!.user;
+      const student = await tx.query.students.findFirst({
+        where: (row) => eq(row.userId, studentUser.id)
+      });
+      if (!student) {
+        throw new Error("The isolated E2E student profile was not created.");
+      }
+
+      await tx
+        .insert(teacherStudentLinks)
+        .values({ teacherUserId: teacher.id, studentId: student.id })
+        .onConflictDoNothing();
+
+      return {
+        upserted,
+        teacherStudentLinkUpserted: true
+      };
     });
-    if (!student) {
-      throw new Error("The isolated E2E student profile was not created.");
-    }
-
-    await tx
-      .insert(teacherStudentLinks)
-      .values({ teacherUserId: teacher.id, studentId: student.id })
-      .onConflictDoNothing();
-
-    return {
-      upserted,
-      teacherStudentLinkUpserted: true
-    };
-  });
+  } finally {
+    await transactionClient.close();
+  }
 
   const results: ProvisionResult[] = clerkUsers.map((entry) => {
     const dbResult = dbResults.upserted.get(entry.identity.role)!;
