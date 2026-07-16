@@ -65,6 +65,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm typecheck:e2e:clerk
+      - run: pnpm typecheck:production:telegram
       - run: pnpm test
       - run: pnpm web:self-review
 
