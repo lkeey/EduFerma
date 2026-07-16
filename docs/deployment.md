@@ -7,6 +7,7 @@ Production promotion is intentionally separate and requires confirmation after:
 ```bash
 pnpm lint
 pnpm typecheck
+pnpm typecheck:e2e:clerk
 pnpm test
 pnpm build
 pnpm web:self-review
@@ -106,6 +107,17 @@ bot webhook should be considered part of the production readiness gate:
 ```bash
 pnpm production:verify -- --url=https://edu-ferma-web.vercel.app --require-telegram
 ```
+
+Use `--require-publications` after private Blob, the Telegram owner target and
+the cron secret are configured:
+
+```bash
+pnpm production:verify -- --url=https://edu-ferma-web.vercel.app \
+  --require-publications
+```
+
+The publication check reads only boolean readiness flags from `/api/health`;
+token values, chat IDs and database URLs are never returned or printed.
 
 ## Deployment Governance
 

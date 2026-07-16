@@ -64,6 +64,7 @@ jobs:
       - run: pnpm api:governance
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm typecheck:e2e:clerk
       - run: pnpm test
       - run: pnpm web:self-review
 

@@ -51,6 +51,8 @@ const originalEnv = { ...process.env };
 function resetEnv() {
   process.env = { ...originalEnv };
   delete process.env.CLERK_SECRET_KEY;
+  delete process.env.BLOB_READ_WRITE_TOKEN;
+  delete process.env.CRON_SECRET;
   delete process.env.DATABASE_URL;
   delete process.env.DIRECT_DATABASE_URL;
   delete process.env.edu_ferma_auth_CLERK_SECRET_KEY;
@@ -59,6 +61,11 @@ function resetEnv() {
   delete process.env.NEXT_PUBLIC_edu_ferma_auth_CLERK_PUBLISHABLE_KEY;
   delete process.env.OPENAPI_DOCS_ENABLED;
   delete process.env.OWNER_EMAIL;
+  delete process.env.TELEGRAM_ALLOWED_CHAT_IDS;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.TELEGRAM_OWNER_CHAT_ID;
+  delete process.env.VK_ACCESS_TOKEN;
+  delete process.env.VK_GROUP_ID;
 }
 
 function apiRequest(pathname: string, headers?: HeadersInit, init: RequestInit = {}) {
@@ -155,6 +162,15 @@ describe("api route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.clerk).toBe(false);
     expect(payload.checks.clerk.missingEnv).toEqual(["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"]);
+    expect(payload.integrations).toEqual({
+      privateBlobConfigured: false,
+      telegramPublisherConfigured: false,
+      telegramOwnerChatConfigured: false,
+      telegramAllowedChatsConfigured: false,
+      publicationCronConfigured: false,
+      vkConfigured: false
+    });
+    expect(JSON.stringify(payload)).not.toMatch(/BLOB_READ_WRITE_TOKEN=|TELEGRAM_BOT_TOKEN=|CRON_SECRET=/);
   });
 
   it("accepts Vercel Clerk marketplace aliases in public health", async () => {
@@ -167,6 +183,33 @@ describe("api route contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.clerk).toBe(true);
     expect(payload.checks.clerk.missingEnv).toEqual([]);
+  });
+
+  it("reports integration readiness as booleans without returning env values", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "blob-private-value";
+    process.env.TELEGRAM_BOT_TOKEN = "telegram-private-value";
+    process.env.TELEGRAM_OWNER_CHAT_ID = "123";
+    process.env.TELEGRAM_ALLOWED_CHAT_IDS = "123";
+    process.env.CRON_SECRET = "cron-private-value";
+    process.env.VK_ACCESS_TOKEN = "vk-private-value";
+    process.env.VK_GROUP_ID = "456";
+
+    const response = await getHealth();
+    const payload = await response.json();
+
+    expect(payload.integrations).toEqual({
+      privateBlobConfigured: true,
+      telegramPublisherConfigured: true,
+      telegramOwnerChatConfigured: true,
+      telegramAllowedChatsConfigured: true,
+      publicationCronConfigured: true,
+      vkConfigured: true
+    });
+    const serialized = JSON.stringify(payload);
+    expect(serialized).not.toContain("blob-private-value");
+    expect(serialized).not.toContain("telegram-private-value");
+    expect(serialized).not.toContain("cron-private-value");
+    expect(serialized).not.toContain("vk-private-value");
   });
 
   it("returns 403 when a student calls a teacher endpoint", async () => {

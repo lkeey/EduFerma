@@ -128,6 +128,7 @@ Quality gate:
 ```bash
 pnpm lint
 pnpm typecheck
+pnpm typecheck:e2e:clerk
 pnpm api:governance
 pnpm test
 pnpm build
@@ -180,6 +181,9 @@ only for development, tests, dry-run import and seed generation; production data
 must live in remote managed Postgres. See
 [docs/database-architecture.md](docs/database-architecture.md) and
 [docs/privacy-and-security.md](docs/privacy-and-security.md).
+
+Authenticated production checks and isolated Clerk identity provisioning are
+documented in [docs/production-e2e.md](docs/production-e2e.md).
 
 Operational helpers:
 
