@@ -121,6 +121,75 @@ export function createPlatformServices(options: ServiceOptions) {
       }
     },
     teacher: {
+      async listImports(_ctx?: ServiceContext) {
+        ensureAvailable(state);
+        return { jobs: [], total: 0 };
+      },
+      async createImport(_ctx: ServiceContext | undefined, input?: { sourceType?: string; sourceUrl?: string }) {
+        ensureAvailable(state);
+        return {
+          job: {
+            id: "demo-import",
+            status: input?.sourceUrl ? "uploaded" : "draft",
+            dryRun: true,
+            sourceType: input?.sourceType ?? "upload",
+            sourceUrl: input?.sourceUrl ?? null,
+            sourceName: "Demo import",
+            originalFilename: null,
+            byteSize: null,
+            contentType: null,
+            sha256: null,
+            licenseStatus: "unknown",
+            parserVersion: "demo",
+            summary: {},
+            warnings: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            analyzedAt: null,
+            appliedAt: null
+          }
+        };
+      },
+      async uploadImport() {
+        ensureAvailable(state);
+        return this.createImport(undefined, { sourceType: "upload" });
+      },
+      async analyzeImport() {
+        ensureAvailable(state);
+        return this.createImport(undefined, { sourceType: "upload" });
+      },
+      async getImport() {
+        ensureAvailable(state);
+        return this.createImport(undefined, { sourceType: "upload" });
+      },
+      async getImportRows() {
+        ensureAvailable(state);
+        return { rows: [], total: 0 };
+      },
+      async updateImportRow() {
+        ensureAvailable(state);
+        return {
+          row: {
+            id: "demo-row",
+            rowNo: 1,
+            sourceRowId: "1",
+            sourceTaskId: "demo-ege-7-graph",
+            status: "ready",
+            errorCode: null,
+            errorMessage: null,
+            payload: {},
+            normalizedTask: null,
+            evidence: [],
+            appliedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        };
+      },
+      async applyImport() {
+        ensureAvailable(state);
+        return this.createImport(undefined, { sourceType: "upload" });
+      },
       async getDashboard(_ctx?: ServiceContext) {
         ensureAvailable(state);
         return { students: demoStudents, pendingReview: 1, progress: demoProgress };
@@ -161,13 +230,33 @@ export function createPlatformServices(options: ServiceOptions) {
         ensureAvailable(state);
         return { progress: demoProgress };
       },
-      async getTaskBank(_ctx?: ServiceContext) {
+      async getTaskBank(_ctx?: ServiceContext, _query?: Record<string, unknown>) {
         ensureAvailable(state);
-        return { tasks: demoTasks.map(serializeTeacherTask), page: 1, pageSize: 20, total: demoTasks.length };
+        return {
+          tasks: demoTasks.map(serializeTeacherTask),
+          page: 1,
+          pageSize: 20,
+          total: demoTasks.length,
+          totalPages: 1,
+          sortBy: "updatedAt",
+          sortOrder: "desc"
+        };
       },
       async getTask(_ctx: ServiceContext | undefined, taskId: string) {
         ensureAvailable(state);
         return { task: serializeTeacherTask(demoTasks.find((task) => task.task_id === taskId || task.id === taskId) || demoTasks[0]) };
+      },
+      async updateTask(_ctx: ServiceContext | undefined, taskId: string, _input?: Record<string, unknown>) {
+        ensureAvailable(state);
+        return { task: serializeTeacherTask(demoTasks.find((task) => task.task_id === taskId || task.id === taskId) || demoTasks[0]) };
+      },
+      async deleteTask(_ctx: ServiceContext | undefined, taskId: string) {
+        ensureAvailable(state);
+        return { task: serializeTeacherTask(demoTasks.find((task) => task.task_id === taskId || task.id === taskId) || demoTasks[0]) };
+      },
+      async bulkTasks() {
+        ensureAvailable(state);
+        return { updated: 0, archived: 0, deleted: 0, tasks: [] };
       },
       async getAssignments(_ctx?: ServiceContext) {
         ensureAvailable(state);

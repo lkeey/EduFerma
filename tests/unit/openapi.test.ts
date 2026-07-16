@@ -41,7 +41,8 @@ describe("openapi contract", () => {
 
   it("uses named request schemas for mutating operations", () => {
     for (const route of routeDefinitions.filter((item) => item.requestBody)) {
-      const schema = openApiDocument.paths[route.path]?.[route.method]?.requestBody?.content?.["application/json"]?.schema;
+      const contentType = route.requestContentType ?? "application/json";
+      const schema = openApiDocument.paths[route.path]?.[route.method]?.requestBody?.content?.[contentType]?.schema;
 
       expect(schema).toHaveProperty("$ref");
       expect(schema?.$ref).not.toBe("#/components/schemas/GenericObject");
@@ -116,6 +117,24 @@ describe("openapi contract", () => {
       "active",
       "blocked"
     ]);
+  });
+
+  it("documents the reviewed import flow and multipart private upload", () => {
+    const upload = openApiDocument.paths["/api/v1/teacher/imports/{importId}/upload"].post;
+
+    expect(openApiDocument.paths["/api/v1/teacher/imports"].post.operationId).toBe("createTeacherImport");
+    expect(upload.requestBody.content["multipart/form-data"].schema.$ref).toBe(
+      "#/components/schemas/ImportUploadRequest"
+    );
+    expect(openApiDocument.paths["/api/v1/teacher/imports/{importId}/rows/{rowId}"].patch.operationId).toBe(
+      "updateTeacherImportRow"
+    );
+    expect(openApiDocument.paths["/api/v1/teacher/imports/{importId}/apply"].post.operationId).toBe(
+      "applyTeacherImport"
+    );
+    expect(openApiDocument.paths["/api/v1/teacher/tasks/bulk"].post.operationId).toBe(
+      "bulkMutateTeacherTasks"
+    );
   });
 
   it("matches the checked-in generated openapi document", () => {

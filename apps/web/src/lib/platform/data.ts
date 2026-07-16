@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { MistakeTag, TaskAttempt } from "@eduferma/core/platform";
+import { TeacherTaskBankQuerySchema } from "@eduferma/validators";
 import { getCurrentServiceUser } from "@/server/auth/session";
 import { getServices } from "@/server/services";
 import {
@@ -193,11 +194,11 @@ export async function getTeacherDashboard() {
   const [dashboard, pendingReview, taskBank] = await Promise.all([
     getServices().teacher.getDashboard(ctx),
     getServices().teacher.getPendingReviewAttempts(ctx),
-    getServices().teacher.getTaskBank(ctx)
+    getServices().teacher.getTaskBank(ctx, {})
   ]);
   const students = asArray(dashboard.students).map((student) => toLegacyStudent(student));
   const attempts = asArray(pendingReview.attempts as Array<Record<string, unknown>>).map(toLegacyAttempt);
-  const tasks = asArray(taskBank.tasks).map((task) => toLegacyTask(task));
+  const tasks = asArray(taskBank.tasks as Array<Record<string, unknown>>).map((task) => toLegacyTask(task as never));
 
   return {
     students,
@@ -279,22 +280,43 @@ export async function getTeacherStudentDetail(studentId: string) {
 }
 
 export async function getTeacherTaskBank(filters: Record<string, string | undefined> = {}) {
+  return (await getTeacherTaskBankPage(filters)).tasks;
+}
+
+export async function getTeacherTaskBankPage(filters: Record<string, string | undefined> = {}) {
   const ctx = await getContext();
-  const { tasks } = await getServices().teacher.getTaskBank(ctx);
-  return asArray(tasks)
-    .map((task) => toLegacyTask(task))
-    .filter((task) => {
-      if (filters.learning_track && task.learningTrack !== filters.learning_track) return false;
-      if (filters.exam && task.exam !== filters.exam) return false;
-      if (filters.task_number && task.taskNumber !== filters.task_number) return false;
-      if (filters.difficulty_level && task.difficultyLevel !== filters.difficulty_level) return false;
-      if (filters.status && task.status !== filters.status) return false;
-      if (filters.q) {
-        const q = filters.q.toLowerCase();
-        return `${task.statementMd ?? ""} ${task.topic ?? ""} ${(task.skillAtoms ?? []).join(" ")}`.toLowerCase().includes(q);
-      }
-      return true;
-    });
+  const query = TeacherTaskBankQuerySchema.safeParse({
+    page: filters.page ? Number(filters.page) : 1,
+    pageSize: filters.pageSize ? Number(filters.pageSize) : 20,
+    q: filters.q,
+    learningTrack: filters.learning_track,
+    exam: filters.exam,
+    taskNumber: filters.task_number,
+    difficultyLevel: filters.difficulty_level,
+    status: filters.status,
+    sortBy: filters.sort_by,
+    sortOrder: (filters.sort_order as "asc" | "desc" | undefined) ?? "desc"
+  });
+  const response = await getServices().teacher.getTaskBank(ctx, query.success ? query.data : TeacherTaskBankQuerySchema.parse({}));
+  return {
+    ...response,
+    tasks: asArray(response.tasks).map((task) => toLegacyTask(task as never))
+  };
+}
+
+export async function getTeacherImports() {
+  const ctx = await getContext();
+  return getServices().teacher.listImports(ctx);
+}
+
+export async function getTeacherImport(importId: string) {
+  const ctx = await getContext();
+  return getServices().teacher.getImport(ctx, importId);
+}
+
+export async function getTeacherImportRows(importId: string) {
+  const ctx = await getContext();
+  return getServices().teacher.getImportRows(ctx, importId);
 }
 
 export async function submitTaskAttempt({

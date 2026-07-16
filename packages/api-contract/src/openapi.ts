@@ -34,11 +34,11 @@ function jsonResponse(schemaName: string | undefined, contentType = "application
   };
 }
 
-function jsonRequestBody(schemaName: string | undefined) {
+function requestBody(schemaName: string | undefined, contentType = "application/json") {
   return {
     required: true,
     content: {
-      "application/json": {
+      [contentType]: {
         schema: ref(schemaName ?? "GenericObject")
       }
     }
@@ -78,7 +78,7 @@ function operation(route: RouteDefinition): OpenApiOperation {
   }
 
   if (route.requestBody) {
-    op.requestBody = jsonRequestBody(route.requestSchema);
+    op.requestBody = requestBody(route.requestSchema, route.requestContentType);
   }
 
   return op;
@@ -107,6 +107,7 @@ export function buildOpenApiDocument() {
       { name: "Diagnostics" },
       { name: "Student" },
       { name: "Teacher" },
+      { name: "Imports" },
       { name: "Tasks" },
       { name: "Assignments" },
       { name: "Attempts" },

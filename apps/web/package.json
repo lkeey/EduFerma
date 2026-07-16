@@ -18,6 +18,7 @@
     "@eduferma/db": "workspace:*",
     "@eduferma/ui": "workspace:*",
     "@eduferma/validators": "workspace:*",
+    "@vercel/blob": "^2.6.1",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.23.0",
     "next": "latest",

@@ -20,6 +20,7 @@ const studentNav: NavItem[] = [
 const teacherNav: NavItem[] = [
   { href: "/teacher/dashboard", label: "Обзор", icon: <Home aria-hidden="true" /> },
   { href: "/teacher/students", label: "Ученики", icon: <UsersRound aria-hidden="true" /> },
+  { href: "/teacher/imports", label: "Импорт", icon: <BookOpenCheck aria-hidden="true" /> },
   { href: "/teacher/task-bank", label: "Банк задач", icon: <DatabaseZap aria-hidden="true" /> },
   { href: "/teacher/assignments", label: "ДЗ", icon: <ClipboardCheck aria-hidden="true" /> },
   { href: "/teacher/reviews", label: "Проверка", icon: <LineChart aria-hidden="true" /> }
