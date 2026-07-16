@@ -182,11 +182,22 @@ export async function getTeacherTask(taskId: string) {
 
 export async function getStudentProgress() {
   const ctx = await getContext();
-  const [{ progress }, { assignments }] = await Promise.all([
-    getServices().student.getProgress(ctx),
-    getServices().student.getAssignments(ctx)
-  ]);
-  return toProgressSummary(asArray(progress), asArray(assignments));
+  const { analytics } = await getServices().student.getAnalytics(ctx);
+  return {
+    solved: analytics.checked_attempt_accuracy.checked,
+    correct: analytics.checked_attempt_accuracy.correct,
+    correctRate: analytics.checked_attempt_accuracy.percent,
+    activeAssignments: analytics.homework_completion.total_assignments - analytics.homework_completion.completed_assignments,
+    skillMastery: analytics.skill_mastery.map(toLegacySkill),
+    prototypeMastery: analytics.prototype_mastery.map((item) => ({
+      prototypeId: item.prototype_id,
+      confidence: item.value / 100,
+      riskFlag: item.risk_flag
+    })),
+    weakSkills: analytics.skill_mastery.map(toLegacySkill).filter((item) => item.confidence < 0.6),
+    recentAttempts: [] as LegacyAttempt[],
+    analytics
+  };
 }
 
 export async function getTeacherDashboard() {
@@ -248,9 +259,10 @@ export async function getTeacherAssignments() {
 export async function getTeacherStudentDetail(studentId: string) {
   const ctx = await getContext();
   const services = getServices();
-  const [studentResponse, planResponse, scheduleResponse, assignmentResponse, analyticsResponse, pendingReview] = await Promise.all([
+  const [studentResponse, planResponse, historyResponse, scheduleResponse, assignmentResponse, analyticsResponse, pendingReview] = await Promise.all([
     services.teacher.getStudent(ctx, studentId),
     services.teacher.getStudentPlan(ctx, studentId),
+    services.teacher.getStudentPlanHistory(ctx, studentId),
     services.teacher.getStudentSchedule(ctx, studentId),
     services.teacher.getStudentAssignments(ctx, studentId),
     services.teacher.getStudentAnalytics(ctx, studentId),
@@ -263,19 +275,25 @@ export async function getTeacherStudentDetail(studentId: string) {
 
   return {
     student: toLegacyStudent(studentResponse.student),
-    plan: toLegacyPlan(planResponse.plan) ?? {
+    draftPlan: toLegacyPlan(planResponse.draft_plan) ?? {
       id: `plan_${studentId}`,
       studentId,
       strategy: "План пока не создан",
-      title: "План пока не создан",
+      title: "Черновик пока не создан",
       versionNo: 0,
       status: "missing",
+      checkpoints: [],
       lessons: []
     },
+    activePlan: toLegacyPlan(planResponse.active_plan),
+    planAdjustments: asArray(planResponse.pending_adjustments),
+    planEvents: asArray(planResponse.recent_events),
+    planHistory: asArray(historyResponse.history).map((plan) => toLegacyPlan(plan)).filter(Boolean),
     schedule: asArray(scheduleResponse.events).map(toLegacyScheduleEvent),
     assignments,
     attempts,
-    mastery: toProgressSummary(asArray(analyticsResponse.progress), assignments.map((row) => row.assignment))
+    mastery: toProgressSummary(asArray(analyticsResponse.analytics.skill_mastery), assignments.map((row) => row.assignment)),
+    analytics: analyticsResponse.analytics
   };
 }
 

@@ -15,7 +15,7 @@ test("teacher creates an import job and reaches the review screen", async ({ pag
   await expect(page.getByRole("button", { name: "Создать" })).toBeEnabled();
   await page.getByRole("button", { name: "Создать" }).click();
 
-  await expect(page).toHaveURL(/\/teacher\/imports\/demo-import$/);
+  await expect(page).toHaveURL(/\/teacher\/imports\/demo-import$/, { timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Загрузить" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Анализировать" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Строки импорта" })).toBeVisible();

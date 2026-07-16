@@ -7,6 +7,12 @@ export function createTeacherApi(client = new EduFermaApiClient()) {
     student: (studentId: string) => client.get(`/api/v1/teacher/students/${studentId}`),
     studentPlan: (studentId: string) => client.get(`/api/v1/teacher/students/${studentId}/plan`),
     updateStudentPlan: (studentId: string, body: unknown) => client.patch(`/api/v1/teacher/students/${studentId}/plan`, body),
+    publishStudentPlan: (studentId: string) => client.post(`/api/v1/teacher/students/${studentId}/plan/publish`),
+    studentPlanHistory: (studentId: string) => client.get(`/api/v1/teacher/students/${studentId}/plan/history`),
+    previewStudentPlanFeedback: (studentId: string) => client.post(`/api/v1/teacher/students/${studentId}/plan/feedback-preview`, {}),
+    applyStudentPlanAdjustment: (studentId: string, adjustmentId: string) =>
+      client.post(`/api/v1/teacher/students/${studentId}/plan/adjustments/${adjustmentId}/apply`),
+    studentAnalytics: (studentId: string) => client.get(`/api/v1/teacher/students/${studentId}/analytics`),
     taskBank: () => client.get("/api/v1/teacher/task-bank"),
     task: (taskId: string) => client.get(`/api/v1/teacher/tasks/${taskId}`),
     assignments: () => client.get("/api/v1/teacher/assignments"),

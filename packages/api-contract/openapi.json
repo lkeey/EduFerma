@@ -581,25 +581,89 @@
       },
       "PlanSummary": {
         "type": "object",
-        "required": [
-          "student_id",
-          "title",
-          "milestones"
-        ],
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "student_id": {
             "type": "string"
           },
+          "version_no": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "superseded",
+              "archived"
+            ]
+          },
           "title": {
             "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "learning_track": {
+            "type": "string"
+          },
+          "goal_summary": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "sessions_per_week": {
+            "type": "integer"
+          },
+          "session_duration_minutes": {
+            "type": "integer"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "checkpoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanLessonSummary"
+            }
           },
           "milestones": {
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "change_summary": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": "string"
+          },
+          "superseded_at": {
+            "type": "string"
           }
         },
+        "required": [
+          "id",
+          "student_id",
+          "version_no",
+          "status",
+          "title",
+          "strategy",
+          "learning_track",
+          "checkpoints",
+          "lessons",
+          "milestones"
+        ],
         "additionalProperties": false
       },
       "ProgressSummary": {
@@ -1214,21 +1278,131 @@
       },
       "UpdatePlanRequest": {
         "type": "object",
-        "required": [],
         "properties": {
           "title": {
             "type": "string"
           },
-          "milestones": {
+          "strategy": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "goalSummary": {
+            "type": "string"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sessionsPerWeek": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sessionDurationMinutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkpoints": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "lessonStatus": {
+          "changeSummary": {
             "type": "string"
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "lessonNo": {
+                  "type": "integer"
+                },
+                "plannedDate": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "lessonGoal": {
+                  "type": "string"
+                },
+                "topics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "taskNumbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "prototypeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "skillAtoms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string"
+                },
+                "studentSummary": {
+                  "type": "string"
+                },
+                "teacherNotes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "lessonNo",
+                "plannedDate",
+                "title",
+                "lessonGoal",
+                "topics",
+                "taskNumbers",
+                "prototypeIds",
+                "skillAtoms",
+                "status",
+                "studentSummary",
+                "teacherNotes"
+              ],
+              "additionalProperties": false
+            }
           }
         },
+        "required": [],
         "additionalProperties": false
       },
       "CreateScheduleEventRequest": {
@@ -2603,6 +2777,701 @@
           }
         },
         "additionalProperties": false
+      },
+      "PlanLessonSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lesson_no": {
+            "type": "integer"
+          },
+          "planned_date": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "lesson_goal": {
+            "type": "string"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "task_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prototype_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skill_atoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "student_summary": {
+            "type": "string"
+          },
+          "teacher_notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lesson_no",
+          "title",
+          "topics",
+          "task_numbers",
+          "prototype_ids",
+          "skill_atoms",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "StudentPlanSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version_no": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "superseded",
+              "archived"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "learning_track": {
+            "type": "string"
+          },
+          "goal_summary": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "sessions_per_week": {
+            "type": "integer"
+          },
+          "session_duration_minutes": {
+            "type": "integer"
+          },
+          "checkpoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "lesson_no": {
+                  "type": "integer"
+                },
+                "planned_date": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "lesson_goal": {
+                  "type": "string"
+                },
+                "topics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "task_numbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "prototype_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "skill_atoms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string"
+                },
+                "student_summary": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "lesson_no",
+                "title",
+                "topics",
+                "task_numbers",
+                "prototype_ids",
+                "skill_atoms",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "published_at": {
+            "type": "string"
+          },
+          "superseded_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version_no",
+          "status",
+          "title",
+          "strategy",
+          "learning_track",
+          "checkpoints",
+          "lessons",
+          "milestones"
+        ],
+        "additionalProperties": false
+      },
+      "PlanChangeEventSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "created",
+              "updated",
+              "review_requested",
+              "approved",
+              "applied",
+              "superseded"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "recorded",
+              "approved",
+              "rejected",
+              "applied"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "approved_at": {
+            "type": "string"
+          },
+          "applied_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan_id",
+          "event_type",
+          "status",
+          "summary",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "PlanAdjustmentSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "adjustment_type": {
+            "type": "string",
+            "enum": [
+              "remediation",
+              "slowdown",
+              "check",
+              "acceleration",
+              "stretch"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "details_md": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "approved",
+              "rejected",
+              "applied"
+            ]
+          },
+          "signal": {
+            "type": "string",
+            "enum": [
+              "homework_not_done",
+              "misunderstanding",
+              "topic_mastered",
+              "fast_progress"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "scheduled_for": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "applied_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "plan_id",
+          "adjustment_type",
+          "title",
+          "status",
+          "signal",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "TeacherPlanResponse": {
+        "type": "object",
+        "properties": {
+          "draft_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_adjustments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAdjustmentSummary"
+            }
+          },
+          "recent_events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanChangeEventSummary"
+            }
+          }
+        },
+        "required": [
+          "draft_plan",
+          "active_plan",
+          "pending_adjustments",
+          "recent_events"
+        ],
+        "additionalProperties": false
+      },
+      "PublishPlanResponse": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PlanSummary"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "additionalProperties": false
+      },
+      "PlanHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanSummary"
+            }
+          },
+          "change_events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanChangeEventSummary"
+            }
+          }
+        },
+        "required": [
+          "history",
+          "change_events"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "preview": {
+            "type": "object",
+            "properties": {
+              "plan_id": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "homework_not_done",
+                    "misunderstanding",
+                    "topic_mastered",
+                    "fast_progress"
+                  ]
+                }
+              },
+              "proposals": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PlanAdjustmentSummary"
+                }
+              }
+            },
+            "required": [
+              "plan_id",
+              "signals",
+              "proposals"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "preview"
+        ],
+        "additionalProperties": false
+      },
+      "StudentPlanResponse": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentPlanSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsSummary": {
+        "type": "object",
+        "properties": {
+          "forecast_status": {
+            "type": "string",
+            "enum": [
+              "on_track",
+              "at_risk",
+              "insufficient_data",
+              "needs_official_scoring_data"
+            ]
+          },
+          "forecast_reason": {
+            "type": "string"
+          },
+          "plan_completion": {
+            "type": "object",
+            "properties": {
+              "completed_lessons": {
+                "type": "integer"
+              },
+              "total_lessons": {
+                "type": "integer"
+              },
+              "percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "completed_lessons",
+              "total_lessons",
+              "percent"
+            ],
+            "additionalProperties": false
+          },
+          "homework_completion": {
+            "type": "object",
+            "properties": {
+              "completed_assignments": {
+                "type": "integer"
+              },
+              "total_assignments": {
+                "type": "integer"
+              },
+              "overdue_assignments": {
+                "type": "integer"
+              },
+              "percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "completed_assignments",
+              "total_assignments",
+              "overdue_assignments",
+              "percent"
+            ],
+            "additionalProperties": false
+          },
+          "checked_attempt_accuracy": {
+            "type": "object",
+            "properties": {
+              "correct": {
+                "type": "integer"
+              },
+              "checked": {
+                "type": "integer"
+              },
+              "percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "correct",
+              "checked",
+              "percent"
+            ],
+            "additionalProperties": false
+          },
+          "time_spent": {
+            "type": "object",
+            "properties": {
+              "total_seconds": {
+                "type": "integer"
+              },
+              "average_seconds_per_attempt": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_seconds",
+              "average_seconds_per_attempt"
+            ],
+            "additionalProperties": false
+          },
+          "skill_mastery": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressSummary"
+            }
+          },
+          "prototype_mastery": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "prototype_id": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "integer"
+                },
+                "risk_flag": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "prototype_id",
+                "value",
+                "risk_flag"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recurring_errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mistake_tag": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "mistake_tag",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "weekly_trends": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "week_start": {
+                  "type": "string"
+                },
+                "attempts": {
+                  "type": "integer"
+                },
+                "checked_attempts": {
+                  "type": "integer"
+                },
+                "accuracy_percent": {
+                  "type": "integer"
+                },
+                "time_spent_seconds": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "week_start",
+                "attempts",
+                "checked_attempts",
+                "accuracy_percent",
+                "time_spent_seconds"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "checkpoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "done",
+                    "upcoming",
+                    "overdue"
+                  ]
+                }
+              },
+              "required": [
+                "label",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "forecast_status",
+          "forecast_reason",
+          "plan_completion",
+          "homework_completion",
+          "checked_attempt_accuracy",
+          "time_spent",
+          "skill_mastery",
+          "prototype_mastery",
+          "recurring_errors",
+          "weekly_trends",
+          "checkpoints"
+        ],
+        "additionalProperties": false
+      },
+      "StudentAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "analytics": {
+            "$ref": "#/components/schemas/AnalyticsSummary"
+          }
+        },
+        "required": [
+          "analytics"
+        ],
+        "additionalProperties": false
+      },
+      "TeacherAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "analytics": {
+            "$ref": "#/components/schemas/AnalyticsSummary"
+          }
+        },
+        "required": [
+          "analytics"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -3229,73 +4098,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScheduleResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Remote database setup is required or temporarily unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "clerkAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/student/plan": {
-      "get": {
-        "operationId": "getStudentPlan",
-        "tags": [
-          "Plans",
-          "Student"
-        ],
-        "summary": "Student-safe learning plan",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
                 }
               }
             }
@@ -4063,168 +4865,6 @@
         ]
       }
     },
-    "/api/v1/teacher/students/{studentId}/plan": {
-      "get": {
-        "operationId": "getTeacherStudentPlan",
-        "tags": [
-          "Plans",
-          "Teacher"
-        ],
-        "summary": "Teacher student plan",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Remote database setup is required or temporarily unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "clerkAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "studentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "updateTeacherStudentPlan",
-        "tags": [
-          "Plans",
-          "Teacher"
-        ],
-        "summary": "Update student plan metadata",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Remote database setup is required or temporarily unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "clerkAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "studentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePlanRequest"
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/teacher/students/{studentId}/schedule": {
       "get": {
         "operationId": "getTeacherStudentSchedule",
@@ -4402,83 +5042,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssignmentsResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Remote database setup is required or temporarily unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "clerkAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "studentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/api/v1/teacher/students/{studentId}/analytics": {
-      "get": {
-        "operationId": "getTeacherStudentAnalytics",
-        "tags": [
-          "Analytics",
-          "Teacher"
-        ],
-        "summary": "Teacher student analytics",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProgressResponse"
                 }
               }
             }
@@ -6589,6 +7152,695 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/student/plan": {
+      "get": {
+        "operationId": "getStudentPlan",
+        "tags": [
+          "Plans",
+          "Student"
+        ],
+        "summary": "Student-safe learning plan",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/student/analytics": {
+      "get": {
+        "operationId": "getStudentAnalytics",
+        "tags": [
+          "Analytics",
+          "Student"
+        ],
+        "summary": "Student analytics summary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/plan": {
+      "get": {
+        "operationId": "getTeacherStudentPlan",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Teacher draft and active plan view",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateTeacherStudentPlan",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Update student draft plan",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/plan/publish": {
+      "post": {
+        "operationId": "publishTeacherStudentPlan",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Publish current draft plan",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/plan/history": {
+      "get": {
+        "operationId": "getTeacherStudentPlanHistory",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Version history and change events",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/plan/feedback-preview": {
+      "post": {
+        "operationId": "previewTeacherStudentPlanFeedback",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Generate deterministic feedback adjustments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackPreviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/plan/adjustments/{adjustmentId}/apply": {
+      "post": {
+        "operationId": "applyTeacherStudentPlanAdjustment",
+        "tags": [
+          "Plans",
+          "Teacher"
+        ],
+        "summary": "Apply a proposed adjustment to the current draft",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackPreviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "adjustmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teacher/students/{studentId}/analytics": {
+      "get": {
+        "operationId": "getTeacherStudentAnalytics",
+        "tags": [
+          "Analytics",
+          "Teacher"
+        ],
+        "summary": "Teacher student analytics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeacherAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   }

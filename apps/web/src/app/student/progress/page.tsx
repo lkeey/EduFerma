@@ -15,6 +15,12 @@ export default async function StudentProgressPage() {
         <MetricCard label="Точность" value={`${progress.correctRate}%`} />
         <MetricCard label="Активных ДЗ" value={String(progress.activeAssignments)} />
       </div>
+      <div className="metric-grid">
+        <MetricCard label="Статус траектории" value={progress.analytics.forecast_status} detail={progress.analytics.forecast_reason} />
+        <MetricCard label="План" value={`${progress.analytics.plan_completion.percent}%`} detail={`${progress.analytics.plan_completion.completed_lessons}/${progress.analytics.plan_completion.total_lessons} занятий`} />
+        <MetricCard label="ДЗ" value={`${progress.analytics.homework_completion.percent}%`} detail={`просрочено ${progress.analytics.homework_completion.overdue_assignments}`} />
+        <MetricCard label="Время" value={`${Math.round(progress.analytics.time_spent.total_seconds / 60)} мин`} detail={`в среднем ${Math.round(progress.analytics.time_spent.average_seconds_per_attempt / 60)} мин`} />
+      </div>
       <div className="dashboard-grid">
         <Panel>
           <div className="panel-header"><h2>Навыки</h2><Badge>skill_atoms</Badge></div>
@@ -30,6 +36,14 @@ export default async function StudentProgressPage() {
         <Panel>
           <div className="panel-header"><h2>Рекомендации</h2><Badge>rule-based</Badge></div>
           {progress.weakSkills.map((item) => <p key={item.skillAtom}>Повторить: {item.skillAtom}. {item.riskFlag}</p>)}
+        </Panel>
+        <Panel>
+          <div className="panel-header"><h2>Еженедельный тренд</h2><Badge>analytics</Badge></div>
+          {progress.analytics.weekly_trends.map((week) => (
+            <p key={week.week_start}>
+              {week.week_start.slice(0, 10)}: {week.attempts} попыток, точность {week.accuracy_percent}%, время {Math.round(week.time_spent_seconds / 60)} мин
+            </p>
+          ))}
         </Panel>
       </div>
     </PlatformShell>

@@ -66,12 +66,6 @@ export const UpdateAssignmentRequestSchema = z.object({
   status: z.string().optional()
 });
 
-export const UpdatePlanRequestSchema = z.object({
-  title: z.string().min(1).optional(),
-  milestones: z.array(z.string().min(1)).optional(),
-  lessonStatus: z.string().optional()
-});
-
 export const CreateScheduleEventRequestSchema = z.object({
   title: z.string().min(1),
   startsAt: z.string().optional(),
@@ -95,7 +89,6 @@ export type SubmitAttemptRequest = z.infer<typeof SubmitAttemptRequestSchema>;
 export type LegacySubmitAttemptRequest = z.infer<typeof LegacySubmitAttemptRequestSchema>;
 export type CreateAssignmentRequest = z.infer<typeof CreateAssignmentRequestSchema>;
 export type UpdateAssignmentRequest = z.infer<typeof UpdateAssignmentRequestSchema>;
-export type UpdatePlanRequest = z.infer<typeof UpdatePlanRequestSchema>;
 export type CreateScheduleEventRequest = z.infer<typeof CreateScheduleEventRequestSchema>;
 export type ReviewAttemptRequest = z.infer<typeof ReviewAttemptRequestSchema>;
 export type LegacyReviewAttemptRequest = z.infer<typeof LegacyReviewAttemptRequestSchema>;
