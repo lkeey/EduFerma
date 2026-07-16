@@ -119,6 +119,27 @@ pnpm production:verify -- --url=https://edu-ferma-web.vercel.app \
 The publication check reads only boolean readiness flags from `/api/health`;
 token values, chat IDs and database URLs are never returned or printed.
 
+After the three Telegram production variables are configured, run the guarded
+private-owner acceptance command in dry-run mode:
+
+```bash
+pnpm production:verify:telegram
+```
+
+The live command requires an exact confirmation phrase and sends at most one
+message through the real publication service:
+
+```bash
+pnpm production:verify:telegram -- --apply \
+  --confirm="SEND ONE PRIVATE OWNER TELEGRAM"
+```
+
+The command uses a PostgreSQL advisory lock and a stable acceptance key. If the
+acceptance publication already has one persisted `sent` delivery with a
+Telegram message ID, it performs only an idempotency check and does not send
+again. An incomplete or ambiguous previous attempt is never retried
+automatically.
+
 ## Deployment Governance
 
 Preferred deployment path:

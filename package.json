@@ -9,6 +9,7 @@
     "lint": "tsx scripts/lint-project.ts",
     "typecheck": "turbo typecheck",
     "typecheck:e2e:clerk": "tsc -p tsconfig.clerk-e2e.json --noEmit",
+    "typecheck:production:telegram": "tsc -p tsconfig.production-telegram.json --noEmit",
     "test": "vitest run",
     "test:remote-db": "vitest run --config vitest.remote-db.config.ts",
     "e2e": "playwright test",
@@ -28,6 +29,7 @@
     "tasks:sync": "tsx scripts/sync-from-local-jsonl.ts",
     "students:sync": "tsx scripts/sync-student-space.ts",
     "production:verify": "tsx scripts/verify-production-setup.ts",
+    "production:verify:telegram": "tsx --tsconfig apps/web/tsconfig.json scripts/verify-production-telegram-delivery.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "devDependencies": {
