@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveClerkE2EEmail,
-  getClerkE2EIdentities
+  getClerkE2EIdentities,
+  getClerkE2EUserCreatePayload
 } from "../../scripts/lib/clerk-e2e-identities";
 
 describe("Clerk E2E identities", () => {
@@ -41,5 +42,21 @@ describe("Clerk E2E identities", () => {
     expect(() => deriveClerkE2EEmail("invalid", "owner")).toThrow(
       "must be a valid email address"
     );
+  });
+
+  it("creates passwordless users for Clerk instances that require passwords", () => {
+    const [owner] = getClerkE2EIdentities({
+      E2E_CLERK_BASE_EMAIL: "owner@example.com"
+    });
+
+    expect(getClerkE2EUserCreatePayload(owner)).toMatchObject({
+      email_address: ["owner+eduferma_e2e_owner@example.com"],
+      skip_password_requirement: true,
+      public_metadata: {
+        edufermaE2E: true,
+        edufermaRole: "owner",
+        isolated: true
+      }
+    });
   });
 });

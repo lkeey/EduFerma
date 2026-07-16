@@ -11,6 +11,18 @@ export type ClerkE2EIdentity = {
   storageStatePath: string;
 };
 
+export type ClerkE2EUserCreatePayload = {
+  email_address: string[];
+  first_name: string;
+  last_name: string;
+  skip_password_requirement: true;
+  public_metadata: {
+    edufermaE2E: true;
+    edufermaRole: ClerkE2ERole;
+    isolated: true;
+  };
+};
+
 type IdentityEnv = Record<string, string | undefined>;
 
 const identityConfig: Record<
@@ -83,4 +95,22 @@ export function getClerkE2EIdentity(
   return getClerkE2EIdentities(env).find(
     (identity) => identity.role === role
   )!;
+}
+
+export function getClerkE2EUserCreatePayload(
+  identity: ClerkE2EIdentity
+): ClerkE2EUserCreatePayload {
+  const [firstName, ...lastNameParts] = identity.displayName.split(" ");
+
+  return {
+    email_address: [identity.email],
+    first_name: firstName,
+    last_name: lastNameParts.join(" "),
+    skip_password_requirement: true,
+    public_metadata: {
+      edufermaE2E: true,
+      edufermaRole: identity.role,
+      isolated: true
+    }
+  };
 }

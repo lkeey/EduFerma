@@ -10,6 +10,7 @@ import {
 } from "@eduferma/db";
 import {
   getClerkE2EIdentities,
+  getClerkE2EUserCreatePayload,
   type ClerkE2EIdentity,
   type ClerkE2ERole
 } from "./lib/clerk-e2e-identities";
@@ -214,23 +215,13 @@ async function createClerkUser(
   secretKey: string,
   identity: ClerkE2EIdentity
 ): Promise<ClerkUser> {
-  const [firstName, ...lastNameParts] = identity.displayName.split(" ");
   const response = await clerkRequest(
     secretKey,
     new URL("/v1/users", clerkApiUrl),
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email_address: [identity.email],
-        first_name: firstName,
-        last_name: lastNameParts.join(" "),
-        public_metadata: {
-          edufermaE2E: true,
-          edufermaRole: identity.role,
-          isolated: true
-        }
-      })
+      body: JSON.stringify(getClerkE2EUserCreatePayload(identity))
     }
   );
 
