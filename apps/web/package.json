@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "latest",
+    "@clerk/nextjs": "7.5.12",
     "@eduferma/api-client": "workspace:*",
     "@eduferma/api-contract": "workspace:*",
     "@eduferma/config": "workspace:*",

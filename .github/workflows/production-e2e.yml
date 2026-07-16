@@ -1,0 +1,59 @@
+name: Production Clerk E2E
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-clerk-e2e
+  cancel-in-progress: false
+
+jobs:
+  authenticated-production-e2e:
+    if: >-
+      ${{
+        vars.PRODUCTION_E2E_ENABLED == 'true' &&
+        (
+          github.event_name == 'workflow_dispatch' ||
+          github.event.workflow_run.conclusion == 'success'
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_BASE_URL: https://edu-ferma-web.vercel.app
+      E2E_CLERK_BASE_EMAIL: ${{ secrets.E2E_CLERK_BASE_EMAIL }}
+      E2E_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      E2E_CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck:e2e:clerk
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Validate E2E configuration
+        run: |
+          test -n "$E2E_CLERK_BASE_EMAIL"
+          test -n "$E2E_CLERK_PUBLISHABLE_KEY"
+          test -n "$E2E_CLERK_SECRET_KEY"
+      - run: pnpm e2e:clerk --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-clerk-e2e-report
+          path: |
+            playwright-report/clerk/
+            test-results/clerk/

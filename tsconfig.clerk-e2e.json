@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "playwright.clerk.config.ts",
+    "scripts/lib/clerk-e2e-identities.ts",
+    "scripts/provision-clerk-e2e-users.ts",
+    "tests/e2e-clerk/**/*.ts",
+    "tests/unit/clerk-e2e-identities.test.ts"
+  ]
+}

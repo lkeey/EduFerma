@@ -10,6 +10,7 @@ export async function GET() {
     time: new Date().toISOString(),
     database: setup.database.configured,
     clerk: setup.clerk.configured,
+    integrations: setup.integrations,
     checks: {
       database: setup.database,
       clerk: {
@@ -18,7 +19,8 @@ export async function GET() {
       },
       ownerBootstrap: {
         configured: setup.ownerEmailConfigured
-      }
+      },
+      integrations: setup.integrations
     }
   });
 }

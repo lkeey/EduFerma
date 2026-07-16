@@ -23,12 +23,14 @@ export type ProductionSetupReport = {
 type VerifyOptions = {
   appUrl: string;
   requireTelegram: boolean;
+  requirePublications: boolean;
   reportOnly: boolean;
 };
 
 type ProductionSetupInput = {
   appUrl: string;
   requireTelegram?: boolean;
+  requirePublications?: boolean;
   health: EndpointProbe;
   openapi: EndpointProbe;
   docs: EndpointProbe;
@@ -36,6 +38,13 @@ type ProductionSetupInput = {
 };
 
 const defaultProductionUrl = "https://edu-ferma-web.vercel.app";
+const publicationOpenApiPaths = [
+  "/api/v1/teacher/publications",
+  "/api/v1/teacher/publication-targets",
+  "/api/v1/owner/publication-targets",
+  "/api/v1/teacher/publication-providers/health",
+  "/api/v1/internal/publications/process"
+];
 
 export function normalizeProductionAppUrl(value: string | undefined): string {
   const rawValue = value?.trim() || defaultProductionUrl;
@@ -59,9 +68,12 @@ export function buildProductionSetupReport(input: ProductionSetupInput): Product
   const healthChecks = asRecord(healthJson.checks);
   const clerkCheck = asRecord(healthChecks.clerk);
   const ownerBootstrapCheck = asRecord(healthJson.ownerBootstrap ?? healthChecks.ownerBootstrap);
+  const integrationChecks = asRecord(healthJson.integrations ?? healthChecks.integrations);
   const openapiJson = asRecord(input.openapi.json);
+  const openapiPaths = asRecord(openapiJson.paths);
   const telegramError = asRecord(input.telegramWebhook.json);
   const telegramErrorBody = asRecord(telegramError.error);
+  const requirePublications = input.requirePublications === true;
 
   const checks: ProductionSetupReport["checks"] = [
     {
@@ -112,6 +124,41 @@ export function buildProductionSetupReport(input: ProductionSetupInput): Product
       detail: input.docs.error || `HTTP ${input.docs.status}`,
       action: input.docs.ok ? undefined : "Check OPENAPI_DOCS_ENABLED and /api/docs deployment."
     },
+    buildPublicationIntegrationCheck(
+      "private Blob storage",
+      integrationChecks.privateBlobConfigured === true,
+      requirePublications,
+      "BLOB_READ_WRITE_TOKEN is configured",
+      "BLOB_READ_WRITE_TOKEN is not configured",
+      "Provision a private Vercel Blob store and set BLOB_READ_WRITE_TOKEN."
+    ),
+    buildPublicationIntegrationCheck(
+      "Telegram publisher",
+      integrationChecks.telegramPublisherConfigured === true,
+      requirePublications,
+      "TELEGRAM_BOT_TOKEN configured",
+      "TELEGRAM_BOT_TOKEN is not configured",
+      "Set TELEGRAM_BOT_TOKEN for the allowlisted publishing bot."
+    ),
+    buildPublicationIntegrationCheck(
+      "Telegram owner target",
+      integrationChecks.telegramOwnerChatConfigured === true &&
+        integrationChecks.telegramAllowedChatsConfigured === true,
+      requirePublications,
+      "owner chat and allowlist configured",
+      "owner chat or allowlist is not configured",
+      "Set TELEGRAM_OWNER_CHAT_ID and include it in TELEGRAM_ALLOWED_CHAT_IDS."
+    ),
+    buildPublicationIntegrationCheck(
+      "publication processor secret",
+      integrationChecks.publicationCronConfigured === true,
+      requirePublications,
+      "CRON_SECRET configured",
+      "CRON_SECRET is not configured",
+      "Set the same CRON_SECRET in Vercel and the selected cron runner."
+    ),
+    buildPublicationOpenApiCheck(openapiPaths, requirePublications),
+    buildVkSetupCheck(integrationChecks.vkConfigured === true),
     buildTelegramWebhookCheck(input.telegramWebhook, telegramErrorBody, input.requireTelegram === true)
   ];
 
@@ -120,6 +167,74 @@ export function buildProductionSetupReport(input: ProductionSetupInput): Product
     ok: checks.every((check) => check.status !== "fail"),
     checks
   };
+}
+
+function buildPublicationIntegrationCheck(
+  name: string,
+  configured: boolean,
+  required: boolean,
+  configuredDetail: string,
+  missingDetail: string,
+  action: string
+): ProductionSetupReport["checks"][number] {
+  if (configured) {
+    return {
+      name,
+      ok: true,
+      status: "pass",
+      detail: configuredDetail
+    };
+  }
+
+  return {
+    name,
+    ok: !required,
+    status: required ? "fail" : "warn",
+    detail: missingDetail,
+    action
+  };
+}
+
+function buildPublicationOpenApiCheck(
+  paths: JsonRecord,
+  required: boolean
+): ProductionSetupReport["checks"][number] {
+  const missing = publicationOpenApiPaths.filter((path) => !(path in paths));
+  if (missing.length === 0) {
+    return {
+      name: "publication OpenAPI group",
+      ok: true,
+      status: "pass",
+      detail: `${publicationOpenApiPaths.length} required paths registered`
+    };
+  }
+
+  return {
+    name: "publication OpenAPI group",
+    ok: !required,
+    status: required ? "fail" : "warn",
+    detail: `missing ${missing.join(", ")}`,
+    action: "Deploy the publication API registry and rerun API governance."
+  };
+}
+
+function buildVkSetupCheck(
+  configured: boolean
+): ProductionSetupReport["checks"][number] {
+  return configured
+    ? {
+        name: "VK provider",
+        ok: true,
+        status: "pass",
+        detail: "VK_ACCESS_TOKEN and VK_GROUP_ID configured"
+      }
+    : {
+        name: "VK provider",
+        ok: true,
+        status: "warn",
+        detail: "setup_required (accepted until live VK publishing is enabled)",
+        action: "Set VK_ACCESS_TOKEN and VK_GROUP_ID before enabling live VK delivery."
+      };
 }
 
 function buildTelegramWebhookCheck(
@@ -173,6 +288,7 @@ export function parseVerifyProductionSetupArgs(argv: string[], env: NodeJS.Proce
   return {
     appUrl: normalizeProductionAppUrl(urlArg),
     requireTelegram: argv.includes("--require-telegram"),
+    requirePublications: argv.includes("--require-publications"),
     reportOnly: argv.includes("--report-only")
   };
 }
@@ -194,6 +310,7 @@ async function main() {
   const report = buildProductionSetupReport({
     appUrl,
     requireTelegram: options.requireTelegram,
+    requirePublications: options.requirePublications,
     health,
     openapi,
     docs,

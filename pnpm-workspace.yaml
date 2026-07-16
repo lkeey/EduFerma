@@ -4,3 +4,13 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+overrides:
+  "@clerk/backend@3.10.0>@clerk/shared": 4.23.0
+  "@clerk/nextjs>@clerk/backend": 3.10.0
+  "@clerk/nextjs>@clerk/react": 6.11.3
+  "@clerk/nextjs>@clerk/shared": 4.23.0
+  "@clerk/react>@clerk/shared": 4.23.0
+minimumReleaseAgeExclude:
+  - '@clerk/backend@3.11.6'
+  - '@clerk/shared@4.25.4'
+  - '@clerk/testing@2.2.9'
