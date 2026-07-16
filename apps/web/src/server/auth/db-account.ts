@@ -8,6 +8,7 @@ import {
   type ProvisionedServiceUser
 } from "@eduferma/core";
 import { getDb, invitations, users } from "@eduferma/db";
+import { refreshAccessRequestForUnknownIdentity } from "@/server/owner-access/service";
 
 type DbUser = typeof users.$inferSelect;
 
@@ -25,6 +26,7 @@ export async function resolveDbAccountAccess(identity: AuthenticatedIdentity): P
 
   if (!existing) {
     if (!isOwnerBootstrapEmail(email, process.env.OWNER_EMAIL)) {
+      await refreshAccessRequestForUnknownIdentity(identity);
       return { ok: false, reason: "not_provisioned" };
     }
 

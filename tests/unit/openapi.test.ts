@@ -98,6 +98,26 @@ describe("openapi contract", () => {
     );
   });
 
+  it("documents owner access routes and current user access status", () => {
+    expect(openApiDocument.paths["/api/v1/access/status"].get.operationId).toBe("getAccessStatus");
+    expect(openApiDocument.paths["/api/v1/owner/access"].get.operationId).toBe("listOwnerAccess");
+    expect(openApiDocument.paths["/api/v1/owner/access-requests/{requestId}/approve"].post.requestBody.content["application/json"].schema.$ref).toBe(
+      "#/components/schemas/ApproveAccessRequest"
+    );
+    expect(openApiDocument.paths["/api/v1/owner/users/{userId}/access"].patch.responses["200"].content["application/json"].schema.$ref).toBe(
+      "#/components/schemas/OwnerUserAccessResponse"
+    );
+    expect(openApiDocument.components.schemas.CurrentUserResponse.properties).toHaveProperty("accessStatus");
+    expect(openApiDocument.components.schemas.AccessState.enum).toEqual([
+      "missing",
+      "pending",
+      "approved",
+      "rejected",
+      "active",
+      "blocked"
+    ]);
+  });
+
   it("matches the checked-in generated openapi document", () => {
     const generated = readFileSync(join(process.cwd(), "packages/api-contract/openapi.json"), "utf8").trim();
 

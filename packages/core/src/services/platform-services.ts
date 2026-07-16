@@ -37,7 +37,33 @@ export function createPlatformServices(options: ServiceOptions) {
   return {
     common: {
       async getMe(ctx: ServiceContext) {
-        return { user: ctx.user };
+        return {
+          user: ctx.user,
+          accessStatus: {
+            state: ctx.user.role === "guest" ? "missing" : "active",
+            subjectId: ctx.user.id,
+            requestStatus: null,
+            requestedRole: null,
+            currentRole: ctx.user.role,
+            reason: null,
+            reviewedAt: null,
+            lastSeenAt: null
+          }
+        };
+      },
+      async getAccessStatus(ctx: ServiceContext) {
+        return {
+          accessStatus: {
+            state: ctx.user.role === "guest" ? "missing" : "active",
+            subjectId: ctx.user.id,
+            requestStatus: null,
+            requestedRole: null,
+            currentRole: ctx.user.role,
+            reason: null,
+            reviewedAt: null,
+            lastSeenAt: null
+          }
+        };
       }
     },
     student: {
@@ -178,6 +204,46 @@ export function createPlatformServices(options: ServiceOptions) {
         ensureAvailable(state);
         const attemptId = typeof ctxOrAttemptId === "string" ? ctxOrAttemptId : maybeAttemptId;
         return { attempt: { id: attemptId, status: "checked" } };
+      }
+    },
+    owner: {
+      async getAccessStatus(ctx?: ServiceContext) {
+        return {
+          accessStatus: {
+            state: ctx?.user.role === "guest" ? "missing" : "active",
+            subjectId: ctx?.user.id ?? null,
+            requestStatus: null,
+            requestedRole: null,
+            currentRole: ctx?.user.role ?? null,
+            reason: null,
+            reviewedAt: null,
+            lastSeenAt: null
+          }
+        };
+      },
+      async listAccess() {
+        ensureAvailable(state);
+        return { requests: [], users: [] };
+      },
+      async getAccessRequest() {
+        ensureAvailable(state);
+        throw new SetupRequiredError("Owner access detail requires a database");
+      },
+      async getUserAccess() {
+        ensureAvailable(state);
+        throw new SetupRequiredError("Owner user access detail requires a database");
+      },
+      async approveAccessRequest() {
+        ensureAvailable(state);
+        throw new SetupRequiredError("Owner access approval requires a database");
+      },
+      async rejectAccessRequest() {
+        ensureAvailable(state);
+        throw new SetupRequiredError("Owner access rejection requires a database");
+      },
+      async updateUserAccess() {
+        ensureAvailable(state);
+        throw new SetupRequiredError("Owner user access updates require a database");
       }
     }
   };

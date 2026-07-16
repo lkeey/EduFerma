@@ -22,6 +22,7 @@ import {
   serializeStudentTask,
   serializeTeacherTask
 } from "@eduferma/core/services";
+import type { OwnerAccessListQuery, ApproveAccessRequest, RejectAccessRequest, UpdateOwnerUserAccessRequest } from "@eduferma/validators";
 import { checkShortAnswer, updateMastery } from "@eduferma/core";
 import type {
   AttemptResult,
@@ -42,6 +43,15 @@ import {
   mapDbStudentToSummary,
   mapDbTaskToRawTask
 } from "./db-mappers";
+import {
+  approveOwnerAccessRequest,
+  getAccessStatusForUser,
+  getOwnerAccessRequestDetail,
+  getOwnerUserAccessDetail,
+  listOwnerAccess,
+  rejectOwnerAccessRequest,
+  updateOwnerUserAccess
+} from "@/server/owner-access/service";
 
 type Db = ReturnType<typeof getDb>;
 type DbUser = typeof users.$inferSelect;
@@ -55,8 +65,9 @@ export function createDbPlatformServices() {
   return {
     common: {
       async getMe(ctx: ServiceContext) {
+        const accessStatus = await getAccessStatusForUser(ctx.user);
         if (ctx.user.role === "guest") {
-          return { user: ctx.user };
+          return { user: ctx.user, accessStatus };
         }
 
         const dbUser = await requireDbUser(ctx);
@@ -67,8 +78,12 @@ export function createDbPlatformServices() {
             dbUserId: dbUser.id,
             role: dbUser.role,
             name: dbUser.displayName ?? ctx.user.name
-          }
+          },
+          accessStatus
         };
+      },
+      async getAccessStatus(ctx: ServiceContext) {
+        return { accessStatus: await getAccessStatusForUser(ctx.user) };
       }
     },
     student: {
@@ -397,6 +412,35 @@ export function createDbPlatformServices() {
 
         return { attempt: updated };
       }
+    },
+    owner: {
+      async getAccessStatus(ctx: ServiceContext) {
+        return { accessStatus: await getAccessStatusForUser(ctx.user) };
+      },
+      async listAccess(ctx: ServiceContext, filters: OwnerAccessListQuery = {}) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return listOwnerAccess(user, filters);
+      },
+      async getAccessRequest(ctx: ServiceContext, subjectId: string) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return getOwnerAccessRequestDetail(user, subjectId);
+      },
+      async getUserAccess(ctx: ServiceContext, userId: string) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return getOwnerUserAccessDetail(user, userId);
+      },
+      async approveAccessRequest(ctx: ServiceContext, subjectId: string, input: ApproveAccessRequest) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return approveOwnerAccessRequest(user, subjectId, input);
+      },
+      async rejectAccessRequest(ctx: ServiceContext, subjectId: string, input: RejectAccessRequest) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return rejectOwnerAccessRequest(user, subjectId, input);
+      },
+      async updateUserAccess(ctx: ServiceContext, userId: string, input: UpdateOwnerUserAccessRequest) {
+        const { user } = await requireOwnerDbUser(ctx);
+        return updateOwnerUserAccess(user, userId, input);
+      }
     }
   };
 }
@@ -431,6 +475,15 @@ async function requireTeacherDbUser(ctx: ServiceContext) {
   const db = getDb();
   const user = await requireDbUser(ctx);
   if (!teacherRoles.has(user.role)) {
+    throw new ServiceForbiddenError();
+  }
+  return { db, user };
+}
+
+async function requireOwnerDbUser(ctx: ServiceContext) {
+  const db = getDb();
+  const user = await requireDbUser(ctx);
+  if (user.role !== "owner") {
     throw new ServiceForbiddenError();
   }
   return { db, user };
