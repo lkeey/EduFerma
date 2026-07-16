@@ -484,11 +484,15 @@
       "CurrentUserResponse": {
         "type": "object",
         "required": [
-          "user"
+          "user",
+          "accessStatus"
         ],
         "properties": {
           "user": {
             "$ref": "#/components/schemas/ServiceUser"
+          },
+          "accessStatus": {
+            "$ref": "#/components/schemas/AccessStatusSummary"
           }
         },
         "additionalProperties": false
@@ -1281,6 +1285,597 @@
             "items": {
               "type": "string"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccessState": {
+        "type": "string",
+        "enum": [
+          "missing",
+          "pending",
+          "approved",
+          "rejected",
+          "active",
+          "blocked"
+        ]
+      },
+      "AccessRequestStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ]
+      },
+      "AccessStatusSummary": {
+        "type": "object",
+        "required": [
+          "state",
+          "subjectId",
+          "requestStatus",
+          "requestedRole",
+          "currentRole",
+          "reason",
+          "reviewedAt",
+          "lastSeenAt"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/AccessState"
+          },
+          "subjectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AccessRequestStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestedRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "teacher",
+                  "tutor",
+                  "student",
+                  "guardian"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "teacher",
+                  "tutor",
+                  "student",
+                  "guardian",
+                  "guest"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastSeenAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccessStatusResponse": {
+        "type": "object",
+        "required": [
+          "accessStatus"
+        ],
+        "properties": {
+          "accessStatus": {
+            "$ref": "#/components/schemas/AccessStatusSummary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerAccessRequestRow": {
+        "type": "object",
+        "required": [
+          "id",
+          "subjectId",
+          "requesterEmail",
+          "requesterName",
+          "requestedRole",
+          "status",
+          "decisionReason",
+          "reviewedAt",
+          "createdAt",
+          "updatedAt",
+          "lastSeenAt",
+          "linkedUserId",
+          "currentRole",
+          "blocked",
+          "studentId",
+          "studentPublicCode",
+          "learningTrack"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "requesterEmail": {
+            "type": "string"
+          },
+          "requesterName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "teacher",
+                  "tutor",
+                  "student",
+                  "guardian"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AccessRequestStatus"
+          },
+          "decisionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "linkedUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currentRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "teacher",
+                  "tutor",
+                  "student",
+                  "guardian",
+                  "guest"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blocked": {
+            "type": "boolean"
+          },
+          "studentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "studentPublicCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "learningTrack": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerManagedUser": {
+        "type": "object",
+        "required": [
+          "userId",
+          "clerkSubject",
+          "email",
+          "displayName",
+          "role",
+          "isActive",
+          "blockedAt",
+          "blockReason",
+          "studentId",
+          "studentPublicCode",
+          "learningTrack",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "clerkSubject": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "teacher",
+              "tutor",
+              "student",
+              "guardian"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "blockedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blockReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "studentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "studentPublicCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "learningTrack": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerAccessAuditEvent": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "entityType",
+          "entityId",
+          "createdAt",
+          "actorUserId",
+          "actorEmail",
+          "metadata"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerAccessOverviewResponse": {
+        "type": "object",
+        "required": [
+          "requests",
+          "users"
+        ],
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerAccessRequestRow"
+            }
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerManagedUser"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerAccessDetailResponse": {
+        "type": "object",
+        "required": [
+          "request",
+          "user",
+          "history",
+          "accessStatus",
+          "ownerConfirmationPhrase"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/OwnerAccessRequestRow"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OwnerManagedUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerAccessAuditEvent"
+            }
+          },
+          "accessStatus": {
+            "$ref": "#/components/schemas/AccessStatusSummary"
+          },
+          "ownerConfirmationPhrase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerUserAccessDetailResponse": {
+        "type": "object",
+        "required": [
+          "user",
+          "history",
+          "accessStatus",
+          "ownerConfirmationPhrase"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/OwnerManagedUser"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerAccessAuditEvent"
+            }
+          },
+          "accessStatus": {
+            "$ref": "#/components/schemas/AccessStatusSummary"
+          },
+          "ownerConfirmationPhrase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerUserAccessResponse": {
+        "type": "object",
+        "required": [
+          "user",
+          "accessStatus",
+          "ownerConfirmationPhrase"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/OwnerManagedUser"
+          },
+          "accessStatus": {
+            "$ref": "#/components/schemas/AccessStatusSummary"
+          },
+          "ownerConfirmationPhrase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApproveAccessRequest": {
+        "type": "object",
+        "required": [
+          "role",
+          "reason"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "teacher",
+              "tutor",
+              "student",
+              "guardian"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "ownerConfirmation": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RejectAccessRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateOwnerUserAccessRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "teacher",
+              "tutor",
+              "student",
+              "guardian"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "ownerConfirmation": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -3895,6 +4490,478 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReviewAttemptRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/status": {
+      "get": {
+        "operationId": "getAccessStatus",
+        "tags": [
+          "Auth",
+          "Access"
+        ],
+        "summary": "Current authenticated user's access request status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/owner/access": {
+      "get": {
+        "operationId": "listOwnerAccess",
+        "tags": [
+          "Owner",
+          "Access"
+        ],
+        "summary": "Owner access queue and managed users",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerAccessOverviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/owner/access/{subjectId}": {
+      "get": {
+        "operationId": "getOwnerAccessRequest",
+        "tags": [
+          "Owner",
+          "Access"
+        ],
+        "summary": "Owner access request detail and history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerAccessDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subjectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/owner/access-requests/{requestId}/approve": {
+      "post": {
+        "operationId": "approveOwnerAccessRequest",
+        "tags": [
+          "Owner",
+          "Access"
+        ],
+        "summary": "Approve an access request and provision access",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerAccessDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveAccessRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/access-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "rejectOwnerAccessRequest",
+        "tags": [
+          "Owner",
+          "Access"
+        ],
+        "summary": "Reject an access request",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerAccessDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectAccessRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/users/{userId}/access": {
+      "patch": {
+        "operationId": "updateOwnerUserAccess",
+        "tags": [
+          "Owner",
+          "Access"
+        ],
+        "summary": "Update owner-managed user role or block state",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerUserAccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Remote database setup is required or temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "clerkAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOwnerUserAccessRequest"
               }
             }
           }

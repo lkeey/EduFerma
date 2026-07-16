@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookOpenCheck, CalendarDays, ClipboardCheck, DatabaseZap, Home, LineChart, UsersRound } from "lucide-react";
+import { BookOpenCheck, CalendarDays, ClipboardCheck, DatabaseZap, Home, LineChart, ShieldCheck, UsersRound } from "lucide-react";
 import { AccountSignOutAction } from "@/components/auth/account-sign-out-action";
 
 type NavItem = {
@@ -25,6 +25,8 @@ const teacherNav: NavItem[] = [
   { href: "/teacher/reviews", label: "Проверка", icon: <LineChart aria-hidden="true" /> }
 ];
 
+const ownerNav: NavItem[] = [...teacherNav, { href: "/owner/access", label: "Доступ", icon: <ShieldCheck aria-hidden="true" /> }];
+
 export function PlatformShell({
   role,
   title,
@@ -32,13 +34,13 @@ export function PlatformShell({
   actions,
   children
 }: {
-  role: "student" | "teacher";
+  role: "student" | "teacher" | "owner";
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const nav = role === "student" ? studentNav : teacherNav;
+  const nav = role === "student" ? studentNav : role === "owner" ? ownerNav : teacherNav;
 
   return (
     <main className="dashboard-shell">
@@ -47,7 +49,7 @@ export function PlatformShell({
           <span>EF</span>
           <span>EduFerma</span>
         </Link>
-        <nav aria-label={role === "student" ? "Student navigation" : "Teacher navigation"}>
+        <nav aria-label={role === "student" ? "Student navigation" : role === "owner" ? "Owner navigation" : "Teacher navigation"}>
           {nav.map((item) => (
             <Link href={item.href} key={item.href}>
               {item.icon}

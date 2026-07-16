@@ -11,6 +11,7 @@ export const routes = {
   dashboard: "/dashboard",
   studentDashboard: "/student/dashboard",
   teacherDashboard: "/teacher/dashboard",
+  ownerAccess: "/owner/access",
   taskBank: "/task-bank",
   taskBankApi: "/api/v1/task-bank",
   teacherStudents: "/teacher/students",
@@ -35,6 +36,7 @@ export type AppRole = keyof typeof roleNames;
 
 export const protectedRoutePrefixes = [
   "/dashboard",
+  "/owner",
   "/student",
   "/teacher",
   "/api/v1",

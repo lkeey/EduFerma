@@ -4,6 +4,10 @@ import { GET as demoAuthLogout } from "../../apps/web/src/app/api/demo-auth/logo
 import { GET as getHealth } from "../../apps/web/src/app/api/health/route";
 import { GET as getOpenApiDocument } from "../../apps/web/src/app/api/openapi.json/route";
 import { GET as getMe } from "../../apps/web/src/app/api/v1/me/route";
+import { GET as getAccessStatus } from "../../apps/web/src/app/api/v1/access/status/route";
+import { POST as approveOwnerAccessRequest } from "../../apps/web/src/app/api/v1/owner/access-requests/[requestId]/approve/route";
+import { GET as getOwnerAccess } from "../../apps/web/src/app/api/v1/owner/access/route";
+import { PATCH as patchOwnerUserAccess } from "../../apps/web/src/app/api/v1/owner/users/[userId]/access/route";
 import { GET as getStudentDashboard } from "../../apps/web/src/app/api/v1/student/dashboard/route";
 import { GET as getStudentTask } from "../../apps/web/src/app/api/v1/student/tasks/[taskId]/route";
 import { GET as getTeacherAssignment } from "../../apps/web/src/app/api/v1/teacher/assignments/[assignmentId]/route";
@@ -119,6 +123,20 @@ describe("api route contracts", () => {
     expect(payload.user.role).toBe("teacher");
   });
 
+  it("includes access status in /me and the dedicated access status endpoint", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const meResponse = await getMe(apiRequest("/api/v1/me", { "x-demo-role": "owner" }));
+    const mePayload = await meResponse.json();
+    const statusResponse = await getAccessStatus(apiRequest("/api/v1/access/status", { "x-demo-role": "owner" }));
+    const statusPayload = await statusResponse.json();
+
+    expect(meResponse.status).toBe(200);
+    expect(mePayload.accessStatus).toMatchObject({ state: "active", currentRole: "owner" });
+    expect(statusResponse.status).toBe(200);
+    expect(statusPayload.accessStatus).toMatchObject({ state: "active", currentRole: "owner" });
+  });
+
   it("reports missing Clerk env names through public health without secret values", async () => {
     const response = await getHealth();
     const payload = await response.json();
@@ -146,6 +164,47 @@ describe("api route contracts", () => {
     const response = await getTeacherDashboard(apiRequest("/api/v1/teacher/dashboard", { "x-demo-role": "student" }));
 
     await expectError(response, 403, "FORBIDDEN");
+  });
+
+  it("returns 403 when a non-owner calls an owner endpoint", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getOwnerAccess(apiRequest("/api/v1/owner/access", { "x-demo-role": "teacher" }));
+
+    await expectError(response, 403, "FORBIDDEN");
+  });
+
+  it("serves the owner access overview for owner demo auth", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getOwnerAccess(apiRequest("/api/v1/owner/access", { "x-demo-role": "owner" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ requests: [], users: [] });
+  });
+
+  it("validates owner approval and user access mutation payloads before service execution", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const approveResponse = await approveOwnerAccessRequest(
+      apiRequest("/api/v1/owner/access-requests/request_123/approve", {
+        "x-demo-role": "owner",
+        "content-type": "application/json"
+      }),
+      { params: Promise.resolve({ requestId: "request_123" }) }
+    );
+    const patchResponse = await patchOwnerUserAccess(
+      new Request("http://localhost/api/v1/owner/users/db_123/access", {
+        method: "PATCH",
+        headers: { "x-demo-role": "owner", "content-type": "application/json" },
+        body: JSON.stringify({ reason: "" })
+      }),
+      { params: Promise.resolve({ userId: "db_123" }) }
+    );
+
+    await expectError(approveResponse, 400, "VALIDATION_ERROR");
+    await expectError(patchResponse, 400, "VALIDATION_ERROR");
   });
 
   it("does not expose teacher-only task fields through student task routes", async () => {

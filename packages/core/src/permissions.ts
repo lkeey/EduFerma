@@ -63,6 +63,10 @@ export function hasPermission(role: AppRole, action: PermissionAction): boolean 
 }
 
 export function canAccessRoute(role: AppRole, pathname: string): boolean {
+  if (pathname.startsWith("/owner")) {
+    return role === "owner";
+  }
+
   if (
     pathname.startsWith("/teacher") ||
     pathname.startsWith("/api/teacher") ||
@@ -89,6 +93,10 @@ export function canAccessRoute(role: AppRole, pathname: string): boolean {
 }
 
 export function canAccessApiRoute(role: AppRole, pathname: string): boolean {
+  if (pathname.startsWith("/api/v1/owner")) {
+    return role === "owner";
+  }
+
   if (pathname.startsWith("/api/v1/teacher")) {
     return role === "owner" || role === "teacher" || role === "tutor";
   }
