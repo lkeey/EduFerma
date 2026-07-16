@@ -7,9 +7,8 @@ import {
 } from "../../scripts/verify-production-telegram-delivery";
 
 const productionEnv = {
-  EDUFERMA_DB_ENV: "production",
+  VERCEL_ENV: "production",
   ENABLE_DEMO_AUTH: "false",
-  NEXT_PUBLIC_APP_URL: "https://edu-ferma-web.vercel.app"
 };
 
 function publication(
@@ -96,12 +95,12 @@ describe("Telegram production acceptance safety", () => {
     expect(() =>
       readAcceptanceConfig({
         ...productionEnv,
-        EDUFERMA_DB_ENV: "development",
+        VERCEL_ENV: "preview",
         TELEGRAM_BOT_TOKEN: "configured",
         TELEGRAM_OWNER_CHAT_ID: "1001",
         TELEGRAM_ALLOWED_CHAT_IDS: "1001"
       })
-    ).toThrow(/EDUFERMA_DB_ENV=production/);
+    ).toThrow(/non-production Vercel/);
   });
 
   it("requires exactly one sent delivery with a provider message ID", () => {
