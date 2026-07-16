@@ -64,9 +64,13 @@ DNS results, non-standard ports, cookies and unchecked redirects are rejected.
 Telegram Bot API values must be configured only as Vercel/GitHub/local env vars:
 
 - `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_OWNER_CHAT_ID`
+- `TELEGRAM_ALLOWED_CHAT_IDS`
 - `TELEGRAM_WEBHOOK_SECRET`
 - `TELEGRAM_BROADCAST_ENABLED`
 - `TELEGRAM_POSTS_CRON_SECRET`
+- `CRON_SECRET`
+- `BLOB_READ_WRITE_TOKEN`
 - `NEXT_PUBLIC_APP_URL`
 
 After deployment, point BotFather or the Telegram `setWebhook` call to:
@@ -76,6 +80,16 @@ https://<deployment-host>/api/integrations/telegram/webhook
 ```
 
 Use `X-Telegram-Bot-Api-Secret-Token` with the configured webhook secret. This repository does not enable a Vercel Cron schedule for Telegram posts by default; use the guarded manual worker command or add a protected cron route in a separate reviewed change.
+
+The publication CMS processor uses
+`GET /api/v1/internal/publications/process`. The current five-minute schedule is
+implemented by `.github/workflows/publications-cron.yml`, because Vercel Hobby
+cron expressions cannot run more than once per day. Set GitHub secret
+`CRON_SECRET` and variable `PUBLICATIONS_CRON_FALLBACK_ENABLED=true`. The
+workflow calls only the fixed production processor URL, so the bearer secret
+cannot be redirected through a repository variable. If the Vercel project is
+upgraded to Pro, register the same endpoint as a five-minute Vercel Cron and
+disable the GitHub fallback.
 
 ## Production Setup Verification
 

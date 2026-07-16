@@ -67,8 +67,11 @@ function operation(route: RouteDefinition): OpenApiOperation {
     }
   };
 
+  if (route.securityScheme || !route.public) {
+    op.security = [{ [route.securityScheme ?? "clerkAuth"]: [] }];
+  }
+
   if (!route.public) {
-    op.security = [{ clerkAuth: [] }];
     op.responses["503"] = apiErrorResponse("Remote database setup is required or temporarily unavailable");
   }
 
@@ -113,7 +116,10 @@ export function buildOpenApiDocument() {
       { name: "Attempts" },
       { name: "Plans" },
       { name: "Schedule" },
-      { name: "Analytics" }
+      { name: "Analytics" },
+      { name: "Publications" },
+      { name: "Owner" },
+      { name: "Internal" }
     ],
     components: {
       securitySchemes: {
@@ -121,6 +127,11 @@ export function buildOpenApiDocument() {
           type: "http",
           scheme: "bearer",
           bearerFormat: "Clerk session"
+        },
+        cronSecret: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "CRON_SECRET"
         }
       },
       schemas

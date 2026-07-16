@@ -7,6 +7,7 @@ export type RouteDefinition = {
   tags: string[];
   summary: string;
   public?: boolean;
+  securityScheme?: "clerkAuth" | "cronSecret";
   responseContentType?: "application/json" | "text/html";
   requestBody?: boolean;
   requestContentType?: "application/json" | "multipart/form-data" | "application/octet-stream";

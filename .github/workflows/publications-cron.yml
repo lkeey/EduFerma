@@ -1,0 +1,29 @@
+name: Publications Cron
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publications-cron
+  cancel-in-progress: false
+
+jobs:
+  process-publications:
+    if: ${{ vars.PUBLICATIONS_CRON_FALLBACK_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Process due publications
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --show-error --silent --max-time 60 \
+            --request GET \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "https://edu-ferma-web.vercel.app/api/v1/internal/publications/process"
