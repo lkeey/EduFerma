@@ -29,9 +29,33 @@ type SnakeProgress = {
 };
 
 type SnakePlan = {
-  student_id: string;
+  id: string;
+  student_id?: string;
+  version_no: number;
+  status: string;
   title: string;
+  strategy: string;
+  learning_track: string;
+  goal_summary?: string;
+  deadline?: string;
+  sessions_per_week?: number;
+  session_duration_minutes?: number;
+  rationale?: string;
+  checkpoints?: string[];
+  lessons?: Array<{
+    id: string;
+    lesson_no: number;
+    planned_date?: string;
+    title: string;
+    lesson_goal?: string;
+    skill_atoms?: string[];
+    prototype_ids?: string[];
+    student_summary?: string;
+    teacher_notes?: string;
+    status: string;
+  }>;
   milestones: string[];
+  change_summary?: string;
 };
 
 type SnakeTask = {
@@ -103,6 +127,13 @@ export type LegacyPlan = {
   title: string;
   versionNo: number;
   status: string;
+  goalSummary?: string;
+  deadline?: string;
+  sessionsPerWeek?: number;
+  sessionDurationMinutes?: number;
+  rationale?: string;
+  checkpoints: string[];
+  changeSummary?: string;
   lessons: Array<{
     id: string;
     lessonNo: number;
@@ -201,23 +232,42 @@ export function toLegacySkill(progress: SnakeProgress): LegacySkill {
 
 export function toLegacyPlan(plan: SnakePlan | null | undefined): LegacyPlan | null {
   if (!plan) return null;
+  const lessons: Array<NonNullable<SnakePlan["lessons"]>[number]> = plan.lessons ?? plan.milestones.map((title, index) => ({
+    id: `${plan.id}_${index + 1}`,
+    lesson_no: index + 1,
+    planned_date: undefined,
+    title,
+    lesson_goal: undefined,
+    skill_atoms: [],
+    prototype_ids: [],
+    student_summary: title,
+    teacher_notes: undefined,
+    status: "planned"
+  }));
   return {
-    id: `plan_${plan.student_id}`,
-    studentId: plan.student_id,
-    strategy: plan.title,
+    id: plan.id,
+    studentId: plan.student_id ?? "current_student",
+    strategy: plan.strategy,
     title: plan.title,
-    versionNo: 1,
-    status: "active",
-    lessons: plan.milestones.map((title, index) => ({
-      id: `plan_${plan.student_id}_${index + 1}`,
-      lessonNo: index + 1,
-      plannedDate: undefined,
-      title,
-      studentSummary: title,
-      skillAtoms: [],
-      prototypeIds: [],
-      teacherNotes: "",
-      status: "planned"
+    versionNo: plan.version_no,
+    status: plan.status,
+    goalSummary: plan.goal_summary,
+    deadline: plan.deadline,
+    sessionsPerWeek: plan.sessions_per_week,
+    sessionDurationMinutes: plan.session_duration_minutes,
+    rationale: plan.rationale,
+    checkpoints: plan.checkpoints ?? [],
+    changeSummary: plan.change_summary,
+    lessons: lessons.map((lesson) => ({
+      id: lesson.id,
+      lessonNo: lesson.lesson_no,
+      plannedDate: lesson.planned_date,
+      title: lesson.title,
+      studentSummary: lesson.student_summary ?? lesson.lesson_goal ?? lesson.title,
+      skillAtoms: lesson.skill_atoms ?? [],
+      prototypeIds: lesson.prototype_ids ?? [],
+      teacherNotes: lesson.teacher_notes ?? "",
+      status: lesson.status
     }))
   };
 }

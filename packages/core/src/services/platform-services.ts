@@ -1,7 +1,11 @@
 import { checkShortAnswer } from "../answer-checking";
 import { SetupRequiredError } from "./errors";
 import {
+  demoAnalytics,
   demoAssignments,
+  demoPlanAdjustments,
+  demoPlanEvents,
+  demoPlanHistory,
   demoPlan,
   demoProgress,
   demoSchedule,
@@ -14,9 +18,14 @@ import type {
   AttemptResult,
   CreateAssignmentInput,
   CreateScheduleEventInput,
+  PlanAdjustmentSummary,
+  PlanHistoryResponse,
   ReviewAttemptInput,
   ServiceContext,
+  StudentAnalyticsResponse,
   SubmitAttemptInput,
+  TeacherAnalyticsResponse,
+  TeacherPlanResponse,
   UpdateAssignmentInput,
   UpdatePlanInput
 } from "./types";
@@ -29,6 +38,45 @@ function ensureAvailable(state: ApiSetupState) {
   if (state === "unavailable") {
     throw new SetupRequiredError();
   }
+}
+
+function demoTeacherPlan(studentId: string): TeacherPlanResponse {
+  return {
+    draft_plan: {
+      ...demoPlan,
+      id: "demo-plan-v2-draft",
+      student_id: studentId,
+      version_no: 2,
+      status: "draft",
+      change_summary: "Черновик с уточненными уроками."
+    },
+    active_plan: {
+      ...demoPlan,
+      student_id: studentId
+    },
+    pending_adjustments: demoPlanAdjustments.map((adjustment) => ({
+      ...adjustment,
+      plan_id: "demo-plan-v2-draft"
+    })),
+    recent_events: demoPlanEvents
+  };
+}
+
+function demoPlanHistoryResponse(studentId: string): PlanHistoryResponse {
+  return {
+    history: demoPlanHistory.map((plan) => ({ ...plan, student_id: studentId })),
+    change_events: demoPlanEvents
+  };
+}
+
+function demoFeedbackPreview(planId: string, proposals: PlanAdjustmentSummary[] = demoPlanAdjustments) {
+  return {
+    preview: {
+      plan_id: planId,
+      signals: proposals.map((proposal) => proposal.signal),
+      proposals: proposals.map((proposal) => ({ ...proposal, plan_id: planId }))
+    }
+  };
 }
 
 export function createPlatformServices(options: ServiceOptions) {
@@ -81,7 +129,16 @@ export function createPlatformServices(options: ServiceOptions) {
       },
       async getPlan(_ctx?: ServiceContext) {
         ensureAvailable(state);
-        return { plan: demoPlan };
+        const { student_id: _studentId, rationale: _rationale, change_summary: _changeSummary, ...studentPlan } = demoPlan;
+        return {
+          plan: {
+            ...studentPlan,
+            lessons: demoPlan.lessons.map((lesson) => ({
+              ...lesson,
+              teacher_notes: undefined
+            }))
+          }
+        };
       },
       async getAssignments(_ctx?: ServiceContext) {
         ensureAvailable(state);
@@ -118,6 +175,10 @@ export function createPlatformServices(options: ServiceOptions) {
       async getProgress(_ctx?: ServiceContext) {
         ensureAvailable(state);
         return { progress: demoProgress };
+      },
+      async getAnalytics(_ctx?: ServiceContext): Promise<StudentAnalyticsResponse> {
+        ensureAvailable(state);
+        return { analytics: demoAnalytics };
       }
     },
     teacher: {
@@ -204,11 +265,78 @@ export function createPlatformServices(options: ServiceOptions) {
       },
       async getStudentPlan(_ctx: ServiceContext | undefined, studentId: string) {
         ensureAvailable(state);
-        return { plan: { ...demoPlan, student_id: studentId } };
+        return demoTeacherPlan(studentId);
       },
-      async updateStudentPlan(_ctx: ServiceContext | undefined, studentId: string, _input?: UpdatePlanInput) {
+      async updateStudentPlan(_ctx: ServiceContext | undefined, studentId: string, input?: UpdatePlanInput) {
         ensureAvailable(state);
-        return { plan: { ...demoPlan, student_id: studentId, updated: true } };
+        const current = demoTeacherPlan(studentId);
+        return {
+          ...current,
+          draft_plan: current.draft_plan
+            ? {
+                ...current.draft_plan,
+                title: input?.title ?? current.draft_plan.title,
+                strategy: input?.strategy ?? current.draft_plan.strategy,
+                rationale: input?.rationale ?? current.draft_plan.rationale,
+                goal_summary: input?.goalSummary ?? current.draft_plan.goal_summary,
+                deadline:
+                  input?.deadline === null
+                    ? undefined
+                    : input?.deadline ?? current.draft_plan.deadline,
+                sessions_per_week:
+                  input?.sessionsPerWeek === null
+                    ? undefined
+                    : input?.sessionsPerWeek ?? current.draft_plan.sessions_per_week,
+                session_duration_minutes:
+                  input?.sessionDurationMinutes === null
+                    ? undefined
+                    : input?.sessionDurationMinutes ?? current.draft_plan.session_duration_minutes,
+                checkpoints: input?.checkpoints ?? current.draft_plan.checkpoints,
+                lessons: input?.lessons?.map((lesson) => ({
+                  id: lesson.id ?? `demo-draft-lesson-${lesson.lessonNo}`,
+                  lesson_no: lesson.lessonNo,
+                  planned_date: lesson.plannedDate,
+                  title: lesson.title,
+                  lesson_goal: lesson.lessonGoal,
+                  topics: lesson.topics ?? [],
+                  task_numbers: lesson.taskNumbers ?? [],
+                  prototype_ids: lesson.prototypeIds ?? [],
+                  skill_atoms: lesson.skillAtoms ?? [],
+                  status: lesson.status ?? "planned",
+                  student_summary: lesson.studentSummary,
+                  teacher_notes: lesson.teacherNotes
+                })) ?? current.draft_plan.lessons
+              }
+            : null
+        };
+      },
+      async publishStudentPlan(_ctx: ServiceContext | undefined, studentId: string) {
+        ensureAvailable(state);
+        const current = demoTeacherPlan(studentId);
+        return {
+          plan: current.draft_plan
+            ? {
+                ...current.draft_plan,
+                status: "active" as const
+              }
+            : { ...demoPlan, student_id: studentId }
+        };
+      },
+      async getStudentPlanHistory(_ctx: ServiceContext | undefined, studentId: string): Promise<PlanHistoryResponse> {
+        ensureAvailable(state);
+        return demoPlanHistoryResponse(studentId);
+      },
+      async previewStudentPlanFeedback(_ctx: ServiceContext | undefined, studentId: string) {
+        ensureAvailable(state);
+        return demoFeedbackPreview(`demo-plan-v2-draft-${studentId}`);
+      },
+      async applyStudentPlanAdjustment(_ctx: ServiceContext | undefined, studentId: string, adjustmentId: string) {
+        ensureAvailable(state);
+        return demoFeedbackPreview(`demo-plan-v2-draft-${studentId}`, demoPlanAdjustments.map((adjustment) => ({
+          ...adjustment,
+          id: adjustmentId,
+          status: "applied"
+        })));
       },
       async getStudentSchedule(_ctx: ServiceContext | undefined, _studentId: string) {
         ensureAvailable(state);
@@ -226,9 +354,9 @@ export function createPlatformServices(options: ServiceOptions) {
         ensureAvailable(state);
         return { assignments: demoAssignments };
       },
-      async getStudentAnalytics(_ctx: ServiceContext | undefined, _studentId: string) {
+      async getStudentAnalytics(_ctx: ServiceContext | undefined, _studentId: string): Promise<TeacherAnalyticsResponse> {
         ensureAvailable(state);
-        return { progress: demoProgress };
+        return { analytics: demoAnalytics };
       },
       async getTaskBank(_ctx?: ServiceContext, _query?: Record<string, unknown>) {
         ensureAvailable(state);

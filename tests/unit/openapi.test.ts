@@ -137,6 +137,34 @@ describe("openapi contract", () => {
     );
   });
 
+  it("documents versioned plan editing, feedback, analytics, and student-safe fields", () => {
+    const updatePlan =
+      openApiDocument.paths["/api/v1/teacher/students/{studentId}/plan"].patch;
+    const studentPlan = openApiDocument.components.schemas.StudentPlanSummary;
+    const teacherPlan = openApiDocument.components.schemas.PlanSummary;
+
+    expect(updatePlan.requestBody.content["application/json"].schema.$ref).toBe(
+      "#/components/schemas/UpdatePlanRequest"
+    );
+    expect(
+      openApiDocument.paths[
+        "/api/v1/teacher/students/{studentId}/plan/feedback-preview"
+      ].post.operationId
+    ).toBe("previewTeacherStudentPlanFeedback");
+    expect(
+      openApiDocument.paths["/api/v1/student/analytics"].get.operationId
+    ).toBe("getStudentAnalytics");
+    expect(teacherPlan.properties).toMatchObject({
+      deadline: { type: "string" },
+      sessions_per_week: { type: "integer" },
+      session_duration_minutes: { type: "integer" }
+    });
+    expect(studentPlan.properties).not.toHaveProperty("rationale");
+    expect(
+      studentPlan.properties.lessons.items.properties
+    ).not.toHaveProperty("teacher_notes");
+  });
+
   it("matches the checked-in generated openapi document", () => {
     const generated = readFileSync(join(process.cwd(), "packages/api-contract/openapi.json"), "utf8").trim();
 

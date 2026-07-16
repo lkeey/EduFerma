@@ -72,9 +72,140 @@ export type ScheduleEvent = {
 };
 
 export type PlanSummary = {
+  id: string;
   student_id: string;
+  version_no: number;
+  status: "draft" | "active" | "superseded" | "archived";
   title: string;
+  strategy: string;
+  learning_track: string;
+  goal_summary?: string;
+  deadline?: string;
+  sessions_per_week?: number;
+  session_duration_minutes?: number;
+  rationale?: string;
+  checkpoints: string[];
+  lessons: PlanLessonSummary[];
   milestones: string[];
+  change_summary?: string;
+  published_at?: string;
+  superseded_at?: string;
+};
+
+export type PlanLessonSummary = {
+  id: string;
+  lesson_no: number;
+  planned_date?: string;
+  title: string;
+  lesson_goal?: string;
+  topics: string[];
+  task_numbers: string[];
+  prototype_ids: string[];
+  skill_atoms: string[];
+  status: string;
+  student_summary?: string;
+  teacher_notes?: string;
+};
+
+export type PlanChangeEventSummary = {
+  id: string;
+  plan_id: string;
+  event_type: "created" | "updated" | "review_requested" | "approved" | "applied" | "superseded";
+  status: "pending" | "recorded" | "approved" | "rejected" | "applied";
+  summary: string;
+  created_at: string;
+  approved_at?: string;
+  applied_at?: string;
+};
+
+export type PlanAdjustmentSummary = {
+  id: string;
+  plan_id: string;
+  adjustment_type: "remediation" | "slowdown" | "check" | "acceleration" | "stretch";
+  title: string;
+  details_md?: string;
+  status: "proposed" | "approved" | "rejected" | "applied";
+  signal: "homework_not_done" | "misunderstanding" | "topic_mastered" | "fast_progress";
+  created_at: string;
+  scheduled_for?: string;
+  reviewed_at?: string;
+  applied_at?: string;
+};
+
+export type FeedbackPreviewSummary = {
+  plan_id: string;
+  signals: Array<"homework_not_done" | "misunderstanding" | "topic_mastered" | "fast_progress">;
+  proposals: PlanAdjustmentSummary[];
+};
+
+export type StudentAnalyticsSummary = {
+  forecast_status: "on_track" | "at_risk" | "insufficient_data" | "needs_official_scoring_data";
+  forecast_reason: string;
+  plan_completion: {
+    completed_lessons: number;
+    total_lessons: number;
+    percent: number;
+  };
+  homework_completion: {
+    completed_assignments: number;
+    total_assignments: number;
+    overdue_assignments: number;
+    percent: number;
+  };
+  checked_attempt_accuracy: {
+    correct: number;
+    checked: number;
+    percent: number;
+  };
+  time_spent: {
+    total_seconds: number;
+    average_seconds_per_attempt: number;
+  };
+  skill_mastery: ProgressSummary[];
+  prototype_mastery: Array<{
+    prototype_id: string;
+    value: number;
+    risk_flag?: string;
+  }>;
+  recurring_errors: Array<{
+    mistake_tag: string;
+    count: number;
+  }>;
+  weekly_trends: Array<{
+    week_start: string;
+    attempts: number;
+    checked_attempts: number;
+    accuracy_percent: number;
+    time_spent_seconds: number;
+  }>;
+  checkpoints: Array<{
+    label: string;
+    status: "done" | "upcoming" | "overdue";
+  }>;
+};
+
+export type TeacherPlanResponse = {
+  draft_plan: PlanSummary | null;
+  active_plan: PlanSummary | null;
+  pending_adjustments: PlanAdjustmentSummary[];
+  recent_events: PlanChangeEventSummary[];
+};
+
+export type PlanHistoryResponse = {
+  history: PlanSummary[];
+  change_events: PlanChangeEventSummary[];
+};
+
+export type StudentPlanResponse = {
+  plan: Omit<PlanSummary, "student_id" | "rationale" | "change_summary"> | null;
+};
+
+export type StudentAnalyticsResponse = {
+  analytics: StudentAnalyticsSummary;
+};
+
+export type TeacherAnalyticsResponse = {
+  analytics: StudentAnalyticsSummary;
 };
 
 export type ProgressSummary = {
@@ -118,8 +249,28 @@ export type UpdateAssignmentInput = {
 
 export type UpdatePlanInput = {
   title?: string;
-  milestones?: string[];
-  lessonStatus?: string;
+  strategy?: string;
+  rationale?: string;
+  goalSummary?: string;
+  deadline?: string | null;
+  sessionsPerWeek?: number | null;
+  sessionDurationMinutes?: number | null;
+  checkpoints?: string[];
+  changeSummary?: string;
+  lessons?: Array<{
+    id?: string;
+    lessonNo: number;
+    plannedDate?: string;
+    title: string;
+    lessonGoal?: string;
+    topics?: string[];
+    taskNumbers?: string[];
+    prototypeIds?: string[];
+    skillAtoms?: string[];
+    status?: string;
+    studentSummary?: string;
+    teacherNotes?: string;
+  }>;
 };
 
 export type CreateScheduleEventInput = {

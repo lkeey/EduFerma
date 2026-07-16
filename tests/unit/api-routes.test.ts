@@ -9,10 +9,21 @@ import { POST as approveOwnerAccessRequest } from "../../apps/web/src/app/api/v1
 import { GET as getOwnerAccess } from "../../apps/web/src/app/api/v1/owner/access/route";
 import { PATCH as patchOwnerUserAccess } from "../../apps/web/src/app/api/v1/owner/users/[userId]/access/route";
 import { GET as getStudentDashboard } from "../../apps/web/src/app/api/v1/student/dashboard/route";
+import { GET as getStudentAnalytics } from "../../apps/web/src/app/api/v1/student/analytics/route";
+import { GET as getStudentPlan } from "../../apps/web/src/app/api/v1/student/plan/route";
 import { GET as getStudentTask } from "../../apps/web/src/app/api/v1/student/tasks/[taskId]/route";
 import { GET as getTeacherAssignment } from "../../apps/web/src/app/api/v1/teacher/assignments/[assignmentId]/route";
 import { GET as getTeacherAssignments } from "../../apps/web/src/app/api/v1/teacher/assignments/route";
 import { GET as getTeacherDashboard } from "../../apps/web/src/app/api/v1/teacher/dashboard/route";
+import { GET as getTeacherStudentAnalytics } from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/analytics/route";
+import {
+  GET as getTeacherStudentPlan,
+  PATCH as updateTeacherStudentPlan
+} from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/plan/route";
+import { POST as applyTeacherStudentPlanAdjustment } from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/plan/adjustments/[adjustmentId]/apply/route";
+import { POST as previewTeacherStudentPlanFeedback } from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/plan/feedback-preview/route";
+import { GET as getTeacherStudentPlanHistory } from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/plan/history/route";
+import { POST as publishTeacherStudentPlan } from "../../apps/web/src/app/api/v1/teacher/students/[studentId]/plan/publish/route";
 import { GET as getTeacherTask } from "../../apps/web/src/app/api/v1/teacher/tasks/[taskId]/route";
 import { setCurrentUserForAuthTests } from "../../apps/web/src/server/auth/session";
 
@@ -50,8 +61,8 @@ function resetEnv() {
   delete process.env.OWNER_EMAIL;
 }
 
-function apiRequest(pathname: string, headers?: HeadersInit) {
-  return new Request(`http://localhost${pathname}`, { headers });
+function apiRequest(pathname: string, headers?: HeadersInit, init: RequestInit = {}) {
+  return new Request(`http://localhost${pathname}`, { ...init, headers });
 }
 
 function demoAuthRequest(url: string) {
@@ -221,6 +232,168 @@ describe("api route contracts", () => {
     expect(payload.task).not.toHaveProperty("solution_md");
     expect(payload.task).not.toHaveProperty("teacher_notes");
     expect(payload.task).not.toHaveProperty("local_source_path");
+  });
+
+  it("keeps student plan responses free of teacher-only rationale and notes", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getStudentPlan(apiRequest("/api/v1/student/plan", { "x-demo-role": "student" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.plan).not.toHaveProperty("student_id");
+    expect(payload.plan).not.toHaveProperty("rationale");
+    expect(payload.plan.lessons[0]).not.toHaveProperty("teacher_notes");
+  });
+
+  it("returns teacher plan payload with draft, active, history, and append-only adjustments", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getTeacherStudentPlan(
+      apiRequest("/api/v1/teacher/students/demo-student/plan", { "x-demo-role": "teacher" }),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.draft_plan).toMatchObject({ status: "draft" });
+    expect(payload.active_plan).toMatchObject({ status: "active" });
+    expect(payload.pending_adjustments[0]).toMatchObject({ status: "proposed" });
+    expect(payload.recent_events[0]).toHaveProperty("event_type");
+  });
+
+  it("updates plan goals, deadline, frequency, and rationale through the versioned teacher API", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await updateTeacherStudentPlan(
+      apiRequest(
+        "/api/v1/teacher/students/demo-student/plan",
+        {
+          "content-type": "application/json",
+          "x-demo-role": "teacher"
+        },
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: "Обновлённый план",
+            goalSummary: "Уверенно закрыть базовые прототипы",
+            deadline: "2027-06-01T00:00:00.000Z",
+            sessionsPerWeek: 3,
+            sessionDurationMinutes: 75,
+            rationale: "Увеличиваем частоту после диагностики."
+          })
+        }
+      ),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.draft_plan).toMatchObject({
+      title: "Обновлённый план",
+      goal_summary: "Уверенно закрыть базовые прототипы",
+      deadline: "2027-06-01T00:00:00.000Z",
+      sessions_per_week: 3,
+      session_duration_minutes: 75,
+      rationale: "Увеличиваем частоту после диагностики."
+    });
+  });
+
+  it("publishes a new immutable version and exposes append-only history", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const publishResponse = await publishTeacherStudentPlan(
+      apiRequest(
+        "/api/v1/teacher/students/demo-student/plan/publish",
+        { "x-demo-role": "teacher" },
+        { method: "POST" }
+      ),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const published = await publishResponse.json();
+    const historyResponse = await getTeacherStudentPlanHistory(
+      apiRequest(
+        "/api/v1/teacher/students/demo-student/plan/history",
+        { "x-demo-role": "teacher" }
+      ),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const history = await historyResponse.json();
+
+    expect(publishResponse.status).toBe(200);
+    expect(published.plan).toMatchObject({ version_no: 2, status: "active" });
+    expect(historyResponse.status).toBe(200);
+    expect(history.history[0]).toMatchObject({ version_no: 1, status: "active" });
+    expect(history.change_events[0]).toHaveProperty("created_at");
+  });
+
+  it("previews deterministic feedback and applies an adjustment only after teacher confirmation", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const previewResponse = await previewTeacherStudentPlanFeedback(
+      apiRequest(
+        "/api/v1/teacher/students/demo-student/plan/feedback-preview",
+        { "x-demo-role": "teacher" },
+        { method: "POST" }
+      ),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const preview = await previewResponse.json();
+    const adjustmentId = preview.preview.proposals[0].id;
+    const applyResponse = await applyTeacherStudentPlanAdjustment(
+      apiRequest(
+        `/api/v1/teacher/students/demo-student/plan/adjustments/${adjustmentId}/apply`,
+        { "x-demo-role": "teacher" },
+        { method: "POST" }
+      ),
+      {
+        params: Promise.resolve({
+          studentId: "demo-student",
+          adjustmentId
+        })
+      }
+    );
+    const applied = await applyResponse.json();
+
+    expect(previewResponse.status).toBe(200);
+    expect(preview.preview.proposals[0]).toMatchObject({
+      status: "proposed",
+      signal: "topic_mastered"
+    });
+    expect(applyResponse.status).toBe(200);
+    expect(applied.preview.proposals[0]).toMatchObject({
+      id: adjustmentId,
+      status: "applied"
+    });
+  });
+
+  it("returns student analytics without exam score claims", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getStudentAnalytics(apiRequest("/api/v1/student/analytics", { "x-demo-role": "student" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.analytics.forecast_status).toBe("needs_official_scoring_data");
+    expect(payload.analytics.forecast_reason).toContain("Официальных");
+    expect(JSON.stringify(payload.analytics)).not.toContain("score");
+  });
+
+  it("returns teacher analytics summary through the scoped student route", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getTeacherStudentAnalytics(
+      apiRequest("/api/v1/teacher/students/demo-student/analytics", { "x-demo-role": "teacher" }),
+      { params: Promise.resolve({ studentId: "demo-student" }) }
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.analytics).toMatchObject({
+      plan_completion: expect.any(Object),
+      homework_completion: expect.any(Object),
+      checked_attempt_accuracy: expect.any(Object)
+    });
   });
 
   it("keeps teacher-only task fields available through teacher task routes", async () => {
