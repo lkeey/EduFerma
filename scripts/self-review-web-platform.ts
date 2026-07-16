@@ -196,12 +196,15 @@ function checkTaskSyncDefaultsDryRun(): Check {
 
 function checkOpenApiRoutes(): Check {
   const contract = read("packages/api-contract/src/registry.ts");
+  const contractCore = existsSync(join(root, "packages/api-contract/src/registry/core.ts"))
+    ? read("packages/api-contract/src/registry/core.ts")
+    : "";
   const openapiRoute = read("apps/web/src/app/api/openapi.json/route.ts");
   const docsPage = read("apps/web/src/app/api/docs/page.tsx");
   return {
     name: "openapi-and-swagger-routes",
     ok:
-      contract.includes("/api/v1/me") &&
+      (contract.includes("/api/v1/me") || (contract.includes("routeDefinitions") && contractCore.includes("/api/v1/me"))) &&
       openapiRoute.includes("openApiDocument") &&
       docsPage.includes("/api/openapi.json")
   };
