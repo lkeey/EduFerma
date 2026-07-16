@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export * from "./client";
+export * from "./imports";
+export * from "./owner";
+export * from "./plans";
+export * from "./publications";
 export * from "./student";
 export * from "./teacher";
 

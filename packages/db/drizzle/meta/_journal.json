@@ -29,6 +29,13 @@
       "when": 1783789396663,
       "tag": "0003_safe_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784199556681,
+      "tag": "0004_harsh_hedge_knight",
+      "breakpoints": true
     }
   ]
 }

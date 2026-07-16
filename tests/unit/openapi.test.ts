@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openApiDocument, routeDefinitions } from "@eduferma/api-contract";
 
@@ -94,5 +96,11 @@ describe("openapi contract", () => {
     expect(openApiDocument.components.schemas.TeacherAssignmentResponse.properties.tasks.items.$ref).toBe(
       "#/components/schemas/TeacherTask"
     );
+  });
+
+  it("matches the checked-in generated openapi document", () => {
+    const generated = readFileSync(join(process.cwd(), "packages/api-contract/openapi.json"), "utf8").trim();
+
+    expect(generated).toBe(JSON.stringify(openApiDocument, null, 2));
   });
 });
