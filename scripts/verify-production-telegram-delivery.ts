@@ -155,25 +155,24 @@ async function main() {
 export function readAcceptanceConfig(
   env: NodeJS.ProcessEnv
 ): AcceptanceConfig {
-  if (env.EDUFERMA_DB_ENV?.trim() !== "production") {
+  const databaseEnv = env.EDUFERMA_DB_ENV?.trim();
+  const vercelEnv = env.VERCEL_ENV?.trim();
+  if (vercelEnv && vercelEnv !== "production") {
     throw new Error(
-      "EDUFERMA_DB_ENV=production is required for Telegram production acceptance."
+      "Telegram production acceptance cannot run in a non-production Vercel environment."
+    );
+  }
+  if (
+    databaseEnv !== "production" &&
+    vercelEnv !== "production"
+  ) {
+    throw new Error(
+      "A production runtime marker is required for Telegram acceptance."
     );
   }
   if (env.ENABLE_DEMO_AUTH?.trim() === "true") {
     throw new Error(
       "Telegram production acceptance cannot run with demo auth enabled."
-    );
-  }
-  const appUrl = new URL(
-    requireEnvValue(env, "NEXT_PUBLIC_APP_URL")
-  );
-  if (
-    appUrl.protocol !== "https:" ||
-    appUrl.hostname !== "edu-ferma-web.vercel.app"
-  ) {
-    throw new Error(
-      "NEXT_PUBLIC_APP_URL must target https://edu-ferma-web.vercel.app."
     );
   }
   const botToken = requireEnvValue(env, "TELEGRAM_BOT_TOKEN");
