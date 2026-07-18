@@ -161,6 +161,13 @@ export const publicationSchemas: Record<string, JsonSchema> = {
         type: "string",
         enum: ["ok", "setup_required", "error"]
       },
+      botIdentity: objectSchema({
+        ok: booleanSchema,
+        statusCode: { type: ["integer", "null"] },
+        username: nullableString,
+        displayName: nullableString,
+        errorCode: nullableString
+      }),
       privateChatAccess: objectSchema({
         ok: booleanSchema,
         statusCode: { type: ["integer", "null"] },

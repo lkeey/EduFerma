@@ -166,6 +166,13 @@ export const ProcessPublicationsResponseSchema = z.object({
     deliveryErrorCodes: z.array(z.string()),
     deliveryErrorMessages: z.array(z.string()),
     telegramHealthStatus: z.enum(["ok", "setup_required", "error"]),
+    botIdentity: z.object({
+      ok: z.boolean(),
+      statusCode: z.number().int().nullable(),
+      username: z.string().nullable(),
+      displayName: z.string().nullable(),
+      errorCode: z.string().nullable()
+    }),
     privateChatAccess: z.object({
       ok: z.boolean(),
       statusCode: z.number().int().nullable(),

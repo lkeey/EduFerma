@@ -4236,6 +4236,7 @@
               "deliveryErrorCodes",
               "deliveryErrorMessages",
               "telegramHealthStatus",
+              "botIdentity",
               "privateChatAccess"
             ],
             "properties": {
@@ -4300,6 +4301,46 @@
                   "setup_required",
                   "error"
                 ]
+              },
+              "botIdentity": {
+                "type": "object",
+                "required": [
+                  "ok",
+                  "statusCode",
+                  "username",
+                  "displayName",
+                  "errorCode"
+                ],
+                "properties": {
+                  "ok": {
+                    "type": "boolean"
+                  },
+                  "statusCode": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "username": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "errorCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
               },
               "privateChatAccess": {
                 "type": "object",

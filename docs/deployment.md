@@ -122,8 +122,10 @@ token values, chat IDs and database URLs are never returned or printed.
 After the three Telegram production variables are configured, prefer the
 `Telegram Production Acceptance` GitHub Actions workflow. Run its default
 read-only `status` operation first; it reports the persisted acceptance state
-and verifies private-chat reachability with Telegram `getChat` without sending
-a message. Then select `send` and enter the exact workflow confirmation
+and the safe bot username from `getMe`, then verifies private-chat reachability
+with Telegram `getChat` without sending a message. Open
+`https://t.me/<bot-username>` and send `/start` if private-chat access is not
+ready. Then select `send` and enter the exact workflow confirmation
 `SEND ONE PRIVATE OWNER TELEGRAM`. The workflow calls the guarded processor
 inside the Vercel production runtime, where Sensitive environment variables and
 the production database URL are available.

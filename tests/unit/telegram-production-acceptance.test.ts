@@ -7,6 +7,7 @@ import {
   assertCompletedAcceptance,
   assertRecoverableAcceptance,
   checkTelegramPrivateChatAccess,
+  getTelegramBotIdentity,
   readAcceptanceConfig,
   summarizeAcceptanceDetail
 } from "../../apps/web/src/server/publications/production-telegram-acceptance";
@@ -177,6 +178,32 @@ describe("Telegram production acceptance safety", () => {
       errorCode: "HTTP_400"
     });
     expect(rejected.message).not.toContain("1001");
+  });
+
+  it("returns safe bot identity fields without exposing the token", async () => {
+    const identity = await getTelegramBotIdentity(
+      "secret-token",
+      async () => Response.json({
+        ok: true,
+        result: {
+          id: 123,
+          is_bot: true,
+          first_name: "EduFerma",
+          username: "eduferma_test_bot"
+        }
+      })
+    );
+
+    expect(identity).toEqual({
+      ok: true,
+      statusCode: 200,
+      username: "eduferma_test_bot",
+      displayName: "EduFerma",
+      errorCode: null
+    });
+    expect(JSON.stringify(identity)).not.toContain(
+      "secret-token"
+    );
   });
 
   it("requires exactly one sent delivery with a provider message ID", () => {
