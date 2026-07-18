@@ -138,7 +138,7 @@ export function ImportJobDetailClient({
           topic: String(formData.get("topic") ?? "") || undefined,
           statement_md: String(formData.get("statementMd") ?? ""),
           difficulty_level: String(formData.get("difficultyLevel") ?? "unknown"),
-          answer: answer ? { answers: [answer] } : undefined,
+          answer_json: answer ? { answers: [answer] } : undefined,
           verification_status: markReady ? "checked" : "needs_review",
           status: markReady ? "active" : "needs_review"
         }
@@ -308,7 +308,11 @@ export function ImportJobDetailClient({
                         </label>
                         <label>
                           Ответ
-                          <input className="text-field" defaultValue={readAnswer(task.answer)} name="answer" />
+                          <input
+                            className="text-field"
+                            defaultValue={readAnswer(task.answer_json ?? task.answer)}
+                            name="answer"
+                          />
                         </label>
                         <div className="filter-bar">
                           <Button disabled={immutable || loading} type="submit" variant="secondary">Сохранить черновик</Button>

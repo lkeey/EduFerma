@@ -115,6 +115,75 @@ type DemoAccessEvent = {
   metadata: Record<string, unknown>;
 };
 
+type DemoSourceEvidence = {
+  id: string;
+  kind: string;
+  status: string;
+  label: string;
+  url?: string | null;
+  byteSize?: number | null;
+  contentType?: string | null;
+  licenseStatus?: string;
+  parserVersion?: string | null;
+  importedAt?: string | null;
+  capturedAt?: string | null;
+  checksum?: string | null;
+};
+
+type DemoImportRow = {
+  id: string;
+  rowNo: number;
+  sourceRowId: string | null;
+  sourceTaskId: string | null;
+  status:
+    | "pending"
+    | "parsed"
+    | "needs_review"
+    | "ready"
+    | "duplicate"
+    | "applied"
+    | "failed"
+    | "skipped";
+  errorCode: string | null;
+  errorMessage: string | null;
+  payload: Record<string, unknown>;
+  normalizedTask: Record<string, unknown> | null;
+  evidence: DemoSourceEvidence[];
+  appliedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type DemoImportJob = {
+  id: string;
+  status:
+    | "draft"
+    | "uploaded"
+    | "analyzing"
+    | "review_ready"
+    | "applying"
+    | "applied"
+    | "failed"
+    | "cancelled";
+  dryRun: boolean;
+  sourceType: string | null;
+  sourceUrl: string | null;
+  sourceName: string | null;
+  originalFilename: string | null;
+  byteSize: number | null;
+  contentType: string | null;
+  sha256: string | null;
+  licenseStatus: string;
+  parserVersion: string | null;
+  summary: Record<string, unknown>;
+  warnings: Array<{ code: string; message: string; rowNo?: number }>;
+  createdAt: string;
+  updatedAt: string;
+  analyzedAt: string | null;
+  appliedAt: string | null;
+  rows: DemoImportRow[];
+};
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -182,6 +251,10 @@ export function createPlatformServices(options: ServiceOptions) {
     id: "demo-review-task",
     task_id: "demo-review-task",
     title: "Задача с ручной проверкой",
+    task_number: "practice",
+    topic: "Ручная проверка",
+    prototype_id: "manual_reasoning_review",
+    skill_atoms: ["written_reasoning"],
     statement_md: "Опишите ход решения задачи своими словами.",
     answer_json: undefined,
     solution_md: "Преподаватель проверяет обоснование вручную.",
@@ -270,6 +343,7 @@ export function createPlatformServices(options: ServiceOptions) {
     }
   ];
   const accessEvents: DemoAccessEvent[] = [];
+  const importJobs: DemoImportJob[] = [];
 
   const nextId = (prefix: string) => `${prefix}-${nextSequence++}`;
   const getPlanState = (studentId: string) => {
@@ -308,6 +382,15 @@ export function createPlatformServices(options: ServiceOptions) {
     if (!user) throw new ServiceForbiddenError("User is not available");
     return user;
   };
+
+  const requireImportJob = (importId: string) => {
+    const job = importJobs.find((candidate) => candidate.id === importId);
+    if (!job) throw new ServiceForbiddenError("Import job is not available");
+    return job;
+  };
+
+  const importJobSummary = ({ rows: _rows, ...job }: DemoImportJob) =>
+    clone(job);
 
   const ownerConfirmationPhrase = (user: DemoManagedUser) =>
     `CONFIRM OWNER ${user.email}`;
@@ -557,72 +640,348 @@ export function createPlatformServices(options: ServiceOptions) {
     teacher: {
       async listImports(_ctx?: ServiceContext) {
         ensureAvailable(state);
-        return { jobs: [], total: 0 };
-      },
-      async createImport(_ctx: ServiceContext | undefined, input?: { sourceType?: string; sourceUrl?: string }) {
-        ensureAvailable(state);
         return {
-          job: {
-            id: "demo-import",
-            status: input?.sourceUrl ? "uploaded" : "draft",
-            dryRun: true,
-            sourceType: input?.sourceType ?? "upload",
-            sourceUrl: input?.sourceUrl ?? null,
-            sourceName: "Demo import",
-            originalFilename: null,
-            byteSize: null,
-            contentType: null,
-            sha256: null,
-            licenseStatus: "unknown",
-            parserVersion: "demo",
-            summary: {},
-            warnings: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            analyzedAt: null,
-            appliedAt: null
-          }
+          jobs: importJobs.map(importJobSummary),
+          total: importJobs.length
         };
       },
-      async uploadImport() {
+      async createImport(
+        _ctx: ServiceContext | undefined,
+        input?: {
+          sourceType?: string;
+          sourceUrl?: string;
+          sourceName?: string;
+          dryRun?: boolean;
+          licenseStatus?: string;
+        }
+      ) {
         ensureAvailable(state);
-        return this.createImport(undefined, { sourceType: "upload" });
+        if (input?.sourceUrl) {
+          const url = new URL(input.sourceUrl);
+          const allowedHosts = [
+            "kompege.ru",
+            "kpolyakov.spb.ru",
+            "3.shkolkovo.online",
+            "fipi.ru",
+            "www.fipi.ru"
+          ];
+          if (
+            !["http:", "https:"].includes(url.protocol) ||
+            Boolean(url.username || url.password) ||
+            Boolean(url.port && !["80", "443"].includes(url.port)) ||
+            !allowedHosts.some(
+              (host) => url.hostname === host || url.hostname.endsWith(`.${host}`)
+            )
+          ) {
+            throw new ServiceForbiddenError(
+              "Remote import URL is outside the registered allowlist"
+            );
+          }
+        }
+        const now = new Date().toISOString();
+        const job: DemoImportJob = {
+          id: nextId("demo-import"),
+          status: input?.sourceUrl ? "uploaded" : "draft",
+          dryRun: input?.dryRun ?? true,
+          sourceType: input?.sourceType ?? "upload",
+          sourceUrl: input?.sourceUrl ?? null,
+          sourceName: input?.sourceName ?? "Demo import",
+          originalFilename: null,
+          byteSize: null,
+          contentType: input?.sourceUrl ? "text/html" : null,
+          sha256: input?.sourceUrl ? "a".repeat(64) : null,
+          licenseStatus: input?.licenseStatus ?? "unknown",
+          parserVersion: "demo-import-v1",
+          summary: {},
+          warnings: [],
+          createdAt: now,
+          updatedAt: now,
+          analyzedAt: null,
+          appliedAt: null,
+          rows: []
+        };
+        importJobs.unshift(job);
+        return { job: importJobSummary(job) };
       },
-      async analyzeImport() {
+      async uploadImport(
+        _ctx: ServiceContext | undefined,
+        importId: string,
+        request: Request
+      ) {
         ensureAvailable(state);
-        return this.createImport(undefined, { sourceType: "upload" });
+        const job = requireImportJob(importId);
+        const form = await request.formData();
+        const file = form.get("file");
+        if (!(file instanceof File)) {
+          throw new ServiceForbiddenError("Import file is required");
+        }
+        job.status = "uploaded";
+        job.originalFilename = file.name;
+        job.byteSize = file.size;
+        job.contentType = file.type || "application/octet-stream";
+        job.sha256 = file.size.toString(16).padStart(64, "0");
+        job.updatedAt = new Date().toISOString();
+        return { job: importJobSummary(job) };
       },
-      async getImport() {
+      async analyzeImport(
+        _ctx: ServiceContext | undefined,
+        importId: string,
+        input?: { parserVersion?: string; licenseStatus?: string }
+      ) {
         ensureAvailable(state);
-        return this.createImport(undefined, { sourceType: "upload" });
-      },
-      async getImportRows() {
-        ensureAvailable(state);
-        return { rows: [], total: 0 };
-      },
-      async updateImportRow() {
-        ensureAvailable(state);
-        return {
-          row: {
-            id: "demo-row",
+        const job = requireImportJob(importId);
+        if (!job.sourceUrl && !job.originalFilename) {
+          throw new ServiceConflictError(
+            "Upload a file or provide a URL before analysis"
+          );
+        }
+        const now = new Date().toISOString();
+        const importedTaskId = `${job.id}-task-1`;
+        const evidence = {
+          id: nextId("demo-evidence"),
+          kind: job.sourceUrl ? "url" : "document",
+          status: "verified",
+          label: job.sourceName ?? job.originalFilename ?? "Import source",
+          url: job.sourceUrl,
+          byteSize: job.byteSize,
+          contentType: job.contentType,
+          licenseStatus: input?.licenseStatus ?? job.licenseStatus,
+          parserVersion: input?.parserVersion ?? job.parserVersion,
+          importedAt: now,
+          capturedAt: now,
+          checksum: job.sha256
+        };
+        job.rows = [
+          {
+            id: nextId("demo-import-row"),
             rowNo: 1,
             sourceRowId: "1",
-            sourceTaskId: "demo-ege-7-graph",
-            status: "ready",
-            errorCode: null,
-            errorMessage: null,
+            sourceTaskId: importedTaskId,
+            status: "needs_review",
+            errorCode: "LOW_CONFIDENCE_ANSWER",
+            errorMessage: "Проверьте извлечённый ответ",
             payload: {},
-            normalizedTask: null,
-            evidence: [],
+            normalizedTask: {
+              task_id: importedTaskId,
+              learning_track: "ege_informatics",
+              exam: "ЕГЭ",
+              task_number: "7",
+              topic: "Графики",
+              prototype_id: "ege_7_graph_reading",
+              skill_atoms: ["graph_reading"],
+              difficulty_level: "basic",
+              source_name: job.sourceName ?? "Demo import",
+              source_url: job.sourceUrl ?? undefined,
+              source_task_id: importedTaskId,
+              statement_md: "Импортированная задача: определите значение по графику.",
+              answer: { answers: ["42"] },
+              solution_md: "Прочитайте значение по оси Y.",
+              verification_status: "needs_review",
+              license_status: input?.licenseStatus ?? job.licenseStatus,
+              status: "needs_review"
+            },
+            evidence: [evidence],
             appliedAt: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
+          },
+          {
+            id: nextId("demo-import-row"),
+            rowNo: 2,
+            sourceRowId: "2",
+            sourceTaskId: demoTasks[0].task_id,
+            status: "duplicate",
+            errorCode: "CANONICAL_DUPLICATE",
+            errorMessage: "Canonical hash already exists in the task bank",
+            payload: {},
+            normalizedTask: {
+              task_id: demoTasks[0].task_id,
+              statement_md: demoTasks[0].statement_md,
+              difficulty_level: demoTasks[0].difficulty_level,
+              source_name: demoTasks[0].source_name,
+              answer: demoTasks[0].answer_json
+            },
+            evidence: [evidence],
+            appliedAt: null,
+            createdAt: now,
+            updatedAt: now
+          }
+        ];
+        job.status = "review_ready";
+        job.parserVersion = input?.parserVersion ?? job.parserVersion;
+        job.licenseStatus = input?.licenseStatus ?? job.licenseStatus;
+        job.summary = {
+          counts: {
+            ready: 0,
+            needs_review: 1,
+            duplicate: 1,
+            applied: 0,
+            added: 0,
+            updated: 0,
+            skipped: 0
           }
         };
+        job.warnings = [
+          {
+            code: "CANONICAL_DUPLICATE",
+            message: "One row matches an existing canonical task",
+            rowNo: 2
+          }
+        ];
+        job.analyzedAt = now;
+        job.updatedAt = now;
+        return { job: importJobSummary(job) };
       },
-      async applyImport() {
+      async getImport(_ctx: ServiceContext | undefined, importId: string) {
         ensureAvailable(state);
-        return this.createImport(undefined, { sourceType: "upload" });
+        return { job: importJobSummary(requireImportJob(importId)) };
+      },
+      async getImportRows(_ctx: ServiceContext | undefined, importId: string) {
+        ensureAvailable(state);
+        const rows = requireImportJob(importId).rows;
+        return { rows: clone(rows), total: rows.length };
+      },
+      async updateImportRow(
+        _ctx: ServiceContext | undefined,
+        importId: string,
+        rowId: string,
+        input?: {
+          status?: DemoImportRow["status"];
+          errorCode?: string | null;
+          errorMessage?: string | null;
+          normalizedTask?: Record<string, unknown>;
+        }
+      ) {
+        ensureAvailable(state);
+        const job = requireImportJob(importId);
+        const row = job.rows.find((candidate) => candidate.id === rowId);
+        if (!row) throw new ServiceForbiddenError("Import row is not available");
+        if (row.status === "applied") {
+          throw new ServiceConflictError("Applied import rows are immutable");
+        }
+        row.status = input?.status ?? row.status;
+        row.errorCode = input?.errorCode ?? (row.status === "ready" ? null : row.errorCode);
+        row.errorMessage =
+          input?.errorMessage ?? (row.status === "ready" ? null : row.errorMessage);
+        row.normalizedTask = {
+          ...(row.normalizedTask ?? {}),
+          ...(input?.normalizedTask ?? {})
+        };
+        row.updatedAt = new Date().toISOString();
+        job.summary = {
+          counts: {
+            ready: job.rows.filter((candidate) => candidate.status === "ready").length,
+            needs_review: job.rows.filter(
+              (candidate) => candidate.status === "needs_review"
+            ).length,
+            duplicate: job.rows.filter(
+              (candidate) => candidate.status === "duplicate"
+            ).length,
+            applied: job.rows.filter(
+              (candidate) => candidate.status === "applied"
+            ).length
+          }
+        };
+        job.updatedAt = row.updatedAt;
+        return { row: clone(row) };
+      },
+      async applyImport(
+        _ctx: ServiceContext | undefined,
+        importId: string,
+        input?: { taskIds?: string[]; force?: boolean }
+      ) {
+        ensureAvailable(state);
+        const job = requireImportJob(importId);
+        const selectedRows = input?.taskIds?.length
+          ? job.rows.filter((row) =>
+              input.taskIds!.includes(
+                String(row.normalizedTask?.task_id ?? row.sourceTaskId ?? "")
+              )
+            )
+          : job.rows.filter((row) => row.status === "ready");
+        if (
+          selectedRows.some(
+            (row) => row.status !== "ready" && row.status !== "applied"
+          )
+        ) {
+          throw new ServiceConflictError(
+            "Only ready or previously applied rows can be applied"
+          );
+        }
+        let added = 0;
+        let skipped = 0;
+        const appliedAt = new Date().toISOString();
+        for (const row of selectedRows) {
+          if (row.status === "applied") {
+            skipped += 1;
+            continue;
+          }
+          const normalized = row.normalizedTask ?? {};
+          const taskId = String(normalized.task_id ?? row.sourceTaskId ?? "");
+          if (findTask(taskId)) {
+            skipped += 1;
+          } else {
+            tasks.push({
+              id: taskId,
+              task_id: taskId,
+              learning_track: String(
+                normalized.learning_track ?? "ege_informatics"
+              ),
+              exam: normalized.exam ? String(normalized.exam) : undefined,
+              task_number: normalized.task_number
+                ? String(normalized.task_number)
+                : undefined,
+              topic: normalized.topic ? String(normalized.topic) : undefined,
+              prototype_id: normalized.prototype_id
+                ? String(normalized.prototype_id)
+                : undefined,
+              skill_atoms: Array.isArray(normalized.skill_atoms)
+                ? normalized.skill_atoms.map(String)
+                : [],
+              difficulty_level: String(
+                normalized.difficulty_level ?? "unknown"
+              ),
+              source_name: String(normalized.source_name ?? job.sourceName ?? "import"),
+              source_url: normalized.source_url
+                ? String(normalized.source_url)
+                : job.sourceUrl ?? undefined,
+              statement_md: String(normalized.statement_md ?? "Imported task"),
+              answer_json: normalized.answer_json ?? normalized.answer,
+              solution_md: normalized.solution_md
+                ? String(normalized.solution_md)
+                : undefined,
+              verification_status: String(
+                normalized.verification_status ?? "checked"
+              ),
+              license_status: String(
+                normalized.license_status ?? job.licenseStatus
+              ),
+              status: String(normalized.status ?? "active")
+            });
+            added += 1;
+          }
+          row.status = "applied";
+          row.appliedAt = appliedAt;
+          row.updatedAt = appliedAt;
+        }
+        job.status = "applied";
+        job.dryRun = false;
+        job.appliedAt = appliedAt;
+        job.updatedAt = appliedAt;
+        job.summary = {
+          counts: {
+            applied: job.rows.filter((row) => row.status === "applied").length,
+            ready: job.rows.filter((row) => row.status === "ready").length,
+            needs_review: job.rows.filter(
+              (row) => row.status === "needs_review"
+            ).length,
+            duplicate: job.rows.filter((row) => row.status === "duplicate").length,
+            added,
+            updated: 0,
+            skipped
+          }
+        };
+        return { job: importJobSummary(job) };
       },
       async getDashboard(_ctx?: ServiceContext) {
         ensureAvailable(state);
@@ -813,16 +1172,42 @@ export function createPlatformServices(options: ServiceOptions) {
         ensureAvailable(state);
         return { analytics: demoAnalytics };
       },
-      async getTaskBank(_ctx?: ServiceContext, _query?: Record<string, unknown>) {
+      async getTaskBank(_ctx?: ServiceContext, query?: Record<string, unknown>) {
         ensureAvailable(state);
+        const filtered = tasks.filter((task) => {
+          const q = String(query?.q ?? "").toLocaleLowerCase();
+          return (
+            (!q ||
+              [task.task_id, task.title, task.topic, task.statement_md]
+                .filter(Boolean)
+                .some((value) =>
+                  String(value).toLocaleLowerCase().includes(q)
+                )) &&
+            (!query?.learningTrack ||
+              task.learning_track === query.learningTrack) &&
+            (!query?.exam || task.exam === query.exam) &&
+            (!query?.taskNumber || task.task_number === query.taskNumber) &&
+            (!query?.topic || task.topic === query.topic) &&
+            (!query?.prototypeId || task.prototype_id === query.prototypeId) &&
+            (!query?.difficultyLevel ||
+              task.difficulty_level === query.difficultyLevel) &&
+            (!query?.sourceName || task.source_name === query.sourceName) &&
+            (!query?.status || task.status === query.status)
+          );
+        });
+        const page = Number(query?.page ?? 1);
+        const pageSize = Number(query?.pageSize ?? 20);
+        const offset = (page - 1) * pageSize;
         return {
-          tasks: tasks.map(serializeTeacherTask),
-          page: 1,
-          pageSize: 20,
-          total: tasks.length,
-          totalPages: 1,
-          sortBy: "updatedAt",
-          sortOrder: "desc"
+          tasks: filtered
+            .slice(offset, offset + pageSize)
+            .map(serializeTeacherTask),
+          page,
+          pageSize,
+          total: filtered.length,
+          totalPages: Math.ceil(filtered.length / pageSize),
+          sortBy: String(query?.sortBy ?? "updatedAt"),
+          sortOrder: String(query?.sortOrder ?? "desc")
         };
       },
       async getTask(_ctx: ServiceContext | undefined, taskId: string) {
@@ -1091,9 +1476,9 @@ export function createPlatformServices(options: ServiceOptions) {
             .map(clone),
           accessStatus: accessStatusFor(request.subjectId, request, user),
           ownerConfirmationPhrase:
-            user && user.role !== "owner"
-              ? ownerConfirmationPhrase(user)
-              : null
+            user?.role === "owner"
+              ? null
+              : `CONFIRM OWNER ${user?.email ?? request.requesterEmail}`
         };
       },
       async getUserAccess(_ctx: ServiceContext | undefined, userId: string) {

@@ -1,13 +1,29 @@
 import { expect, test } from "@playwright/test";
 
-const requiredOpenApiPaths = [
-  "/api/v1/owner/access",
-  "/api/v1/teacher/imports",
-  "/api/v1/teacher/task-bank",
-  "/api/v1/teacher/students/{studentId}/analytics",
-  "/api/v1/student/analytics",
-  "/api/v1/teacher/publications",
-  "/api/v1/internal/publications/process"
+const requiredOpenApiOperations: Array<[string, string]> = [
+  ["/api/v1/access/status", "get"],
+  ["/api/v1/owner/access", "get"],
+  ["/api/v1/owner/access/{subjectId}", "get"],
+  ["/api/v1/owner/access-requests/{requestId}/approve", "post"],
+  ["/api/v1/owner/access-requests/{requestId}/reject", "post"],
+  ["/api/v1/owner/users/{userId}/access", "patch"],
+  ["/api/v1/teacher/imports", "get"],
+  ["/api/v1/teacher/imports", "post"],
+  ["/api/v1/teacher/imports/{importId}/analyze", "post"],
+  ["/api/v1/teacher/imports/{importId}/apply", "post"],
+  ["/api/v1/teacher/task-bank", "get"],
+  ["/api/v1/teacher/students/{studentId}/plan", "patch"],
+  ["/api/v1/teacher/students/{studentId}/plan/publish", "post"],
+  ["/api/v1/teacher/students/{studentId}/plan/history", "get"],
+  ["/api/v1/teacher/students/{studentId}/analytics", "get"],
+  ["/api/v1/student/analytics", "get"],
+  ["/api/v1/teacher/publications", "post"],
+  ["/api/v1/teacher/publications/{postId}/schedule", "post"],
+  ["/api/v1/teacher/publications/{postId}/cancel-schedule", "post"],
+  ["/api/v1/teacher/publications/{postId}/retry", "post"],
+  ["/api/v1/owner/publication-targets", "post"],
+  ["/api/v1/teacher/publication-providers/health", "get"],
+  ["/api/v1/internal/publications/process", "get"]
 ];
 
 test("production health exposes safe integration readiness", async ({
@@ -39,13 +55,33 @@ test("production OpenAPI contains all feature groups", async ({ request }) => {
   expect(response.status()).toBe(200);
   const body = (await response.json()) as {
     openapi?: string;
-    paths?: Record<string, unknown>;
+    components?: { securitySchemes?: Record<string, unknown> };
+    paths?: Record<string, Record<string, unknown>>;
   };
 
   expect(body.openapi).toMatch(/^3\./);
-  for (const path of requiredOpenApiPaths) {
-    expect(body.paths).toHaveProperty(path);
+  for (const [path, method] of requiredOpenApiOperations) {
+    expect(body.paths?.[path]?.[method]).toBeDefined();
   }
+  expect(body.components?.securitySchemes).toHaveProperty("clerkAuth");
+  expect(body.components?.securitySchemes).toHaveProperty("cronSecret");
+});
+
+test("public landing and Clerk entrypoints do not redirect-loop", async ({
+  page
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "EduFerma" })).toBeVisible();
+
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
+
+  await page.goto("/sign-up");
+  await expect(
+    page.getByRole("heading", { name: "Регистрация в EduFerma" })
+  ).toBeVisible();
 });
 
 test("internal and teacher endpoints reject anonymous requests", async ({

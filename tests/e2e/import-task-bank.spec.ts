@@ -15,7 +15,9 @@ test("teacher creates an import job and reaches the review screen", async ({ pag
   await expect(page.getByRole("button", { name: "Создать" })).toBeEnabled();
   await page.getByRole("button", { name: "Создать" }).click();
 
-  await expect(page).toHaveURL(/\/teacher\/imports\/demo-import$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/teacher\/imports\/demo-import-\d+$/, {
+    timeout: 20_000
+  });
   await expect(page.getByRole("button", { name: "Загрузить" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Анализировать" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Строки импорта" })).toBeVisible();
@@ -37,7 +39,9 @@ test("task bank exposes server filters, visible selection and bulk archive", asy
   await expect(page.getByRole("textbox", { name: "Источник" })).toHaveValue("original");
   await expect(page.getByRole("combobox", { name: "Статус" })).toHaveValue("active");
   await expect(page.getByText("Учительское решение: прочитать значение по оси Y.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Открыть источник" })).toHaveAttribute(
+  await expect(
+    page.getByRole("link", { name: "Открыть источник" }).first()
+  ).toHaveAttribute(
     "href",
     "https://edu-ferma-web.vercel.app"
   );
@@ -91,106 +95,196 @@ test("task bank keeps protected delete errors visible", async ({ page }) => {
   await expect(page.getByText("demo-ege-7-graph")).toBeVisible();
 });
 
-test("import review shows dry-run evidence and summary, then reviews and applies a selected row", async ({ page }) => {
-  const reviewJob = {
-    id: "demo-import",
-    status: "review_ready",
-    dryRun: true,
-    sourceType: "url",
-    sourceUrl: "https://kompege.ru/task/7",
-    sourceName: "Kompege",
-    originalFilename: "7.html",
-    byteSize: 2048,
-    contentType: "text/html",
-    sha256: "a".repeat(64),
-    licenseStatus: "public_reference",
-    parserVersion: "task-import-v1",
-    summary: {
-      counts: {
-        ready: 1,
-        needs_review: 1,
-        duplicate: 2,
-        applied: 0,
-        added: 0,
-        updated: 0,
-        skipped: 1
-      }
-    },
-    warnings: []
-  };
-  const reviewRow = {
-    id: "demo-row",
-    rowNo: 1,
-    sourceTaskId: "kompege-7",
-    status: "needs_review",
-    errorMessage: "Проверьте извлечённый ответ",
-    normalizedTask: {
-      task_id: "kompege-7",
-      task_number: "7",
-      topic: "Графики",
-      statement_md: "Определите значение функции по графику.",
-      difficulty_level: "basic",
-      answer: { answers: ["42"] }
-    },
-    evidence: [{
-      id: "evidence-1",
-      kind: "url",
-      status: "verified",
-      label: "Страница задания",
-      url: "https://kompege.ru/task/7",
-      byteSize: 2048,
-      contentType: "text/html",
-      licenseStatus: "public_reference",
-      parserVersion: "task-import-v1",
-      importedAt: "2026-07-18T12:00:00.000Z",
-      capturedAt: "2026-07-18T11:59:00.000Z",
-      checksum: "b".repeat(64)
-    }]
+test("URL import persists review, apply, duplicate warning, and idempotency", async ({
+  page
+}) => {
+  const headers = {
+    "content-type": "application/json",
+    "x-demo-role": "teacher"
   };
 
-  await page.route(/\/api\/v1\/teacher\/imports\/demo-import$/, async (route) => {
-    await route.fulfill({ json: { job: reviewJob } });
+  const unsafeResponse = await page.request.post("/api/v1/teacher/imports", {
+    headers,
+    data: {
+      sourceType: "url",
+      sourceUrl: "http://127.0.0.1:3000/private",
+      sourceName: "Unsafe local URL"
+    }
   });
-  await page.route(/\/api\/v1\/teacher\/imports\/demo-import\/rows$/, async (route) => {
-    await route.fulfill({ json: { rows: [reviewRow], total: 1 } });
+  expect(unsafeResponse.status()).toBe(403);
+
+  const createResponse = await page.request.post("/api/v1/teacher/imports", {
+    headers,
+    data: {
+      sourceType: "url",
+      sourceUrl: "https://kompege.ru/task/7",
+      sourceName: "Kompege E2E",
+      dryRun: true,
+      licenseStatus: "public_reference"
+    }
   });
-  await page.route(/\/api\/v1\/teacher\/imports\/demo-import\/rows\/demo-row$/, async (route) => {
-    expect(route.request().method()).toBe("PATCH");
-    expect(route.request().postDataJSON()).toMatchObject({ status: "ready" });
-    await route.fulfill({ json: { row: { ...reviewRow, status: "ready", errorMessage: null } } });
+  expect(createResponse.status()).toBe(201);
+  const created = (await createResponse.json()) as {
+    job: { id: string; status: string; dryRun: boolean };
+  };
+  expect(created.job).toMatchObject({ status: "uploaded", dryRun: true });
+
+  const analyzeResponse = await page.request.post(
+    `/api/v1/teacher/imports/${created.job.id}/analyze`,
+    { headers, data: { parserVersion: "e2e-parser-v1" } }
+  );
+  expect(analyzeResponse.status()).toBe(200);
+  await expect(analyzeResponse.json()).resolves.toMatchObject({
+    job: {
+      status: "review_ready",
+      dryRun: true,
+      parserVersion: "e2e-parser-v1",
+      summary: {
+        counts: { needs_review: 1, duplicate: 1, applied: 0 }
+      },
+      warnings: [expect.objectContaining({ code: "CANONICAL_DUPLICATE" })]
+    }
   });
-  await page.route(/\/api\/v1\/teacher\/imports\/demo-import\/apply$/, async (route) => {
-    expect(route.request().postDataJSON()).toEqual({ taskIds: ["kompege-7"] });
-    await route.fulfill({
-      json: {
-        job: {
-          ...reviewJob,
-          status: "applied",
-          dryRun: false,
-          summary: { counts: { applied: 1, added: 1, updated: 0, skipped: 0 } }
+
+  const rowsResponse = await page.request.get(
+    `/api/v1/teacher/imports/${created.job.id}/rows`,
+    { headers }
+  );
+  expect(rowsResponse.status()).toBe(200);
+  const rows = (await rowsResponse.json()) as {
+    rows: Array<{
+      id: string;
+      status: string;
+      normalizedTask: { task_id: string };
+      evidence: Array<{ checksum: string; parserVersion: string }>;
+    }>;
+  };
+  const reviewRow = rows.rows.find((row) => row.status === "needs_review");
+  const duplicateRow = rows.rows.find((row) => row.status === "duplicate");
+  expect(reviewRow).toBeDefined();
+  expect(duplicateRow).toBeDefined();
+  expect(reviewRow!.evidence[0]).toMatchObject({
+    parserVersion: "e2e-parser-v1"
+  });
+  expect(reviewRow!.evidence[0].checksum).toHaveLength(64);
+
+  const guardedApply = await page.request.post(
+    `/api/v1/teacher/imports/${created.job.id}/apply`,
+    {
+      headers,
+      data: { taskIds: [reviewRow!.normalizedTask.task_id] }
+    }
+  );
+  expect(guardedApply.status()).toBe(409);
+
+  const updateRow = await page.request.patch(
+    `/api/v1/teacher/imports/${created.job.id}/rows/${reviewRow!.id}`,
+    {
+      headers,
+      data: {
+        status: "ready",
+        errorCode: null,
+        errorMessage: null,
+        normalizedTask: {
+          answer_json: { answers: ["43"] },
+          verification_status: "checked",
+          status: "active"
         }
       }
-    });
+    }
+  );
+  expect(updateRow.status()).toBe(200);
+  await expect(updateRow.json()).resolves.toMatchObject({
+    row: { status: "ready", errorCode: null, errorMessage: null }
   });
 
-  await page.goto("/teacher/imports/demo-import");
-  await page.getByRole("button", { name: "Обновить обзор" }).click();
+  const applyResponse = await page.request.post(
+    `/api/v1/teacher/imports/${created.job.id}/apply`,
+    {
+      headers,
+      data: { taskIds: [reviewRow!.normalizedTask.task_id] }
+    }
+  );
+  expect(applyResponse.status()).toBe(200);
+  await expect(applyResponse.json()).resolves.toMatchObject({
+    job: {
+      status: "applied",
+      dryRun: false,
+      summary: { counts: { applied: 1, added: 1, skipped: 0 } }
+    }
+  });
+
+  const repeatApply = await page.request.post(
+    `/api/v1/teacher/imports/${created.job.id}/apply`,
+    {
+      headers,
+      data: { taskIds: [reviewRow!.normalizedTask.task_id] }
+    }
+  );
+  expect(repeatApply.status()).toBe(200);
+  await expect(repeatApply.json()).resolves.toMatchObject({
+    job: { summary: { counts: { applied: 1, added: 0, skipped: 1 } } }
+  });
+
+  const bankResponse = await page.request.get(
+    `/api/v1/teacher/task-bank?topic=%D0%93%D1%80%D0%B0%D1%84%D0%B8%D0%BA%D0%B8&prototypeId=ege_7_graph_reading&sourceName=Kompege%20E2E`,
+    { headers }
+  );
+  expect(bankResponse.status()).toBe(200);
+  const bank = (await bankResponse.json()) as {
+    total: number;
+    tasks: Array<{ task_id: string; answer_json?: { answers?: string[] } }>;
+  };
+  expect(bank.total).toBe(1);
+  expect(bank.tasks[0]).toMatchObject({
+    task_id: reviewRow!.normalizedTask.task_id,
+    answer_json: { answers: ["43"] }
+  });
+});
+
+test("import review UI uses persisted evidence and applies a reviewed row", async ({
+  page
+}) => {
+  const headers = {
+    "content-type": "application/json",
+    "x-demo-role": "teacher"
+  };
+  const createResponse = await page.request.post("/api/v1/teacher/imports", {
+    headers,
+    data: {
+      sourceType: "url",
+      sourceUrl: "https://kompege.ru/task/7",
+      sourceName: "Kompege UI",
+      dryRun: true,
+      licenseStatus: "public_reference"
+    }
+  });
+  const created = (await createResponse.json()) as { job: { id: string } };
+  const analyzeResponse = await page.request.post(
+    `/api/v1/teacher/imports/${created.job.id}/analyze`,
+    {
+      headers,
+      data: { parserVersion: "ui-parser-v1" }
+    }
+  );
+  expect(analyzeResponse.status()).toBe(200);
+
+  await page.goto(`/teacher/imports/${created.job.id}`);
 
   await expect(page.getByText("Dry-run: да")).toBeVisible();
-  await expect(page.getByText("task-import-v1").first()).toBeVisible();
+  await expect(page.getByText("ui-parser-v1").first()).toBeVisible();
   await expect(page.getByRole("link", { name: "открыть URL" })).toHaveAttribute(
     "href",
     "https://kompege.ru/task/7"
   );
-  await expect(page.getByText("Готово: 1")).toBeVisible();
   await expect(page.getByText("На проверку: 1")).toBeVisible();
-  await expect(page.getByText("Дубликаты: 2")).toBeVisible();
-  await expect(page.getByText("Пропущено: 1")).toBeVisible();
-  await expect(page.getByText(/Страница задания · url · verified/)).toBeVisible();
-  await expect(page.getByText(/license public_reference/)).toBeVisible();
+  await expect(page.getByText("Дубликаты: 1")).toBeVisible();
+  await expect(page.getByText(/Kompege UI · url · verified/).first()).toBeVisible();
+  await expect(page.getByText(/license public_reference/).first()).toBeVisible();
 
-  const review = page.getByRole("row", { name: /kompege-7/ });
+  const review = page.getByRole("row", { name: /demo-import-\d+-task-1/ });
   await review.getByText("Проверить и исправить строку 1").click();
+  await review.getByLabel("Ответ").fill("44");
   await review.getByRole("button", { name: "Сохранить и отметить готовой" }).click();
   await review.getByRole("checkbox", { name: "Выбрать строку 1 для применения" }).check();
 

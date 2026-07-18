@@ -39,7 +39,16 @@ describe("teacher import routes in demo mode", () => {
     const listPayload = await listResponse.json();
 
     expect(listResponse.status).toBe(200);
-    expect(listPayload.jobs).toEqual([]);
+    expect(listPayload.jobs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: createPayload.job.id,
+          sourceUrl: "https://kompege.ru/task/7",
+          status: "uploaded",
+          dryRun: true
+        })
+      ])
+    );
   });
 
   it("accepts teacher task patch route for teacher role", async () => {

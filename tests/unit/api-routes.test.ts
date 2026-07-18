@@ -191,7 +191,11 @@ describe("api route contracts", () => {
 
     expect(response.status).toBe(200);
     expect(payload.user).toMatchObject({ id: "demo-guest", role: "guest" });
-    expect(payload.accessStatus).toMatchObject({ state: "missing", currentRole: "guest" });
+    expect(payload.accessStatus).toMatchObject({
+      state: "pending",
+      currentRole: null,
+      requestStatus: "pending"
+    });
   });
 
   it("includes access status in /me and the dedicated access status endpoint", async () => {
@@ -288,7 +292,16 @@ describe("api route contracts", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ requests: [], users: [] });
+    expect(payload.requests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "pending", subjectId: "demo-guest" })
+      ])
+    );
+    expect(payload.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: "owner", isActive: true })
+      ])
+    );
   });
 
   it("validates owner approval and user access mutation payloads before service execution", async () => {
@@ -419,7 +432,11 @@ describe("api route contracts", () => {
     expect(publishResponse.status).toBe(200);
     expect(published.plan).toMatchObject({ version_no: 2, status: "active" });
     expect(historyResponse.status).toBe(200);
-    expect(history.history[0]).toMatchObject({ version_no: 1, status: "active" });
+    expect(history.history[0]).toMatchObject({ version_no: 2, status: "active" });
+    expect(history.history[1]).toMatchObject({
+      version_no: 1,
+      status: "superseded"
+    });
     expect(history.change_events[0]).toHaveProperty("created_at");
   });
 

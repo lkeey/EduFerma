@@ -84,12 +84,16 @@ export function handleApiError(error: unknown) {
     return setupRequired(error instanceof Error ? error.message : undefined);
   }
 
-  if (error instanceof ServiceForbiddenError) {
+  if (error instanceof ServiceForbiddenError || hasErrorCode(error, "FORBIDDEN")) {
     return forbidden();
   }
 
-  if (error instanceof ServiceConflictError) {
-    return errorResponse(409, "CONFLICT", error.message);
+  if (error instanceof ServiceConflictError || hasErrorCode(error, "CONFLICT")) {
+    return errorResponse(
+      409,
+      "CONFLICT",
+      error instanceof Error ? error.message : "Request conflicts with current state"
+    );
   }
 
   console.error(error);

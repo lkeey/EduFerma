@@ -7,11 +7,11 @@ test("demo sign-up offers a guest entry and refreshes pending status", async ({ 
   await page.getByRole("link", { name: "Продолжить как гость (pending)" }).click();
   await expect(page).toHaveURL(/\/access-pending$/);
   await expect(page.getByRole("heading", { name: "Доступ ожидает подтверждения" })).toBeVisible();
-  await expect(page.getByText(/Текущий статус:/)).toContainText("missing");
+  await expect(page.getByText(/Текущий статус:/)).toContainText("pending");
 
   await page.getByRole("link", { name: "Обновить статус доступа" }).click();
   await expect(page).toHaveURL(/\/access-pending$/);
-  await expect(page.getByText(/Текущий статус:/)).toContainText("missing");
+  await expect(page.getByText(/Текущий статус:/)).toContainText("pending");
 });
 
 test("guest can log out, switch to owner, and filter owner access", async ({ page }) => {
@@ -21,7 +21,7 @@ test("guest can log out, switch to owner, and filter owner access", async ({ pag
   expect(guestMe.status()).toBe(200);
   await expect(guestMe.json()).resolves.toMatchObject({
     user: { role: "guest" },
-    accessStatus: { state: "missing" }
+    accessStatus: { state: "pending" }
   });
 
   await page.getByRole("link", { name: "Выйти и войти другим" }).click();
