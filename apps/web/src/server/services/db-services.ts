@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@eduferma/db";
 import {
   assignmentTasks,
@@ -71,6 +71,17 @@ type DbAssignment = typeof assignments.$inferSelect;
 type DbTask = typeof tasks.$inferSelect;
 
 const teacherRoles = new Set(["owner", "teacher", "tutor"]);
+export const studentVisibleAssignmentStatuses = [
+  "assigned",
+  "submitted",
+  "reviewed"
+] as const;
+
+export function isStudentVisibleAssignmentStatus(status: string) {
+  return studentVisibleAssignmentStatuses.some(
+    (visibleStatus) => visibleStatus === status
+  );
+}
 
 export function createDbPlatformServices() {
   const teacherImportServices = createTeacherImportServices(
@@ -422,7 +433,7 @@ export function createDbPlatformServices() {
       async getStudentAssignments(ctx: ServiceContext, studentId: string) {
         const { db, user } = await requireTeacherDbUser(ctx);
         const student = await requireTeacherStudent(db, user, studentId);
-        return { assignments: await getAssignmentsForStudent(db, student.id) };
+        return { assignments: await getAssignmentsForStudent(db, student.id, true) };
       },
       async getStudentAnalytics(ctx: ServiceContext, studentId: string) {
         const { db, user } = await requireTeacherDbUser(ctx);
@@ -666,7 +677,12 @@ async function requireTeacherAssignment(db: Db, user: DbUser, assignmentId: stri
 
 async function requireStudentAssignment(db: Db, studentId: string, assignmentId: string) {
   const assignment = await db.query.assignments.findFirst({
-    where: (row) => and(eq(row.id, assignmentId), eq(row.studentId, studentId))
+    where: (row) =>
+      and(
+        eq(row.id, assignmentId),
+        eq(row.studentId, studentId),
+        inArray(row.status, [...studentVisibleAssignmentStatuses])
+      )
   });
   if (!assignment) throw new ServiceForbiddenError("Assignment is not available for this student");
   return assignment;
@@ -680,7 +696,13 @@ async function requireTaskByIdOrTaskId(db: Db, taskId: string) {
 
 async function requireAssignedTaskForStudent(db: Db, studentId: string, taskId: string) {
   const task = await requireTaskByIdOrTaskId(db, taskId);
-  const studentAssignments = await db.query.assignments.findMany({ where: (row) => eq(row.studentId, studentId) });
+  const studentAssignments = await db.query.assignments.findMany({
+    where: (row) =>
+      and(
+        eq(row.studentId, studentId),
+        inArray(row.status, [...studentVisibleAssignmentStatuses])
+      )
+  });
 
   for (const assignment of studentAssignments) {
     const link = await db.query.assignmentTasks.findFirst({
@@ -692,9 +714,15 @@ async function requireAssignedTaskForStudent(db: Db, studentId: string, taskId: 
   throw new ServiceForbiddenError("Task is not assigned to this student");
 }
 
-async function getAssignmentsForStudent(db: Db, studentId: string) {
+async function getAssignmentsForStudent(db: Db, studentId: string, includeDrafts = false) {
   const rows = await db.query.assignments.findMany({
-    where: (row) => eq(row.studentId, studentId),
+    where: (row) =>
+      includeDrafts
+        ? eq(row.studentId, studentId)
+        : and(
+            eq(row.studentId, studentId),
+            inArray(row.status, [...studentVisibleAssignmentStatuses])
+          ),
     orderBy: (row, { desc }) => [desc(row.updatedAt)]
   });
   return Promise.all(rows.map(async (row) => mapDbAssignmentToSummary(row, await getAssignmentScore(db, row.id))));

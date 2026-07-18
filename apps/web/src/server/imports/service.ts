@@ -66,7 +66,10 @@ type TaskBankQuery = {
   learningTrack?: string;
   exam?: string;
   taskNumber?: string;
+  topic?: string;
+  prototypeId?: string;
   difficultyLevel?: string;
+  sourceName?: string;
   status?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -401,16 +404,7 @@ export function createTeacherImportServices(db: Db, requireTeacherDbUser: (ctx: 
         throw new ApiError(409, "CONFLICT", "Import must be analyzed and reviewed before apply");
       }
       const rows = await db.query.importRows.findMany({
-        where: (row) =>
-          and(
-            eq(row.jobId, importId),
-            input.taskIds?.length
-              ? inArray(
-                  sql<string>`coalesce(${sql`${row.normalizedTask} ->> 'task_id'`}, '')`,
-                  input.taskIds
-                )
-              : or(eq(row.status, "ready"), eq(row.status, "applied"))
-          ),
+        where: buildImportRowsApplyFilter(importId, input.taskIds),
         orderBy: (row, operators) => [operators.asc(row.rowNo)]
       });
 
@@ -931,12 +925,28 @@ async function ensureSource(db: Db, input: { sourceId: string; name: string; url
   return inserted ?? db.query.sources.findFirst({ where: (row) => eq(row.sourceId, input.sourceId) });
 }
 
-function buildTaskFilters(query: TaskBankQuery) {
+export function buildImportRowsApplyFilter(importId: string, taskIds?: string[]) {
+  return and(
+    eq(importRows.jobId, importId),
+    or(eq(importRows.status, "ready"), eq(importRows.status, "applied")),
+    taskIds?.length
+      ? inArray(
+          sql<string>`coalesce(${sql`${importRows.normalizedTask} ->> 'task_id'`}, '')`,
+          taskIds
+        )
+      : undefined
+  );
+}
+
+export function buildTaskFilters(query: TaskBankQuery) {
   const filters = [
     query.learningTrack ? eq(tasks.learningTrack, query.learningTrack) : undefined,
     query.exam ? eq(tasks.exam, query.exam) : undefined,
     query.taskNumber ? eq(tasks.taskNumber, query.taskNumber) : undefined,
+    query.topic ? eq(tasks.topic, query.topic) : undefined,
+    query.prototypeId ? eq(tasks.prototypeId, query.prototypeId) : undefined,
     query.difficultyLevel ? eq(tasks.difficultyLevel, query.difficultyLevel) : undefined,
+    query.sourceName ? eq(tasks.sourceName, query.sourceName) : undefined,
     query.status ? eq(tasks.status, query.status as DbTask["status"]) : undefined,
     query.q
       ? or(

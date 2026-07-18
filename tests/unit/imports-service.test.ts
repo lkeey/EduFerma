@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 import {
+  buildImportRowsApplyFilter,
+  buildTaskFilters,
   extractPdfText,
   fetchRemoteSource,
   isIpAddressBlocked,
@@ -13,6 +16,32 @@ import {
 import { validateImportUploadRequest } from "../../apps/web/src/server/imports/upload-validation";
 
 describe("task import parsing", () => {
+  it("keeps ready or applied status mandatory when apply is narrowed by taskIds", () => {
+    const query = new PgDialect().sqlToQuery(
+      buildImportRowsApplyFilter("11111111-1111-1111-1111-111111111111", ["selected-task"])!
+    );
+
+    expect(query.sql).toContain('"import_rows"."status" = $2 or "import_rows"."status" = $3');
+    expect(query.sql).toContain("'task_id'");
+    expect(query.params).toEqual([
+      "11111111-1111-1111-1111-111111111111",
+      "ready",
+      "applied",
+      "selected-task"
+    ]);
+  });
+
+  it("builds exact server-side topic, prototype, and source filters", () => {
+    const query = new PgDialect().sqlToQuery(
+      buildTaskFilters({ topic: "Графики", prototypeId: "ege_7_graph", sourceName: "Kompege" })!
+    );
+
+    expect(query.sql).toContain('"tasks"."topic" = $1');
+    expect(query.sql).toContain('"tasks"."prototype_id" = $2');
+    expect(query.sql).toContain('"tasks"."source_name" = $3');
+    expect(query.params).toEqual(["Графики", "ege_7_graph", "Kompege"]);
+  });
+
   it("normalizes numeric difficulty levels into platform buckets", () => {
     expect(normalizeDifficulty(1)).toBe("basic");
     expect(normalizeDifficulty(2)).toBe("medium");

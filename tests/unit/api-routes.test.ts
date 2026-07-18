@@ -66,6 +66,7 @@ function resetEnv() {
   delete process.env.TELEGRAM_OWNER_CHAT_ID;
   delete process.env.VK_ACCESS_TOKEN;
   delete process.env.VK_GROUP_ID;
+  delete process.env.VERCEL_ENV;
 }
 
 function apiRequest(pathname: string, headers?: HeadersInit, init: RequestInit = {}) {
@@ -122,6 +123,47 @@ describe("api route contracts", () => {
     expect(response.headers.get("set-cookie")).toContain("eduferma_demo_role=teacher");
   });
 
+  it("supports explicit owner and guest demo entrypoints", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const ownerResponse = await demoAuthLogin(
+      demoAuthRequest("http://localhost/api/demo-auth/login?role=owner") as never
+    );
+    const guestResponse = await demoAuthLogin(
+      demoAuthRequest("http://localhost/api/demo-auth/login?role=guest") as never
+    );
+
+    expect(ownerResponse.status).toBe(307);
+    expect(ownerResponse.headers.get("location")).toBe("http://localhost/owner/access");
+    expect(ownerResponse.headers.get("set-cookie")).toContain("eduferma_demo_role=owner");
+    expect(guestResponse.status).toBe(307);
+    expect(guestResponse.headers.get("location")).toBe("http://localhost/access-pending");
+    expect(guestResponse.headers.get("set-cookie")).toContain("eduferma_demo_role=guest");
+  });
+
+  it("rejects unsupported demo roles", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await demoAuthLogin(
+      demoAuthRequest("http://localhost/api/demo-auth/login?role=admin") as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Unsupported demo role" });
+  });
+
+  it("does not expose demo login in a Vercel production runtime", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+    process.env.VERCEL_ENV = "production";
+
+    const response = await demoAuthLogin(
+      demoAuthRequest("http://localhost/api/demo-auth/login?role=owner") as never
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "Demo auth is disabled" });
+  });
+
   it("keeps demo auth logout clearing the demo role cookie", async () => {
     const response = await demoAuthLogout(demoAuthRequest("http://localhost/api/demo-auth/logout") as never);
 
@@ -139,6 +181,21 @@ describe("api route contracts", () => {
 
     expect(response.status).toBe(200);
     expect(payload.user.role).toBe("teacher");
+  });
+
+  it("keeps explicit guest demo API access pending", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+
+    const response = await getMe(apiRequest("/api/v1/me", { cookie: "eduferma_demo_role=guest" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.user).toMatchObject({ id: "demo-guest", role: "guest" });
+    expect(payload.accessStatus).toMatchObject({
+      state: "pending",
+      currentRole: null,
+      requestStatus: "pending"
+    });
   });
 
   it("includes access status in /me and the dedicated access status endpoint", async () => {
@@ -235,7 +292,16 @@ describe("api route contracts", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ requests: [], users: [] });
+    expect(payload.requests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "pending", subjectId: "demo-guest" })
+      ])
+    );
+    expect(payload.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: "owner", isActive: true })
+      ])
+    );
   });
 
   it("validates owner approval and user access mutation payloads before service execution", async () => {
@@ -366,7 +432,11 @@ describe("api route contracts", () => {
     expect(publishResponse.status).toBe(200);
     expect(published.plan).toMatchObject({ version_no: 2, status: "active" });
     expect(historyResponse.status).toBe(200);
-    expect(history.history[0]).toMatchObject({ version_no: 1, status: "active" });
+    expect(history.history[0]).toMatchObject({ version_no: 2, status: "active" });
+    expect(history.history[1]).toMatchObject({
+      version_no: 1,
+      status: "superseded"
+    });
     expect(history.change_events[0]).toHaveProperty("created_at");
   });
 

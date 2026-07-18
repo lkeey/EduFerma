@@ -1,9 +1,16 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { canAccessRoute, resolveRoleFromEmail, type ServiceContext, type ServiceUser } from "@eduferma/core";
 import type { AppRole } from "@eduferma/config";
 import { ApiError } from "@/server/api/responses";
 import { resolveDbAccountAccess } from "@/server/auth/db-account";
 import { getAuthSetupStatus } from "@/server/auth/setup-status";
+import {
+  DEMO_ROLE_COOKIE,
+  getDemoAuthRoleFromCookieHeader,
+  isDemoAuthRuntimeEnabled,
+  parseDemoAuthRole
+} from "@/lib/demo-auth";
 
 const teacherRoles: AppRole[] = ["owner", "teacher", "tutor"];
 const studentRoles: AppRole[] = ["owner", "tutor", "student", "guardian"];
@@ -20,18 +27,22 @@ export function setCurrentUserForAuthTests(loader: CurrentUserLoader | null) {
 }
 
 export function isDemoAuthEnabled() {
-  return process.env.ENABLE_DEMO_AUTH === "true" && process.env.NODE_ENV !== "production";
+  return isDemoAuthRuntimeEnabled();
 }
 
 export function hasClerkServerEnv() {
   return getAuthSetupStatus().clerk.configured;
 }
 
-function demoUser(request?: Request): ServiceUser {
+async function demoUser(request?: Request): Promise<ServiceUser> {
   const requestedRole = request?.headers.get("x-demo-role") as AppRole | null;
-  const role: AppRole = requestedRole && ["owner", "tutor", "teacher", "student", "guardian"].includes(requestedRole)
+  const headerRole: AppRole | null = requestedRole && ["owner", "tutor", "teacher", "student", "guardian", "guest"].includes(requestedRole)
     ? requestedRole
-    : "owner";
+    : null;
+  const cookieRole = request
+    ? getDemoAuthRoleFromCookieHeader(request.headers.get("cookie"))
+    : parseDemoAuthRole((await cookies()).get(DEMO_ROLE_COOKIE)?.value);
+  const role: AppRole = headerRole ?? cookieRole ?? "owner";
   const requestedId = request?.headers.get("x-demo-user-id")?.trim();
   const requestedEmail = request?.headers.get("x-demo-email")?.trim();
   const requestedName = request?.headers.get("x-demo-name")?.trim();
@@ -46,7 +57,7 @@ function demoUser(request?: Request): ServiceUser {
 
 export async function getCurrentServiceUser(request?: Request): Promise<ServiceUser | null> {
   if (isDemoAuthEnabled()) {
-    return demoUser(request);
+    return await demoUser(request);
   }
 
   if (!hasClerkServerEnv()) {

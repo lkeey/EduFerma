@@ -39,7 +39,16 @@ describe("teacher import routes in demo mode", () => {
     const listPayload = await listResponse.json();
 
     expect(listResponse.status).toBe(200);
-    expect(listPayload.jobs).toEqual([]);
+    expect(listPayload.jobs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: createPayload.job.id,
+          sourceUrl: "https://kompege.ru/task/7",
+          status: "uploaded",
+          dryRun: true
+        })
+      ])
+    );
   });
 
   it("accepts teacher task patch route for teacher role", async () => {
@@ -70,6 +79,27 @@ describe("teacher import routes in demo mode", () => {
 
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("accepts all server-side task-bank filters", async () => {
+    process.env.ENABLE_DEMO_AUTH = "true";
+    const params = new URLSearchParams({
+      learningTrack: "ege_informatics",
+      exam: "ЕГЭ",
+      taskNumber: "7",
+      topic: "Графики",
+      prototypeId: "ege_7_graph_reading",
+      difficultyLevel: "basic",
+      sourceName: "original",
+      status: "active"
+    });
+    const response = await getTeacherTaskBank(
+      apiRequest(`/api/v1/teacher/task-bank?${params.toString()}`, {
+        headers: { "x-demo-role": "teacher" }
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("rejects import access for a student role", async () => {

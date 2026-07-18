@@ -9,6 +9,7 @@ import {
 import { OwnerAccessListQuerySchema } from "@eduferma/validators";
 import { getCurrentServiceUser } from "@/server/auth/session";
 import { getServices } from "@/server/services";
+import { CriticalActionForm } from "./critical-action-form";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -81,15 +82,19 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
       ) : null}
 
       <Panel>
+        <p>
+          Approve, reject, block/restore и изменения ролей требуют отдельного подтверждения браузера.
+          Назначение owner дополнительно требует точную owner-фразу.
+        </p>
         <form className="filter-bar">
-          <input className="text-field" name="q" placeholder="Поиск по email, имени, publicCode" defaultValue={filters.q} />
-          <select className="text-field" name="status" defaultValue={filters.status ?? ""}>
+          <input aria-label="Поиск owner access" className="text-field" name="q" placeholder="Поиск по email, имени, publicCode" defaultValue={filters.q} />
+          <select aria-label="Статус запроса" className="text-field" name="status" defaultValue={filters.status ?? ""}>
             <option value="">Статус запроса</option>
             <option value="pending">pending</option>
             <option value="approved">approved</option>
             <option value="rejected">rejected</option>
           </select>
-          <select className="text-field" name="role" defaultValue={filters.role ?? ""}>
+          <select aria-label="Роль аккаунта" className="text-field" name="role" defaultValue={filters.role ?? ""}>
             <option value="">Роль</option>
             <option value="student">student</option>
             <option value="teacher">teacher</option>
@@ -97,7 +102,7 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
             <option value="guardian">guardian</option>
             <option value="owner">owner</option>
           </select>
-          <select className="text-field" name="active" defaultValue={filters.active ?? "all"}>
+          <select aria-label="Состояние аккаунта" className="text-field" name="active" defaultValue={filters.active ?? "all"}>
             <option value="all">Все аккаунты</option>
             <option value="active">Только активные</option>
             <option value="blocked">Только blocked</option>
@@ -114,13 +119,15 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
           </div>
           <table className="data-table">
             <thead>
-              <tr><th>Email</th><th>Имя</th><th>Статус</th><th>Роль</th><th>Last seen</th><th /></tr>
+              <tr><th>Email</th><th>Имя</th><th>Clerk subject</th><th>Создан</th><th>Статус</th><th>Роль</th><th>Last seen</th><th /></tr>
             </thead>
             <tbody>
               {overview.requests.map((row) => (
                 <tr key={row.id}>
                   <td>{row.requesterEmail}</td>
                   <td>{row.requesterName ?? "—"}</td>
+                  <td><code>{row.subjectId}</code></td>
+                  <td>{new Date(row.createdAt).toLocaleString("ru-RU")}</td>
                   <td><Badge>{row.status}</Badge></td>
                   <td>{row.currentRole ?? row.requestedRole ?? "—"}</td>
                   <td>{new Date(row.lastSeenAt).toLocaleString("ru-RU")}</td>
@@ -138,12 +145,15 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
           </div>
           <table className="data-table">
             <thead>
-              <tr><th>Email</th><th>Роль</th><th>Состояние</th><th>Public code</th><th /></tr>
+              <tr><th>Email</th><th>User ID</th><th>Clerk subject</th><th>Регистрация</th><th>Роль</th><th>Состояние</th><th>Public code</th><th /></tr>
             </thead>
             <tbody>
               {overview.users.map((row) => (
                 <tr key={row.userId}>
                   <td>{row.email}<br /><small>{row.displayName ?? "—"}</small></td>
+                  <td><code>{row.userId}</code></td>
+                  <td><code>{row.clerkSubject ?? "—"}</code></td>
+                  <td>{new Date(row.createdAt).toLocaleString("ru-RU")}</td>
                   <td>{row.role}</td>
                   <td><Badge>{row.isActive ? "active" : "blocked"}</Badge></td>
                   <td>{row.studentPublicCode ?? "—"}</td>
@@ -163,36 +173,37 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
               <Badge>{requestDetail.accessStatus.state}</Badge>
             </div>
             <p><strong>{requestDetail.request.requesterEmail}</strong> · {requestDetail.request.requesterName ?? "Без имени"}</p>
-            <p>Subject: <code>{requestDetail.request.subjectId}</code></p>
+            <p>Clerk subject: <code>{requestDetail.request.subjectId}</code></p>
+            <p>Request created: {new Date(requestDetail.request.createdAt).toLocaleString("ru-RU")}</p>
             <p>Last seen: {new Date(requestDetail.request.lastSeenAt).toLocaleString("ru-RU")}</p>
             <p>Decision reason: {requestDetail.request.decisionReason ?? "—"}</p>
             {requestDetail.user ? (
               <p>Linked user: <a href={buildReturnTo({ q: filters.q, status: filters.status, role: filters.role, active: filters.active, userId: requestDetail.user.userId })}>{requestDetail.user.email}</a></p>
             ) : null}
 
-            <form action={approveAccessRequestAction}>
+            <CriticalActionForm action={approveAccessRequestAction} kind="approve" subject={requestDetail.request.requesterEmail}>
               <input type="hidden" name="requestId" value={requestDetail.request.id} />
               <input type="hidden" name="returnTo" value={returnTo} />
               <div className="panel-header"><h3>Approve</h3></div>
-              <select className="text-field" name="role" defaultValue={requestDetail.request.currentRole ?? requestDetail.request.requestedRole ?? "student"}>
+              <select aria-label="Роль для одобрения" className="text-field" name="role" defaultValue={requestDetail.request.currentRole ?? requestDetail.request.requestedRole ?? "student"}>
                 <option value="student">student</option>
                 <option value="teacher">teacher</option>
                 <option value="tutor">tutor</option>
                 <option value="guardian">guardian</option>
                 <option value="owner">owner</option>
               </select>
-              <textarea className="text-field" name="reason" placeholder="Причина одобрения" required />
-              <input className="text-field" name="ownerConfirmation" placeholder={requestDetail.ownerConfirmationPhrase ?? "Owner confirmation"} />
+              <textarea aria-label="Причина одобрения" className="text-field" name="reason" placeholder="Причина одобрения" required />
+              <input aria-label="Точная owner-фраза для одобрения" className="text-field" name="ownerConfirmation" placeholder={requestDetail.ownerConfirmationPhrase ?? "Owner confirmation"} />
               <button className="ui-button ui-button-primary" type="submit">Approve request</button>
-            </form>
+            </CriticalActionForm>
 
-            <form action={rejectAccessRequestAction}>
+            <CriticalActionForm action={rejectAccessRequestAction} kind="reject" subject={requestDetail.request.requesterEmail}>
               <input type="hidden" name="requestId" value={requestDetail.request.id} />
               <input type="hidden" name="returnTo" value={returnTo} />
               <div className="panel-header"><h3>Reject</h3></div>
-              <textarea className="text-field" name="reason" placeholder="Причина отказа" required />
+              <textarea aria-label="Причина отказа" className="text-field" name="reason" placeholder="Причина отказа" required />
               <button className="ui-button ui-button-danger" type="submit">Reject request</button>
-            </form>
+            </CriticalActionForm>
           </Panel>
 
           <Panel>
@@ -227,29 +238,38 @@ export default async function OwnerAccessPage({ searchParams }: { searchParams?:
               <Badge>{userDetail.accessStatus.state}</Badge>
             </div>
             <p><strong>{userDetail.user.email}</strong> · {userDetail.user.displayName ?? "Без имени"}</p>
+            <p>User ID: <code>{userDetail.user.userId}</code></p>
+            <p>Clerk subject: <code>{userDetail.user.clerkSubject ?? "—"}</code></p>
+            <p>Registered: {new Date(userDetail.user.createdAt).toLocaleString("ru-RU")}</p>
             <p>Current role: {userDetail.user.role}</p>
             <p>State: <Badge>{userDetail.user.isActive ? "active" : "blocked"}</Badge></p>
             <p>Block reason: {userDetail.user.blockReason ?? "—"}</p>
             <p>Exact owner confirmation: <code>{userDetail.ownerConfirmationPhrase ?? "—"}</code></p>
 
-            <form action={updateUserAccessAction}>
+            <CriticalActionForm
+              action={updateUserAccessAction}
+              currentIsActive={userDetail.user.isActive}
+              currentRole={userDetail.user.role}
+              kind="update-user"
+              subject={userDetail.user.email}
+            >
               <input type="hidden" name="userId" value={userDetail.user.userId} />
               <input type="hidden" name="returnTo" value={returnTo} />
-              <select className="text-field" name="role" defaultValue={userDetail.user.role}>
+              <select aria-label="Новая роль пользователя" className="text-field" name="role" defaultValue={userDetail.user.role}>
                 <option value="student">student</option>
                 <option value="teacher">teacher</option>
                 <option value="tutor">tutor</option>
                 <option value="guardian">guardian</option>
                 <option value="owner">owner</option>
               </select>
-              <select className="text-field" name="isActive" defaultValue={String(userDetail.user.isActive)}>
+              <select aria-label="Новое состояние пользователя" className="text-field" name="isActive" defaultValue={String(userDetail.user.isActive)}>
                 <option value="true">active</option>
                 <option value="false">blocked</option>
               </select>
-              <textarea className="text-field" name="reason" placeholder="Причина изменения" required />
-              <input className="text-field" name="ownerConfirmation" placeholder={userDetail.ownerConfirmationPhrase ?? "Owner confirmation"} />
+              <textarea aria-label="Причина изменения доступа" className="text-field" name="reason" placeholder="Причина изменения" required />
+              <input aria-label="Точная owner-фраза для изменения роли" className="text-field" name="ownerConfirmation" placeholder={userDetail.ownerConfirmationPhrase ?? "Owner confirmation"} />
               <button className={`ui-button ui-button-${statusBadge(userDetail.accessStatus.state)}`} type="submit">Save access</button>
-            </form>
+            </CriticalActionForm>
           </Panel>
 
           <Panel>

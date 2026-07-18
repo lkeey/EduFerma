@@ -22,6 +22,17 @@ test("teacher can use teacher APIs but cannot use owner access", async ({
   expect(providerHealth.status()).toBe(200);
   expect(ownerAccess.status()).toBe(403);
 
+  const ssrfProbe = await request.post("/api/v1/teacher/imports", {
+    headers: { "content-type": "application/json" },
+    data: {
+      sourceType: "url",
+      sourceUrl: "http://127.0.0.1:3000/private",
+      sourceName: "Production SSRF acceptance probe",
+      dryRun: true
+    }
+  });
+  expect(ssrfProbe.status()).toBe(400);
+
   await page.goto("/owner/access");
   await expect(page).toHaveURL(/\/forbidden(?:\?|$)/);
   await expect(

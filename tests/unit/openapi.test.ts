@@ -137,6 +137,27 @@ describe("openapi contract", () => {
     );
   });
 
+  it("documents every teacher task-bank filter as a query parameter", () => {
+    const taskBank = openApiDocument.paths["/api/v1/teacher/task-bank"].get;
+    const names = taskBank.parameters.map((parameter: { name: string }) => parameter.name);
+
+    expect(names).toEqual([
+      "page",
+      "pageSize",
+      "q",
+      "learningTrack",
+      "exam",
+      "taskNumber",
+      "topic",
+      "prototypeId",
+      "difficultyLevel",
+      "sourceName",
+      "status",
+      "sortBy",
+      "sortOrder"
+    ]);
+  });
+
   it("documents versioned plan editing, feedback, analytics, and student-safe fields", () => {
     const updatePlan =
       openApiDocument.paths["/api/v1/teacher/students/{studentId}/plan"].patch;

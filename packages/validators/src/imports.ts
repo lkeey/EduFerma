@@ -53,7 +53,10 @@ export const TeacherTaskBankQuerySchema = z.object({
   learningTrack: z.string().trim().optional(),
   exam: z.string().trim().optional(),
   taskNumber: z.string().trim().optional(),
+  topic: z.string().trim().optional(),
+  prototypeId: z.string().trim().optional(),
   difficultyLevel: DifficultySchema.optional(),
+  sourceName: z.string().trim().optional(),
   status: TaskStatusSchema.optional(),
   sortBy: TaskBankSortFieldSchema.default("updatedAt"),
   sortOrder: SortOrderSchema.default("desc")
@@ -244,6 +247,7 @@ export const TeacherTaskBulkResponseSchema = z.object({
 });
 
 export type TeacherTaskBankQuery = z.infer<typeof TeacherTaskBankQuerySchema>;
+export type TeacherTaskBankQueryInput = z.input<typeof TeacherTaskBankQuerySchema>;
 export type ImportJobSummary = z.infer<typeof ImportJobSummarySchema>;
 export type ImportRow = z.infer<typeof ImportRowSchema>;
 export type CreateImportJobRequest = z.infer<typeof CreateImportJobRequestSchema>;

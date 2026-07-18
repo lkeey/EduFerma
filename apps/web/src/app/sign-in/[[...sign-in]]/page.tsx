@@ -17,6 +17,12 @@ export default function SignInPage() {
         {demoEnabled ? (
           <div className="stack">
             <Badge>demo auth включен</Badge>
+            <LinkButton href="/api/demo-auth/login?role=owner" variant="primary">
+              Войти как owner
+            </LinkButton>
+            <LinkButton href="/api/demo-auth/login?role=guest" variant="secondary">
+              Войти как гость (pending)
+            </LinkButton>
             <LinkButton href="/api/demo-auth/login?role=teacher" variant="primary">
               Войти как преподаватель
             </LinkButton>
