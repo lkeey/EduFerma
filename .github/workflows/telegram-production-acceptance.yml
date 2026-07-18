@@ -11,8 +11,9 @@ on:
         options:
           - status
           - send
+          - recover
       confirmation:
-        description: For send, type SEND ONE PRIVATE OWNER TELEGRAM
+        description: Enter the exact confirmation required by send or recover
         required: false
         type: string
 
@@ -33,9 +34,12 @@ jobs:
           OPERATION: ${{ inputs.operation }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          test "$OPERATION" = "status" || test "$OPERATION" = "send"
+          test "$OPERATION" = "status" || test "$OPERATION" = "send" || test "$OPERATION" = "recover"
           if test "$OPERATION" = "send"; then
             test "$CONFIRMATION" = "SEND ONE PRIVATE OWNER TELEGRAM"
+          fi
+          if test "$OPERATION" = "recover"; then
+            test "$CONFIRMATION" = "RETRY CONFIRMED FAILED PRIVATE TELEGRAM"
           fi
       - name: Inspect state or verify one private owner delivery
         env:
@@ -46,6 +50,8 @@ jobs:
           test -n "$CRON_SECRET"
           if test "$OPERATION" = "status"; then
             api_operation="telegram_acceptance_status"
+          elif test "$OPERATION" = "recover"; then
+            api_operation="telegram_acceptance_recover_failed"
           else
             api_operation="telegram_acceptance"
           fi
@@ -80,5 +86,7 @@ jobs:
             .failedCount == 0 and
             .acceptance.sentDeliveryCount == 1 and
             (.acceptance.providerMessageId | type == "string" and length > 0) and
-            (.acceptance.mode == "sent-and-verified" or .acceptance.mode == "already-sent")
+            (.acceptance.mode == "sent-and-verified" or
+             .acceptance.mode == "recovered-and-verified" or
+             .acceptance.mode == "already-sent")
           '

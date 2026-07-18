@@ -5,6 +5,7 @@ import {
 } from "@eduferma/validators";
 import {
   assertCompletedAcceptance,
+  assertRecoverableAcceptance,
   checkTelegramPrivateChatAccess,
   readAcceptanceConfig,
   summarizeAcceptanceDetail
@@ -129,6 +130,22 @@ describe("Telegram production acceptance safety", () => {
     ).toMatchObject({
       operation: "telegram_acceptance_status"
     });
+
+    expect(() =>
+      ProcessPublicationsRequestSchema.parse({
+        operation: "telegram_acceptance_recover_failed",
+        confirmation: "retry"
+      })
+    ).toThrow(/Exact Telegram production recovery confirmation/);
+
+    expect(
+      ProcessPublicationsRequestSchema.parse({
+        operation: "telegram_acceptance_recover_failed",
+        confirmation: "RETRY CONFIRMED FAILED PRIVATE TELEGRAM"
+      })
+    ).toMatchObject({
+      operation: "telegram_acceptance_recover_failed"
+    });
   });
 
   it("checks that the configured owner target is a reachable private chat", async () => {
@@ -205,5 +222,22 @@ describe("Telegram production acceptance safety", () => {
       deliveryErrorCodes: ["400"],
       deliveryErrorMessages: ["Telegram sendMessage failed"]
     });
+    expect(() =>
+      assertRecoverableAcceptance(state)
+    ).not.toThrow();
+
+    expect(() =>
+      assertRecoverableAcceptance({
+        ...state,
+        deliveryErrorCodes: ["NETWORK_ERROR"]
+      })
+    ).toThrow(/only for one persisted HTTP 400 rejection/);
+
+    expect(() =>
+      assertRecoverableAcceptance({
+        ...state,
+        deliveryProviderMessageIds: ["ambiguous"]
+      })
+    ).toThrow(/no provider message ID/);
   });
 });

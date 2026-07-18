@@ -154,6 +154,13 @@ Telegram message ID, it performs only an idempotency check and does not send
 again. An incomplete or ambiguous previous attempt is never retried
 automatically.
 
+If status proves that the only attempt was rejected with Telegram HTTP 400,
+has no provider message ID, and `getChat` becomes healthy after the owner starts
+the bot, select the workflow `recover` operation and enter
+`RETRY CONFIRMED FAILED PRIVATE TELEGRAM`. Recovery refuses network errors,
+ambiguous state, any existing provider message ID, or any state other than the
+single persisted HTTP 400 rejection.
+
 ## Deployment Governance
 
 Preferred deployment path:

@@ -22,6 +22,8 @@ import {
 
 export const TELEGRAM_PRODUCTION_ACCEPTANCE_CONFIRMATION =
   "SEND ONE PRIVATE OWNER TELEGRAM";
+export const TELEGRAM_PRODUCTION_ACCEPTANCE_RECOVERY_CONFIRMATION =
+  "RETRY CONFIRMED FAILED PRIVATE TELEGRAM";
 
 const acceptanceKey = "telegram-owner-private-production-v1";
 const acceptanceTargetSlug =
@@ -36,6 +38,7 @@ export type TelegramProductionAcceptanceState = {
   sentDeliveryCount: number;
   providerMessageId: string | null;
   deliveryStatuses: string[];
+  deliveryProviderMessageIds: string[];
   deliveryErrorCodes: string[];
   deliveryErrorMessages: string[];
 };
@@ -51,27 +54,7 @@ export async function runTelegramProductionAcceptance(
   env: NodeJS.ProcessEnv = process.env
 ): Promise<ProcessPublicationsResponse> {
   const config = readAcceptanceConfig(env);
-  const health = await createTelegramProvider(env).getHealth();
-  if (health.status !== "ok") {
-    throw new ApiError(
-      503,
-      "SETUP_REQUIRED",
-      "Telegram Bot API health check did not pass"
-    );
-  }
-  const privateChatAccess =
-    await checkTelegramPrivateChatAccess(
-      config.botToken,
-      config.ownerChatId
-    );
-  if (!privateChatAccess.ok) {
-    throw new ApiError(
-      503,
-      "SETUP_REQUIRED",
-      "Telegram bot cannot access the configured private owner chat",
-      { privateChatAccess }
-    );
-  }
+  await requireTelegramAcceptanceReadiness(env, config);
 
   const lockClient = createTransactionalDb(env);
   try {
@@ -157,6 +140,58 @@ export async function runTelegramProductionAcceptance(
         500,
         "INTERNAL_ERROR",
         "Telegram production acceptance did not produce a result"
+      );
+    }
+    return response;
+  } finally {
+    await lockClient.close();
+  }
+}
+
+export async function recoverFailedTelegramProductionAcceptance(
+  env: NodeJS.ProcessEnv = process.env
+): Promise<ProcessPublicationsResponse> {
+  const config = readAcceptanceConfig(env);
+  await requireTelegramAcceptanceReadiness(env, config);
+
+  const lockClient = createTransactionalDb(env);
+  try {
+    let response: ProcessPublicationsResponse | undefined;
+    await lockClient.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${acceptanceKey}))`
+      );
+      const failed = await readAcceptanceState();
+      assertRecoverableAcceptance(failed);
+      const postId = requirePostId(failed);
+
+      await processSpecificTargets(postId, {
+        env,
+        workerId:
+          "telegram-production-acceptance-recovery"
+      });
+      const completed = await readAcceptanceState();
+      assertCompletedAcceptance(completed);
+
+      await processSpecificTargets(postId, {
+        env,
+        workerId:
+          "telegram-production-acceptance-recovery-idempotency"
+      });
+      const afterIdempotencyCheck =
+        await readAcceptanceState();
+      assertCompletedAcceptance(afterIdempotencyCheck);
+      response = acceptanceResponse(
+        "recovered-and-verified",
+        afterIdempotencyCheck
+      );
+    });
+
+    if (!response) {
+      throw new ApiError(
+        500,
+        "INTERNAL_ERROR",
+        "Telegram production acceptance recovery did not produce a result"
       );
     }
     return response;
@@ -327,6 +362,30 @@ export function assertCompletedAcceptance(
   }
 }
 
+export function assertRecoverableAcceptance(
+  state: TelegramProductionAcceptanceState
+) {
+  if (
+    !state.targetExists ||
+    !state.postExists ||
+    state.postStatus !== "failed" ||
+    state.deliveryCount !== 1 ||
+    state.sentDeliveryCount !== 0 ||
+    state.deliveryStatuses.length !== 1 ||
+    state.deliveryStatuses[0] !== "failed" ||
+    state.deliveryProviderMessageIds.length !== 0 ||
+    state.deliveryErrorCodes.length !== 1 ||
+    state.deliveryErrorCodes[0] !== "400"
+  ) {
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Telegram acceptance recovery is allowed only for one persisted HTTP 400 rejection with no provider message ID.",
+      acceptanceStateDetails(state)
+    );
+  }
+}
+
 export function summarizeAcceptanceDetail(
   targetExists: boolean,
   publication: PublicationDetail
@@ -346,6 +405,9 @@ export function summarizeAcceptanceDetail(
     deliveryStatuses: publication.deliveries.map(
       (delivery) => delivery.status
     ),
+    deliveryProviderMessageIds: publication.deliveries
+      .map((delivery) => delivery.providerMessageId)
+      .filter((value): value is string => Boolean(value)),
     deliveryErrorCodes: publication.deliveries
       .map((delivery) => delivery.errorCode)
       .filter((value): value is string => Boolean(value)),
@@ -450,6 +512,7 @@ async function readAcceptanceState(): Promise<TelegramProductionAcceptanceState>
       sentDeliveryCount: 0,
       providerMessageId: null,
       deliveryStatuses: [],
+      deliveryProviderMessageIds: [],
       deliveryErrorCodes: [],
       deliveryErrorMessages: []
     };
@@ -475,6 +538,8 @@ function acceptanceStateDetails(
       state.providerMessageId
     ),
     deliveryStatuses: state.deliveryStatuses,
+    deliveryProviderMessageIds:
+      state.deliveryProviderMessageIds,
     deliveryErrorCodes: state.deliveryErrorCodes,
     deliveryErrorMessages: state.deliveryErrorMessages
   };
@@ -504,13 +569,16 @@ function readTelegramChatType(payload: unknown) {
 }
 
 function acceptanceResponse(
-  mode: "sent-and-verified" | "already-sent",
+  mode:
+    | "sent-and-verified"
+    | "recovered-and-verified"
+    | "already-sent",
   state: TelegramProductionAcceptanceState
 ): ProcessPublicationsResponse {
   return {
     ok: true,
-    claimedCount: mode === "sent-and-verified" ? 1 : 0,
-    sentCount: mode === "sent-and-verified" ? 1 : 0,
+    claimedCount: mode === "already-sent" ? 0 : 1,
+    sentCount: mode === "already-sent" ? 0 : 1,
     failedCount: 0,
     skippedCount: mode === "already-sent" ? 1 : 0,
     processedAt: new Date().toISOString(),
@@ -521,6 +589,33 @@ function acceptanceResponse(
       providerMessageId: state.providerMessageId as string
     }
   };
+}
+
+async function requireTelegramAcceptanceReadiness(
+  env: NodeJS.ProcessEnv,
+  config: ReturnType<typeof readAcceptanceConfig>
+) {
+  const health = await createTelegramProvider(env).getHealth();
+  if (health.status !== "ok") {
+    throw new ApiError(
+      503,
+      "SETUP_REQUIRED",
+      "Telegram Bot API health check did not pass"
+    );
+  }
+  const privateChatAccess =
+    await checkTelegramPrivateChatAccess(
+      config.botToken,
+      config.ownerChatId
+    );
+  if (!privateChatAccess.ok) {
+    throw new ApiError(
+      503,
+      "SETUP_REQUIRED",
+      "Telegram bot cannot access the configured private owner chat",
+      { privateChatAccess }
+    );
+  }
 }
 
 function requirePostId(
