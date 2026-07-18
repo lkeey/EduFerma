@@ -147,6 +147,25 @@ evidence by URL/path instead of embedding raw HTML. Only add explicit gzip or
 Brotli storage after adding bytea columns, decode helpers, migrations, and
 search/indexing tests.
 
+## Import review acceptance wiring
+
+The teacher import-review client can refresh the job and row payloads from the
+versioned API. Local Playwright coverage intercepts those two read endpoints so
+it can exercise parser/evidence metadata, summary counters, row review, selected
+apply, and protected-delete feedback without making the shared demo services
+stateful.
+
+Coordinator integration should keep that boundary when combining branches:
+
+- do not add mutable module-level import or task-bank state to the shared demo
+  services;
+- if unmocked demo coverage is desired, provide a fixed read-only import-review
+  fixture containing one reviewable row, evidence metadata, and summary counts;
+- preserve the `ready|applied` server predicate when `taskIds` are supplied to
+  apply; selected IDs narrow eligible rows and never bypass row review status;
+- production wiring must continue to use the DB-backed teacher service for all
+  filters and mutations.
+
 ## Curated Original Seed
 
 The repository includes a small production-safe original task bank:

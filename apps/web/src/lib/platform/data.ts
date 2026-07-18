@@ -1,9 +1,9 @@
 import "server-only";
 
 import type { MistakeTag, TaskAttempt } from "@eduferma/core/platform";
-import { TeacherTaskBankQuerySchema } from "@eduferma/validators";
 import { getCurrentServiceUser } from "@/server/auth/session";
 import { getServices } from "@/server/services";
+import { parseTeacherTaskBankSearchParams } from "./task-bank-query";
 import {
   emptyAssignmentProgress,
   type LegacyAssignment,
@@ -303,19 +303,7 @@ export async function getTeacherTaskBank(filters: Record<string, string | undefi
 
 export async function getTeacherTaskBankPage(filters: Record<string, string | undefined> = {}) {
   const ctx = await getContext();
-  const query = TeacherTaskBankQuerySchema.safeParse({
-    page: filters.page ? Number(filters.page) : 1,
-    pageSize: filters.pageSize ? Number(filters.pageSize) : 20,
-    q: filters.q,
-    learningTrack: filters.learning_track,
-    exam: filters.exam,
-    taskNumber: filters.task_number,
-    difficultyLevel: filters.difficulty_level,
-    status: filters.status,
-    sortBy: filters.sort_by,
-    sortOrder: (filters.sort_order as "asc" | "desc" | undefined) ?? "desc"
-  });
-  const response = await getServices().teacher.getTaskBank(ctx, query.success ? query.data : TeacherTaskBankQuerySchema.parse({}));
+  const response = await getServices().teacher.getTaskBank(ctx, parseTeacherTaskBankSearchParams(filters));
   return {
     ...response,
     tasks: asArray(response.tasks).map((task) => toLegacyTask(task as never))

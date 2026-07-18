@@ -12,6 +12,9 @@ type TaskRow = {
   difficultyLevel: string;
   skillAtoms: string[];
   answerJson?: unknown;
+  solutionMd?: string;
+  sourceName?: string;
+  sourceUrl?: string;
   verificationStatus: string;
   licenseStatus: string;
   status?: string;
@@ -34,6 +37,7 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
   }
 
   async function bulkArchive() {
+    if (!window.confirm(`Архивировать выбранные задачи (${selected.length})?`)) return;
     setPendingTaskId("bulk");
     try {
       await request("/api/v1/teacher/tasks/bulk", {
@@ -75,6 +79,7 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
   }
 
   async function archiveTask(taskId: string) {
+    if (!window.confirm("Архивировать задачу? Её можно будет вернуть через смену статуса.")) return;
     setPendingTaskId(taskId);
     try {
       const payload = await request(`/api/v1/teacher/tasks/${taskId}`, {
@@ -135,6 +140,8 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
             <th>Задача</th>
             <th>Тема</th>
             <th>Ответ</th>
+            <th>Решение</th>
+            <th>Источник</th>
             <th>Статус</th>
             <th>Действия</th>
           </tr>
@@ -164,6 +171,16 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
                 <small>{task.skillAtoms.join(", ")}</small>
               </td>
               <td>{formatAnswer(task.answerJson)}</td>
+              <td>{task.solutionMd || "—"}</td>
+              <td>
+                <span>{task.sourceName || "—"}</span>
+                {task.sourceUrl ? (
+                  <>
+                    <br />
+                    <a href={task.sourceUrl} rel="noreferrer" target="_blank">Открыть источник</a>
+                  </>
+                ) : null}
+              </td>
               <td>
                 <Badge>{task.status ?? "draft"}</Badge>{" "}
                 <Badge>{task.verificationStatus}</Badge>{" "}
@@ -245,6 +262,9 @@ function toTaskRow(task: Record<string, unknown>): TaskRow {
         ? task.skillAtoms.map(String)
         : [],
     answerJson: task.answer_json ?? task.answerJson,
+    solutionMd: typeof task.solution_md === "string" ? task.solution_md : typeof task.solutionMd === "string" ? task.solutionMd : undefined,
+    sourceName: typeof task.source_name === "string" ? task.source_name : typeof task.sourceName === "string" ? task.sourceName : undefined,
+    sourceUrl: typeof task.source_url === "string" ? task.source_url : typeof task.sourceUrl === "string" ? task.sourceUrl : undefined,
     verificationStatus: String(task.verification_status ?? task.verificationStatus ?? "unknown"),
     licenseStatus: String(task.license_status ?? task.licenseStatus ?? "unknown"),
     status: typeof task.status === "string" ? task.status : undefined

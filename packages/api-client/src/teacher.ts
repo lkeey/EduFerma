@@ -1,4 +1,5 @@
 import { EduFermaApiClient } from "./client";
+import { buildTeacherTaskBankPath, type TeacherTaskBankQueryInput } from "./imports";
 
 export function createTeacherApi(client = new EduFermaApiClient()) {
   return {
@@ -13,7 +14,7 @@ export function createTeacherApi(client = new EduFermaApiClient()) {
     applyStudentPlanAdjustment: (studentId: string, adjustmentId: string) =>
       client.post(`/api/v1/teacher/students/${studentId}/plan/adjustments/${adjustmentId}/apply`),
     studentAnalytics: (studentId: string) => client.get(`/api/v1/teacher/students/${studentId}/analytics`),
-    taskBank: () => client.get("/api/v1/teacher/task-bank"),
+    taskBank: (query: TeacherTaskBankQueryInput = {}) => client.get(buildTeacherTaskBankPath(query)),
     task: (taskId: string) => client.get(`/api/v1/teacher/tasks/${taskId}`),
     assignments: () => client.get("/api/v1/teacher/assignments"),
     assignment: (assignmentId: string) => client.get(`/api/v1/teacher/assignments/${assignmentId}`),

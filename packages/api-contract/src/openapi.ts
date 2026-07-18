@@ -54,6 +54,16 @@ function pathParams(path: string) {
   }));
 }
 
+function queryParams(route: RouteDefinition) {
+  return (route.queryParameters ?? []).map((parameter) => ({
+    name: parameter.name,
+    in: "query",
+    required: parameter.required ?? false,
+    description: parameter.description,
+    schema: parameter.schema
+  }));
+}
+
 function operation(route: RouteDefinition): OpenApiOperation {
   const op: OpenApiOperation = {
     operationId: route.operationId,
@@ -75,7 +85,7 @@ function operation(route: RouteDefinition): OpenApiOperation {
     op.responses["503"] = apiErrorResponse("Remote database setup is required or temporarily unavailable");
   }
 
-  const params = pathParams(route.path);
+  const params = [...pathParams(route.path), ...queryParams(route)];
   if (params.length > 0) {
     op.parameters = params;
   }
