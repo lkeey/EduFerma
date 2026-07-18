@@ -142,7 +142,13 @@ export const ProcessPublicationsResponseSchema = z.object({
   sentCount: z.number().int().nonnegative(),
   failedCount: z.number().int().nonnegative(),
   skippedCount: z.number().int().nonnegative(),
-  processedAt: z.string().datetime()
+  processedAt: z.string().datetime(),
+  acceptance: z.object({
+    mode: z.enum(["sent-and-verified", "already-sent"]),
+    postId: z.string().uuid(),
+    sentDeliveryCount: z.literal(1),
+    providerMessageId: z.string().min(1)
+  }).optional()
 });
 
 export const CreatePublicationRequestSchema = z.object({
@@ -196,7 +202,20 @@ export const UpdatePublicationTargetRequestSchema = z.object({
 });
 
 export const ProcessPublicationsRequestSchema = z.object({
-  limit: z.number().int().positive().max(100).optional()
+  operation: z.enum(["process_due", "telegram_acceptance"]).default("process_due"),
+  limit: z.number().int().positive().max(100).optional(),
+  confirmation: z.string().trim().max(80).optional()
+}).superRefine((input, ctx) => {
+  if (
+    input.operation === "telegram_acceptance" &&
+    input.confirmation !== "SEND ONE PRIVATE OWNER TELEGRAM"
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["confirmation"],
+      message: "Exact Telegram production acceptance confirmation is required"
+    });
+  }
 });
 
 export type PublicationProvider = z.infer<typeof PublicationProviderSchema>;
@@ -223,5 +242,5 @@ export type PublicationTargetResponse = z.infer<typeof PublicationTargetResponse
 export type PublicationTargetMutationResponse = z.infer<typeof PublicationTargetMutationResponseSchema>;
 export type PublicationProviderHealthResponse = z.infer<typeof PublicationProviderHealthResponseSchema>;
 export type PublicationActionResponse = z.infer<typeof PublicationActionResponseSchema>;
-export type ProcessPublicationsRequest = z.infer<typeof ProcessPublicationsRequestSchema>;
+export type ProcessPublicationsRequest = z.input<typeof ProcessPublicationsRequestSchema>;
 export type ProcessPublicationsResponse = z.infer<typeof ProcessPublicationsResponseSchema>;

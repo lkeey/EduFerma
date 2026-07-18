@@ -1,0 +1,45 @@
+name: Telegram Production Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type SEND ONE PRIVATE OWNER TELEGRAM
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-production-acceptance
+  cancel-in-progress: false
+
+jobs:
+  send-owner-private-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate explicit confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = "SEND ONE PRIVATE OWNER TELEGRAM"
+      - name: Send and verify exactly one private owner delivery
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          response="$(curl --fail-with-body --show-error --silent --max-time 60 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"operation":"telegram_acceptance","confirmation":"SEND ONE PRIVATE OWNER TELEGRAM"}' \
+            "https://edu-ferma-web.vercel.app/api/v1/internal/publications/process")"
+          printf '%s\n' "$response"
+          printf '%s\n' "$response" | jq --exit-status '
+            .ok == true and
+            .failedCount == 0 and
+            .acceptance.sentDeliveryCount == 1 and
+            (.acceptance.providerMessageId | type == "string" and length > 0) and
+            (.acceptance.mode == "sent-and-verified" or .acceptance.mode == "already-sent")
+          '

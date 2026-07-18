@@ -4188,6 +4188,37 @@
           "processedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "acceptance": {
+            "type": "object",
+            "required": [
+              "mode",
+              "postId",
+              "sentDeliveryCount",
+              "providerMessageId"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "sent-and-verified",
+                  "already-sent"
+                ]
+              },
+              "postId": {
+                "type": "string"
+              },
+              "sentDeliveryCount": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "providerMessageId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -4401,8 +4432,19 @@
         "type": "object",
         "required": [],
         "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "process_due",
+              "telegram_acceptance"
+            ],
+            "default": "process_due"
+          },
           "limit": {
             "type": "integer"
+          },
+          "confirmation": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -9919,7 +9961,7 @@
           "Internal",
           "Publications"
         ],
-        "summary": "Process due publication deliveries",
+        "summary": "Process due deliveries or run guarded Telegram production acceptance",
         "responses": {
           "200": {
             "description": "OK",
