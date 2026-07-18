@@ -77,6 +77,7 @@ jobs:
             printf '%s\n' "$response" | jq --exit-status '
               .ok == true and
               (.acceptanceState.postExists | type == "boolean") and
+              (.acceptanceState.botIdentity.username | type == "string") and
               (.acceptanceState.privateChatAccess.ok | type == "boolean")
             '
             exit 0

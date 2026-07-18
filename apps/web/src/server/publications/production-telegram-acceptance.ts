@@ -50,6 +50,14 @@ export type TelegramPrivateChatAccess = {
   message: string;
 };
 
+export type TelegramBotIdentity = {
+  ok: boolean;
+  statusCode: number | null;
+  username: string | null;
+  displayName: string | null;
+  errorCode: string | null;
+};
+
 export async function runTelegramProductionAcceptance(
   env: NodeJS.ProcessEnv = process.env
 ): Promise<ProcessPublicationsResponse> {
@@ -204,9 +212,10 @@ export async function getTelegramProductionAcceptanceStatus(
   env: NodeJS.ProcessEnv = process.env
 ): Promise<ProcessPublicationsResponse> {
   const config = readAcceptanceConfig(env);
-  const [health, privateChatAccess, state] =
+  const [health, botIdentity, privateChatAccess, state] =
     await Promise.all([
       createTelegramProvider(env).getHealth(),
+      getTelegramBotIdentity(config.botToken),
       checkTelegramPrivateChatAccess(
         config.botToken,
         config.ownerChatId
@@ -224,9 +233,54 @@ export async function getTelegramProductionAcceptanceStatus(
     acceptanceState: {
       ...state,
       telegramHealthStatus: health.status,
+      botIdentity,
       privateChatAccess
     }
   };
+}
+
+export async function getTelegramBotIdentity(
+  botToken: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<TelegramBotIdentity> {
+  try {
+    const response = await fetchImpl(
+      `https://api.telegram.org/bot${botToken}/getMe`,
+      { signal: AbortSignal.timeout(8_000) }
+    );
+    const payload = await safeTelegramJson(response);
+    const result = readTelegramResult(payload);
+    const telegramOk = Boolean(
+      payload &&
+      typeof payload === "object" &&
+      "ok" in payload &&
+      payload.ok === true
+    );
+    if (response.ok && telegramOk && result) {
+      return {
+        ok: true,
+        statusCode: response.status,
+        username: readOptionalString(result, "username"),
+        displayName: readOptionalString(result, "first_name"),
+        errorCode: null
+      };
+    }
+    return {
+      ok: false,
+      statusCode: response.status,
+      username: null,
+      displayName: null,
+      errorCode: `HTTP_${response.status}`
+    };
+  } catch {
+    return {
+      ok: false,
+      statusCode: null,
+      username: null,
+      displayName: null,
+      errorCode: "NETWORK_ERROR"
+    };
+  }
 }
 
 export async function checkTelegramPrivateChatAccess(
@@ -554,18 +608,36 @@ async function safeTelegramJson(response: Response) {
 }
 
 function readTelegramChatType(payload: unknown) {
+  const result = readTelegramResult(payload);
+  return result
+    ? readOptionalString(result, "type")
+    : null;
+}
+
+function readTelegramResult(payload: unknown) {
   if (
     !payload ||
     typeof payload !== "object" ||
     !("result" in payload) ||
     !payload.result ||
-    typeof payload.result !== "object" ||
-    !("type" in payload.result) ||
-    typeof payload.result.type !== "string"
+    typeof payload.result !== "object"
   ) {
     return null;
   }
-  return payload.result.type;
+  return payload.result;
+}
+
+function readOptionalString(
+  value: object,
+  key: string
+) {
+  if (
+    !(key in value) ||
+    typeof value[key as keyof typeof value] !== "string"
+  ) {
+    return null;
+  }
+  return value[key as keyof typeof value] as string;
 }
 
 function acceptanceResponse(
