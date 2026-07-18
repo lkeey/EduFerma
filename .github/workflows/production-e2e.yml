@@ -28,11 +28,14 @@ jobs:
     timeout-minutes: 15
     env:
       E2E_BASE_URL: https://edu-ferma-web.vercel.app
+      E2E_EXPECTED_COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       E2E_CLERK_BASE_EMAIL: ${{ secrets.E2E_CLERK_BASE_EMAIL }}
       E2E_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
       E2E_CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.7.0
@@ -46,9 +49,29 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Validate E2E configuration
         run: |
+          test -n "$E2E_EXPECTED_COMMIT_SHA"
           test -n "$E2E_CLERK_BASE_EMAIL"
           test -n "$E2E_CLERK_PUBLISHABLE_KEY"
           test -n "$E2E_CLERK_SECRET_KEY"
+      - name: Wait for matching production deployment
+        run: |
+          for attempt in $(seq 1 60); do
+            deployed_sha="$(
+              curl --fail --silent --show-error --max-time 10 \
+                "$E2E_BASE_URL/api/health" | jq -r '.version // empty'
+            )"
+
+            if [ "$deployed_sha" = "$E2E_EXPECTED_COMMIT_SHA" ]; then
+              echo "Production deployment is ready at ${deployed_sha:0:7}."
+              exit 0
+            fi
+
+            echo "Waiting for production deployment (${deployed_sha:0:7} != ${E2E_EXPECTED_COMMIT_SHA:0:7}), attempt $attempt/60."
+            sleep 10
+          done
+
+          echo "Production did not reach the expected commit within 10 minutes."
+          exit 1
       - run: pnpm e2e:clerk --workers=1
       - uses: actions/upload-artifact@v4
         if: always()

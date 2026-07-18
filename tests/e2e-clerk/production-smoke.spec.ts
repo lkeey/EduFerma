@@ -33,12 +33,17 @@ test("production health exposes safe integration readiness", async ({
   expect(response.status()).toBe(200);
   const body = (await response.json()) as {
     ok?: boolean;
+    version?: string;
     database?: boolean;
     clerk?: boolean;
     integrations?: Record<string, boolean>;
   };
 
   expect(body.ok).toBe(true);
+  const expectedCommitSha = process.env.E2E_EXPECTED_COMMIT_SHA?.trim();
+  if (expectedCommitSha) {
+    expect(body.version).toBe(expectedCommitSha);
+  }
   expect(body.database).toBe(true);
   expect(body.clerk).toBe(true);
   expect(body.integrations).toMatchObject({
@@ -73,7 +78,7 @@ test("public landing and Clerk entrypoints do not redirect-loop", async ({
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "EduFerma" })).toBeVisible();
 
-  await page.goto("/dashboard");
+  await page.goto("/teacher/dashboard");
   await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
   await page.waitForTimeout(500);
   await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
