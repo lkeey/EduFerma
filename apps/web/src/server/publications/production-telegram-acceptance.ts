@@ -35,6 +35,16 @@ export type TelegramProductionAcceptanceState = {
   deliveryCount: number;
   sentDeliveryCount: number;
   providerMessageId: string | null;
+  deliveryStatuses: string[];
+  deliveryErrorCodes: string[];
+  deliveryErrorMessages: string[];
+};
+
+export type TelegramPrivateChatAccess = {
+  ok: boolean;
+  statusCode: number | null;
+  errorCode: string | null;
+  message: string;
 };
 
 export async function runTelegramProductionAcceptance(
@@ -47,6 +57,19 @@ export async function runTelegramProductionAcceptance(
       503,
       "SETUP_REQUIRED",
       "Telegram Bot API health check did not pass"
+    );
+  }
+  const privateChatAccess =
+    await checkTelegramPrivateChatAccess(
+      config.botToken,
+      config.ownerChatId
+    );
+  if (!privateChatAccess.ok) {
+    throw new ApiError(
+      503,
+      "SETUP_REQUIRED",
+      "Telegram bot cannot access the configured private owner chat",
+      { privateChatAccess }
     );
   }
 
@@ -142,6 +165,88 @@ export async function runTelegramProductionAcceptance(
   }
 }
 
+export async function getTelegramProductionAcceptanceStatus(
+  env: NodeJS.ProcessEnv = process.env
+): Promise<ProcessPublicationsResponse> {
+  const config = readAcceptanceConfig(env);
+  const [health, privateChatAccess, state] =
+    await Promise.all([
+      createTelegramProvider(env).getHealth(),
+      checkTelegramPrivateChatAccess(
+        config.botToken,
+        config.ownerChatId
+      ),
+      readAcceptanceState()
+    ]);
+
+  return {
+    ok: true,
+    claimedCount: 0,
+    sentCount: 0,
+    failedCount: 0,
+    skippedCount: 0,
+    processedAt: new Date().toISOString(),
+    acceptanceState: {
+      ...state,
+      telegramHealthStatus: health.status,
+      privateChatAccess
+    }
+  };
+}
+
+export async function checkTelegramPrivateChatAccess(
+  botToken: string,
+  ownerChatId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<TelegramPrivateChatAccess> {
+  try {
+    const response = await fetchImpl(
+      `https://api.telegram.org/bot${botToken}/getChat?chat_id=${encodeURIComponent(ownerChatId)}`,
+      { signal: AbortSignal.timeout(8_000) }
+    );
+    const payload = await safeTelegramJson(response);
+    const telegramOk = Boolean(
+      payload &&
+      typeof payload === "object" &&
+      "ok" in payload &&
+      payload.ok === true
+    );
+    const chatType = readTelegramChatType(payload);
+    if (response.ok && telegramOk && chatType === "private") {
+      return {
+        ok: true,
+        statusCode: response.status,
+        errorCode: null,
+        message: "Telegram private owner chat is reachable"
+      };
+    }
+    if (response.ok && telegramOk) {
+      return {
+        ok: false,
+        statusCode: response.status,
+        errorCode: "NOT_PRIVATE",
+        message: "Configured Telegram owner target is not a private chat"
+      };
+    }
+    return {
+      ok: false,
+      statusCode: response.status,
+      errorCode: `HTTP_${response.status}`,
+      message:
+        response.status === 403
+          ? "Telegram bot is not allowed to access the configured private chat"
+          : "Telegram getChat rejected the configured private chat"
+    };
+  } catch {
+    return {
+      ok: false,
+      statusCode: null,
+      errorCode: "NETWORK_ERROR",
+      message: "Telegram getChat request failed"
+    };
+  }
+}
+
 export function readAcceptanceConfig(
   env: NodeJS.ProcessEnv
 ) {
@@ -213,8 +318,11 @@ export function assertCompletedAcceptance(
     state.sentDeliveryCount !== 1 ||
     !state.providerMessageId
   ) {
-    throw new Error(
-      "Telegram acceptance requires one published post with exactly one persisted sent delivery and provider message ID."
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Telegram acceptance requires one published post with exactly one persisted sent delivery and provider message ID.",
+      acceptanceStateDetails(state)
     );
   }
 }
@@ -234,7 +342,16 @@ export function summarizeAcceptanceDetail(
     deliveryCount: publication.deliveries.length,
     sentDeliveryCount: sent.length,
     providerMessageId:
-      sent[0]?.providerMessageId ?? null
+      sent[0]?.providerMessageId ?? null,
+    deliveryStatuses: publication.deliveries.map(
+      (delivery) => delivery.status
+    ),
+    deliveryErrorCodes: publication.deliveries
+      .map((delivery) => delivery.errorCode)
+      .filter((value): value is string => Boolean(value)),
+    deliveryErrorMessages: publication.deliveries
+      .map((delivery) => delivery.errorMessage)
+      .filter((value): value is string => Boolean(value))
   };
 }
 
@@ -331,7 +448,10 @@ async function readAcceptanceState(): Promise<TelegramProductionAcceptanceState>
       postStatus: null,
       deliveryCount: 0,
       sentDeliveryCount: 0,
-      providerMessageId: null
+      providerMessageId: null,
+      deliveryStatuses: [],
+      deliveryErrorCodes: [],
+      deliveryErrorMessages: []
     };
   }
 
@@ -340,6 +460,47 @@ async function readAcceptanceState(): Promise<TelegramProductionAcceptanceState>
     Boolean(target),
     detail.publication
   );
+}
+
+function acceptanceStateDetails(
+  state: TelegramProductionAcceptanceState
+) {
+  return {
+    targetExists: state.targetExists,
+    postExists: state.postExists,
+    postStatus: state.postStatus,
+    deliveryCount: state.deliveryCount,
+    sentDeliveryCount: state.sentDeliveryCount,
+    providerMessageIdPresent: Boolean(
+      state.providerMessageId
+    ),
+    deliveryStatuses: state.deliveryStatuses,
+    deliveryErrorCodes: state.deliveryErrorCodes,
+    deliveryErrorMessages: state.deliveryErrorMessages
+  };
+}
+
+async function safeTelegramJson(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function readTelegramChatType(payload: unknown) {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("result" in payload) ||
+    !payload.result ||
+    typeof payload.result !== "object" ||
+    !("type" in payload.result) ||
+    typeof payload.result.type !== "string"
+  ) {
+    return null;
+  }
+  return payload.result.type;
 }
 
 function acceptanceResponse(

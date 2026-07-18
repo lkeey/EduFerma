@@ -141,6 +141,28 @@ export const publicationSchemas: Record<string, JsonSchema> = {
       postId: stringSchema,
       sentDeliveryCount: { type: "integer", enum: [1] },
       providerMessageId: stringSchema
+    }),
+    acceptanceState: objectSchema({
+      targetExists: booleanSchema,
+      postId: nullableString,
+      postExists: booleanSchema,
+      postStatus: nullableString,
+      deliveryCount: integerSchema,
+      sentDeliveryCount: integerSchema,
+      providerMessageId: nullableString,
+      deliveryStatuses: arrayOf(stringSchema),
+      deliveryErrorCodes: arrayOf(stringSchema),
+      deliveryErrorMessages: arrayOf(stringSchema),
+      telegramHealthStatus: {
+        type: "string",
+        enum: ["ok", "setup_required", "error"]
+      },
+      privateChatAccess: objectSchema({
+        ok: booleanSchema,
+        statusCode: { type: ["integer", "null"] },
+        errorCode: nullableString,
+        message: stringSchema
+      })
     })
   }, ["ok", "claimedCount", "sentCount", "failedCount", "skippedCount", "processedAt"]),
   CreatePublicationRequest: objectSchema({
@@ -187,7 +209,11 @@ export const publicationSchemas: Record<string, JsonSchema> = {
     config: unknownObject
   }, []),
   ProcessPublicationsRequest: objectSchema({
-    operation: { type: "string", enum: ["process_due", "telegram_acceptance"], default: "process_due" },
+    operation: {
+      type: "string",
+      enum: ["process_due", "telegram_acceptance", "telegram_acceptance_status"],
+      default: "process_due"
+    },
     limit: integerSchema,
     confirmation: stringSchema
   }, [])

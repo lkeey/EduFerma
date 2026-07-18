@@ -1,7 +1,10 @@
 import { ProcessPublicationsRequestSchema } from "@eduferma/validators";
 import { ApiError, handleApiError, ok, parseJson } from "@/server/api/responses";
 import { processInternalPublications } from "@/server/publications/service";
-import { runTelegramProductionAcceptance } from "@/server/publications/production-telegram-acceptance";
+import {
+  getTelegramProductionAcceptanceStatus,
+  runTelegramProductionAcceptance
+} from "@/server/publications/production-telegram-acceptance";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +49,9 @@ export async function POST(request: Request) {
   try {
     requireCronAuthorization(request);
     const input = await parseCronBody(request);
+    if (input.operation === "telegram_acceptance_status") {
+      return ok(await getTelegramProductionAcceptanceStatus());
+    }
     if (input.operation === "telegram_acceptance") {
       return ok(await runTelegramProductionAcceptance());
     }
