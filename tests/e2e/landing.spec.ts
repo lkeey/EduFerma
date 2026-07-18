@@ -128,11 +128,15 @@ test("student submits a short answer while answers stay hidden", async ({ page }
   await page.goto("/api/demo-auth/login?role=student");
   await expect(page).toHaveURL(/\/student\/dashboard/);
 
-  await page.goto("/student/tasks/task_oge_07_text?assignmentId=assignment_demo_1");
+  await page.goto(
+    "/student/tasks/demo-ege-7-graph?assignmentId=demo-assignment"
+  );
   await expect(page.getByText("Ответы и решения скрыты для ученика")).toBeVisible();
-  await expect(page.getByText("8 бит = 1 байт")).toHaveCount(0);
+  await expect(
+    page.getByText("Учительское решение: прочитать значение по оси Y.")
+  ).toHaveCount(0);
 
-  await page.getByLabel("Ответ").fill("байт");
+  await page.getByLabel("Ответ").fill("41");
   await page.getByRole("button", { name: "Отправить ответ" }).click();
 
   await expect(page.getByText("checked")).toBeVisible();

@@ -207,32 +207,48 @@ export function publishDemoPublication(
     throw new ApiError(400, "VALIDATION_ERROR", "At least one target is required");
   }
   const deliveredAt = nowIso();
-  post.status = "published";
+  const failedTargetIds = resolvedTargetIds.filter(
+    (targetId) => requireDemoTarget(targetId).provider === "vk"
+  );
+  post.status = failedTargetIds.length > 0 ? "failed" : "published";
   post.scheduledFor = null;
-  post.publishedAt = deliveredAt;
+  post.publishedAt = failedTargetIds.length > 0 ? null : deliveredAt;
   post.updatedAt = deliveredAt;
-  post.targets = resolvedTargetIds.map((targetId) => ({
-    ...targetReference(targetId, "published", null, post.revision),
-    publishedAt: deliveredAt,
-    deliveryCount: 1,
-    latestDeliveryStatus: "sent"
-  }));
+  post.targets = resolvedTargetIds.map((targetId) => {
+    const failed = failedTargetIds.includes(targetId);
+    return {
+      ...targetReference(
+        targetId,
+        failed ? "failed" : "published",
+        null,
+        post.revision
+      ),
+      publishedAt: failed ? null : deliveredAt,
+      deliveryCount: 1,
+      latestDeliveryStatus: failed ? "failed" : "sent"
+    };
+  });
   post.deliveries.unshift(
     ...resolvedTargetIds.map((targetId) => {
       const target = requireDemoTarget(targetId);
+      const failed = target.provider === "vk";
       return {
         id: randomUUID(),
         provider: target.provider,
-        status: "sent" as const,
+        status: failed ? ("failed" as const) : ("sent" as const),
         attemptNo: 1,
         idempotencyKey: `${post.id}:${targetId}:${post.revision}`,
-        providerMessageId: `demo-message-${targetId}-${post.revision}`,
+        providerMessageId: failed
+          ? null
+          : `demo-message-${targetId}-${post.revision}`,
         claimedAt: deliveredAt,
         claimedBy: "demo",
-        deliveredAt,
+        deliveredAt: failed ? null : deliveredAt,
         nextAttemptAt: null,
-        errorCode: null,
-        errorMessage: null,
+        errorCode: failed ? "LIVE_SEND_DISABLED" : null,
+        errorMessage: failed
+          ? "VK live delivery is disabled until production setup is complete."
+          : null,
         createdAt: deliveredAt,
         updatedAt: deliveredAt
       };
@@ -240,13 +256,15 @@ export function publishDemoPublication(
   );
   post.history.unshift({
     id: randomUUID(),
-    eventType: "published",
+    eventType: failedTargetIds.length > 0 ? "delivery_failed" : "published",
     createdAt: deliveredAt,
     actorUserId: null,
     payload: {
-      providerMessageIds: resolvedTargetIds.map(
-        (targetId) => `demo-message-${targetId}-${post.revision}`
-      )
+      providerMessageIds: resolvedTargetIds
+        .filter((targetId) => !failedTargetIds.includes(targetId))
+        .map((targetId) => `demo-message-${targetId}-${post.revision}`),
+      failedTargetIds,
+      errorCode: failedTargetIds.length > 0 ? "LIVE_SEND_DISABLED" : undefined
     }
   });
   return { publication: clone(post), action: "published" };
@@ -465,8 +483,10 @@ export function processDemoPublications(limit = 20): ProcessPublicationsResponse
         new Date(post.scheduledFor!).getTime() <= Date.now()
     )
     .slice(0, limit);
+  let sentCount = 0;
+  let failedCount = 0;
   for (const post of due) {
-    publishDemoPublication(
+    const result = publishDemoPublication(
       {
         user: {
           id: "demo-cron",
@@ -476,12 +496,14 @@ export function processDemoPublications(limit = 20): ProcessPublicationsResponse
       },
       post.id
     );
+    if (result.publication.status === "failed") failedCount += 1;
+    else sentCount += 1;
   }
   return {
     ok: true,
     claimedCount: due.length,
-    sentCount: due.length,
-    failedCount: 0,
+    sentCount,
+    failedCount,
     skippedCount: 0,
     processedAt: nowIso()
   };
@@ -489,7 +511,7 @@ export function processDemoPublications(limit = 20): ProcessPublicationsResponse
 
 function targetReference(
   targetId: string,
-  status: "pending" | "scheduled" | "published",
+  status: "pending" | "scheduled" | "published" | "failed",
   scheduledFor: string | null,
   revision = 1
 ) {

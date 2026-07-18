@@ -15,3 +15,12 @@ export class ServiceForbiddenError extends Error {
     this.name = "ServiceForbiddenError";
   }
 }
+
+export class ServiceConflictError extends Error {
+  readonly code = "CONFLICT";
+
+  constructor(message = "The requested mutation conflicts with current state") {
+    super(message);
+    this.name = "ServiceConflictError";
+  }
+}

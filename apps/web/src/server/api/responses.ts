@@ -1,5 +1,9 @@
 import { ApiErrorSchema, type ErrorCode } from "@eduferma/validators";
-import { SetupRequiredError, ServiceForbiddenError } from "@eduferma/core";
+import {
+  ServiceConflictError,
+  ServiceForbiddenError,
+  SetupRequiredError
+} from "@eduferma/core";
 import type { z } from "zod";
 
 export class ApiError extends Error {
@@ -82,6 +86,10 @@ export function handleApiError(error: unknown) {
 
   if (error instanceof ServiceForbiddenError) {
     return forbidden();
+  }
+
+  if (error instanceof ServiceConflictError) {
+    return errorResponse(409, "CONFLICT", error.message);
   }
 
   console.error(error);
