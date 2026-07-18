@@ -3,6 +3,7 @@ import { ApiError, handleApiError, ok, parseJson } from "@/server/api/responses"
 import { processInternalPublications } from "@/server/publications/service";
 import {
   getTelegramProductionAcceptanceStatus,
+  recoverFailedTelegramProductionAcceptance,
   runTelegramProductionAcceptance
 } from "@/server/publications/production-telegram-acceptance";
 
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
     const input = await parseCronBody(request);
     if (input.operation === "telegram_acceptance_status") {
       return ok(await getTelegramProductionAcceptanceStatus());
+    }
+    if (input.operation === "telegram_acceptance_recover_failed") {
+      return ok(await recoverFailedTelegramProductionAcceptance());
     }
     if (input.operation === "telegram_acceptance") {
       return ok(await runTelegramProductionAcceptance());

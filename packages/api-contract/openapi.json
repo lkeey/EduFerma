@@ -4202,6 +4202,7 @@
                 "type": "string",
                 "enum": [
                   "sent-and-verified",
+                  "recovered-and-verified",
                   "already-sent"
                 ]
               },
@@ -4231,6 +4232,7 @@
               "sentDeliveryCount",
               "providerMessageId",
               "deliveryStatuses",
+              "deliveryProviderMessageIds",
               "deliveryErrorCodes",
               "deliveryErrorMessages",
               "telegramHealthStatus",
@@ -4268,6 +4270,12 @@
                 ]
               },
               "deliveryStatuses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deliveryProviderMessageIds": {
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -4543,7 +4551,8 @@
             "enum": [
               "process_due",
               "telegram_acceptance",
-              "telegram_acceptance_status"
+              "telegram_acceptance_status",
+              "telegram_acceptance_recover_failed"
             ],
             "default": "process_due"
           },

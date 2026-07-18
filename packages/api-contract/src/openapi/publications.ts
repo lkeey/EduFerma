@@ -137,7 +137,10 @@ export const publicationSchemas: Record<string, JsonSchema> = {
     skippedCount: integerSchema,
     processedAt: dateTimeString,
     acceptance: objectSchema({
-      mode: { type: "string", enum: ["sent-and-verified", "already-sent"] },
+      mode: {
+        type: "string",
+        enum: ["sent-and-verified", "recovered-and-verified", "already-sent"]
+      },
       postId: stringSchema,
       sentDeliveryCount: { type: "integer", enum: [1] },
       providerMessageId: stringSchema
@@ -151,6 +154,7 @@ export const publicationSchemas: Record<string, JsonSchema> = {
       sentDeliveryCount: integerSchema,
       providerMessageId: nullableString,
       deliveryStatuses: arrayOf(stringSchema),
+      deliveryProviderMessageIds: arrayOf(stringSchema),
       deliveryErrorCodes: arrayOf(stringSchema),
       deliveryErrorMessages: arrayOf(stringSchema),
       telegramHealthStatus: {
@@ -211,7 +215,12 @@ export const publicationSchemas: Record<string, JsonSchema> = {
   ProcessPublicationsRequest: objectSchema({
     operation: {
       type: "string",
-      enum: ["process_due", "telegram_acceptance", "telegram_acceptance_status"],
+      enum: [
+        "process_due",
+        "telegram_acceptance",
+        "telegram_acceptance_status",
+        "telegram_acceptance_recover_failed"
+      ],
       default: "process_due"
     },
     limit: integerSchema,

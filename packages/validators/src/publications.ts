@@ -144,7 +144,11 @@ export const ProcessPublicationsResponseSchema = z.object({
   skippedCount: z.number().int().nonnegative(),
   processedAt: z.string().datetime(),
   acceptance: z.object({
-    mode: z.enum(["sent-and-verified", "already-sent"]),
+    mode: z.enum([
+      "sent-and-verified",
+      "recovered-and-verified",
+      "already-sent"
+    ]),
     postId: z.string().uuid(),
     sentDeliveryCount: z.literal(1),
     providerMessageId: z.string().min(1)
@@ -158,6 +162,7 @@ export const ProcessPublicationsResponseSchema = z.object({
     sentDeliveryCount: z.number().int().nonnegative(),
     providerMessageId: z.string().nullable(),
     deliveryStatuses: z.array(z.string()),
+    deliveryProviderMessageIds: z.array(z.string()),
     deliveryErrorCodes: z.array(z.string()),
     deliveryErrorMessages: z.array(z.string()),
     telegramHealthStatus: z.enum(["ok", "setup_required", "error"]),
@@ -224,7 +229,8 @@ export const ProcessPublicationsRequestSchema = z.object({
   operation: z.enum([
     "process_due",
     "telegram_acceptance",
-    "telegram_acceptance_status"
+    "telegram_acceptance_status",
+    "telegram_acceptance_recover_failed"
   ]).default("process_due"),
   limit: z.number().int().positive().max(100).optional(),
   confirmation: z.string().trim().max(80).optional()
@@ -237,6 +243,16 @@ export const ProcessPublicationsRequestSchema = z.object({
       code: "custom",
       path: ["confirmation"],
       message: "Exact Telegram production acceptance confirmation is required"
+    });
+  }
+  if (
+    input.operation === "telegram_acceptance_recover_failed" &&
+    input.confirmation !== "RETRY CONFIRMED FAILED PRIVATE TELEGRAM"
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["confirmation"],
+      message: "Exact Telegram production recovery confirmation is required"
     });
   }
 });
