@@ -120,10 +120,13 @@ The publication check reads only boolean readiness flags from `/api/health`;
 token values, chat IDs and database URLs are never returned or printed.
 
 After the three Telegram production variables are configured, prefer the
-`Telegram Production Acceptance` GitHub Actions workflow. It calls the guarded
-processor inside the Vercel production runtime, where Sensitive environment
-variables and the production database URL are available. Enter the exact
-workflow confirmation `SEND ONE PRIVATE OWNER TELEGRAM`.
+`Telegram Production Acceptance` GitHub Actions workflow. Run its default
+read-only `status` operation first; it reports the persisted acceptance state
+and verifies private-chat reachability with Telegram `getChat` without sending
+a message. Then select `send` and enter the exact workflow confirmation
+`SEND ONE PRIVATE OWNER TELEGRAM`. The workflow calls the guarded processor
+inside the Vercel production runtime, where Sensitive environment variables and
+the production database URL are available.
 
 The first successful run sends and verifies one private owner message. A second
 run must return `already-sent` with the same persisted Telegram message ID and

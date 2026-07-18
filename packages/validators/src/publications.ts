@@ -148,6 +148,25 @@ export const ProcessPublicationsResponseSchema = z.object({
     postId: z.string().uuid(),
     sentDeliveryCount: z.literal(1),
     providerMessageId: z.string().min(1)
+  }).optional(),
+  acceptanceState: z.object({
+    targetExists: z.boolean(),
+    postId: z.string().uuid().nullable(),
+    postExists: z.boolean(),
+    postStatus: z.string().nullable(),
+    deliveryCount: z.number().int().nonnegative(),
+    sentDeliveryCount: z.number().int().nonnegative(),
+    providerMessageId: z.string().nullable(),
+    deliveryStatuses: z.array(z.string()),
+    deliveryErrorCodes: z.array(z.string()),
+    deliveryErrorMessages: z.array(z.string()),
+    telegramHealthStatus: z.enum(["ok", "setup_required", "error"]),
+    privateChatAccess: z.object({
+      ok: z.boolean(),
+      statusCode: z.number().int().nullable(),
+      errorCode: z.string().nullable(),
+      message: z.string().min(1)
+    })
   }).optional()
 });
 
@@ -202,7 +221,11 @@ export const UpdatePublicationTargetRequestSchema = z.object({
 });
 
 export const ProcessPublicationsRequestSchema = z.object({
-  operation: z.enum(["process_due", "telegram_acceptance"]).default("process_due"),
+  operation: z.enum([
+    "process_due",
+    "telegram_acceptance",
+    "telegram_acceptance_status"
+  ]).default("process_due"),
   limit: z.number().int().positive().max(100).optional(),
   confirmation: z.string().trim().max(80).optional()
 }).superRefine((input, ctx) => {

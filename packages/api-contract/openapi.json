@@ -4219,6 +4219,112 @@
               }
             },
             "additionalProperties": false
+          },
+          "acceptanceState": {
+            "type": "object",
+            "required": [
+              "targetExists",
+              "postId",
+              "postExists",
+              "postStatus",
+              "deliveryCount",
+              "sentDeliveryCount",
+              "providerMessageId",
+              "deliveryStatuses",
+              "deliveryErrorCodes",
+              "deliveryErrorMessages",
+              "telegramHealthStatus",
+              "privateChatAccess"
+            ],
+            "properties": {
+              "targetExists": {
+                "type": "boolean"
+              },
+              "postId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "postExists": {
+                "type": "boolean"
+              },
+              "postStatus": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "deliveryCount": {
+                "type": "integer"
+              },
+              "sentDeliveryCount": {
+                "type": "integer"
+              },
+              "providerMessageId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "deliveryStatuses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deliveryErrorCodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deliveryErrorMessages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "telegramHealthStatus": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "setup_required",
+                  "error"
+                ]
+              },
+              "privateChatAccess": {
+                "type": "object",
+                "required": [
+                  "ok",
+                  "statusCode",
+                  "errorCode",
+                  "message"
+                ],
+                "properties": {
+                  "ok": {
+                    "type": "boolean"
+                  },
+                  "statusCode": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "errorCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -4436,7 +4542,8 @@
             "type": "string",
             "enum": [
               "process_due",
-              "telegram_acceptance"
+              "telegram_acceptance",
+              "telegram_acceptance_status"
             ],
             "default": "process_due"
           },

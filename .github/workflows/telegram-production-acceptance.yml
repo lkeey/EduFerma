@@ -3,9 +3,17 @@ name: Telegram Production Acceptance
 on:
   workflow_dispatch:
     inputs:
-      confirmation:
-        description: Type SEND ONE PRIVATE OWNER TELEGRAM
+      operation:
+        description: Read status or run the guarded send/idempotency check
         required: true
+        default: status
+        type: choice
+        options:
+          - status
+          - send
+      confirmation:
+        description: For send, type SEND ONE PRIVATE OWNER TELEGRAM
+        required: false
         type: string
 
 permissions:
@@ -22,20 +30,51 @@ jobs:
     steps:
       - name: Validate explicit confirmation
         env:
+          OPERATION: ${{ inputs.operation }}
           CONFIRMATION: ${{ inputs.confirmation }}
-        run: test "$CONFIRMATION" = "SEND ONE PRIVATE OWNER TELEGRAM"
-      - name: Send and verify exactly one private owner delivery
+        run: |
+          test "$OPERATION" = "status" || test "$OPERATION" = "send"
+          if test "$OPERATION" = "send"; then
+            test "$CONFIRMATION" = "SEND ONE PRIVATE OWNER TELEGRAM"
+          fi
+      - name: Inspect state or verify one private owner delivery
         env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           test -n "$CRON_SECRET"
-          response="$(curl --fail-with-body --show-error --silent --max-time 60 \
+          if test "$OPERATION" = "status"; then
+            api_operation="telegram_acceptance_status"
+          else
+            api_operation="telegram_acceptance"
+          fi
+          payload="$(jq --null-input --compact-output \
+            --arg operation "$api_operation" \
+            --arg confirmation "$CONFIRMATION" \
+            '{operation: $operation, confirmation: $confirmation}')"
+          response_file="$(mktemp)"
+          http_status="$(curl --show-error --silent --max-time 60 \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
             --request POST \
             --header "Authorization: Bearer $CRON_SECRET" \
             --header "Content-Type: application/json" \
-            --data '{"operation":"telegram_acceptance","confirmation":"SEND ONE PRIVATE OWNER TELEGRAM"}' \
+            --data "$payload" \
             "https://edu-ferma-web.vercel.app/api/v1/internal/publications/process")"
+          response="$(<"$response_file")"
+          rm -f "$response_file"
           printf '%s\n' "$response"
+          test "$http_status" -ge 200
+          test "$http_status" -lt 300
+          if test "$OPERATION" = "status"; then
+            printf '%s\n' "$response" | jq --exit-status '
+              .ok == true and
+              (.acceptanceState.postExists | type == "boolean") and
+              (.acceptanceState.privateChatAccess.ok | type == "boolean")
+            '
+            exit 0
+          fi
           printf '%s\n' "$response" | jq --exit-status '
             .ok == true and
             .failedCount == 0 and

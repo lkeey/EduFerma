@@ -5,6 +5,7 @@ import {
 } from "@eduferma/validators";
 import {
   assertCompletedAcceptance,
+  checkTelegramPrivateChatAccess,
   readAcceptanceConfig,
   summarizeAcceptanceDetail
 } from "../../apps/web/src/server/publications/production-telegram-acceptance";
@@ -120,6 +121,45 @@ describe("Telegram production acceptance safety", () => {
         confirmation: "SEND ONE PRIVATE OWNER TELEGRAM"
       })
     ).toMatchObject({ operation: "telegram_acceptance" });
+
+    expect(
+      ProcessPublicationsRequestSchema.parse({
+        operation: "telegram_acceptance_status"
+      })
+    ).toMatchObject({
+      operation: "telegram_acceptance_status"
+    });
+  });
+
+  it("checks that the configured owner target is a reachable private chat", async () => {
+    const reachable = await checkTelegramPrivateChatAccess(
+      "token",
+      "1001",
+      async () => Response.json({
+        ok: true,
+        result: { type: "private" }
+      })
+    );
+    expect(reachable).toMatchObject({
+      ok: true,
+      statusCode: 200,
+      errorCode: null
+    });
+
+    const rejected = await checkTelegramPrivateChatAccess(
+      "token",
+      "1001",
+      async () => Response.json(
+        { ok: false, description: "chat not found" },
+        { status: 400 }
+      )
+    );
+    expect(rejected).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      errorCode: "HTTP_400"
+    });
+    expect(rejected.message).not.toContain("1001");
   });
 
   it("requires exactly one sent delivery with a provider message ID", () => {
@@ -141,5 +181,29 @@ describe("Telegram production acceptance safety", () => {
     expect(() => assertCompletedAcceptance(duplicate)).toThrow(
       /exactly one/
     );
+  });
+
+  it("summarizes persisted delivery errors without exposing target configuration", () => {
+    const state = summarizeAcceptanceDetail(
+      true,
+      publication({
+        status: "failed",
+        deliveries: [{
+          ...publication().deliveries[0],
+          status: "failed",
+          providerMessageId: null,
+          errorCode: "400",
+          errorMessage: "Telegram sendMessage failed"
+        }]
+      })
+    );
+
+    expect(state).toMatchObject({
+      postStatus: "failed",
+      sentDeliveryCount: 0,
+      deliveryStatuses: ["failed"],
+      deliveryErrorCodes: ["400"],
+      deliveryErrorMessages: ["Telegram sendMessage failed"]
+    });
   });
 });
