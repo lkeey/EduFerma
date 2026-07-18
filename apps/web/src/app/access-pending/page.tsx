@@ -32,8 +32,8 @@ export default async function AccessPendingPage() {
           Отправьте преподавателю email, с которым вошли. После активации роли можно вернуться сюда и проверить доступ.
         </p>
         <div className="hero-actions">
-          <LinkButton href={routes.dashboard} variant="primary">
-            Проверить доступ
+          <LinkButton href={routes.afterSignIn} variant="primary">
+            Обновить статус доступа
           </LinkButton>
           <AccountSignOutAction label="Выйти и войти другим" redirectUrl={routes.signIn} variant="secondary" />
           <LinkButton href="/" variant="ghost">

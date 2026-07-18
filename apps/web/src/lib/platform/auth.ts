@@ -7,11 +7,31 @@ import { demoUsers, type PlatformRole, type PlatformUser } from "@eduferma/core/
 import { mapAppRoleToPlatformRole } from "@eduferma/core";
 import { resolveDbAccountAccess } from "@/server/auth/db-account";
 import { getAuthSetupStatus } from "@/server/auth/setup-status";
+import {
+  DEMO_ROLE_COOKIE,
+  isDemoAuthRuntimeEnabled,
+  parseDemoAuthRole
+} from "@/lib/demo-auth";
 
-const DEMO_ROLE_COOKIE = "eduferma_demo_role";
+const webOnlyDemoUsers: Partial<Record<PlatformRole, PlatformUser>> = {
+  owner: {
+    id: "user_owner_demo",
+    authProviderUserId: "demo_owner_auth",
+    email: "owner.demo@edu-ferma.local",
+    name: "Демо-owner",
+    role: "owner"
+  },
+  guest: {
+    id: "user_guest_demo",
+    authProviderUserId: "demo_guest_auth",
+    email: "guest.demo@edu-ferma.local",
+    name: "Демо-гость",
+    role: "guest"
+  }
+};
 
 export function isDemoAuthEnabled() {
-  return process.env.ENABLE_DEMO_AUTH === "true" && process.env.VERCEL_ENV !== "production";
+  return isDemoAuthRuntimeEnabled();
 }
 
 export function hasClerkEnv() {
@@ -21,9 +41,10 @@ export function hasClerkEnv() {
 export async function getCurrentUser(): Promise<PlatformUser | null> {
   if (isDemoAuthEnabled()) {
     const cookieStore = await cookies();
-    const role = cookieStore.get(DEMO_ROLE_COOKIE)?.value;
+    const role = parseDemoAuthRole(cookieStore.get(DEMO_ROLE_COOKIE)?.value);
     if (role === "teacher") return demoUsers.find((user) => user.role === "teacher") ?? null;
     if (role === "student") return demoUsers.find((user) => user.role === "student") ?? null;
+    if (role) return webOnlyDemoUsers[role] ?? null;
   }
 
   if (hasClerkEnv()) {

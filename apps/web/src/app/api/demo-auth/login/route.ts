@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isDemoAuthEnabled } from "@/lib/platform/auth";
+import {
+  DEMO_ROLE_COOKIE,
+  getDemoAuthRedirectPath,
+  parseDemoAuthRole
+} from "@/lib/demo-auth";
 
 export async function GET(request: NextRequest) {
   if (!isDemoAuthEnabled()) {
     return Response.json({ error: "Demo auth is disabled" }, { status: 403 });
   }
 
-  const role = request.nextUrl.searchParams.get("role") === "teacher" ? "teacher" : "student";
-  const redirectTo = role === "teacher" ? "/teacher/dashboard" : "/student/dashboard";
+  const role = parseDemoAuthRole(request.nextUrl.searchParams.get("role"));
+  if (!role) {
+    return Response.json({ error: "Unsupported demo role" }, { status: 400 });
+  }
+
+  const redirectTo = getDemoAuthRedirectPath(role);
   const response = NextResponse.redirect(getSameHostUrl(request, redirectTo));
-  response.cookies.set("eduferma_demo_role", role, {
+  response.cookies.set(DEMO_ROLE_COOKIE, role, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
