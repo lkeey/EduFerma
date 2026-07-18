@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { PublicationDetail } from "@eduferma/validators";
+import {
+  ProcessPublicationsRequestSchema,
+  type PublicationDetail
+} from "@eduferma/validators";
 import {
   assertCompletedAcceptance,
   readAcceptanceConfig,
   summarizeAcceptanceDetail
-} from "../../scripts/verify-production-telegram-delivery";
+} from "../../apps/web/src/server/publications/production-telegram-acceptance";
 
 const productionEnv = {
   VERCEL_ENV: "production",
@@ -101,6 +104,22 @@ describe("Telegram production acceptance safety", () => {
         TELEGRAM_ALLOWED_CHAT_IDS: "1001"
       })
     ).toThrow(/non-production Vercel/);
+  });
+
+  it("requires the exact confirmation for runtime acceptance", () => {
+    expect(() =>
+      ProcessPublicationsRequestSchema.parse({
+        operation: "telegram_acceptance",
+        confirmation: "send"
+      })
+    ).toThrow(/Exact Telegram production acceptance confirmation/);
+
+    expect(
+      ProcessPublicationsRequestSchema.parse({
+        operation: "telegram_acceptance",
+        confirmation: "SEND ONE PRIVATE OWNER TELEGRAM"
+      })
+    ).toMatchObject({ operation: "telegram_acceptance" });
   });
 
   it("requires exactly one sent delivery with a provider message ID", () => {

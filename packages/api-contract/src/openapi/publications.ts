@@ -135,8 +135,14 @@ export const publicationSchemas: Record<string, JsonSchema> = {
     sentCount: integerSchema,
     failedCount: integerSchema,
     skippedCount: integerSchema,
-    processedAt: dateTimeString
-  }),
+    processedAt: dateTimeString,
+    acceptance: objectSchema({
+      mode: { type: "string", enum: ["sent-and-verified", "already-sent"] },
+      postId: stringSchema,
+      sentDeliveryCount: { type: "integer", enum: [1] },
+      providerMessageId: stringSchema
+    })
+  }, ["ok", "claimedCount", "sentCount", "failedCount", "skippedCount", "processedAt"]),
   CreatePublicationRequest: objectSchema({
     title: stringSchema,
     excerpt: nullableString,
@@ -181,6 +187,8 @@ export const publicationSchemas: Record<string, JsonSchema> = {
     config: unknownObject
   }, []),
   ProcessPublicationsRequest: objectSchema({
-    limit: integerSchema
+    operation: { type: "string", enum: ["process_due", "telegram_acceptance"], default: "process_due" },
+    limit: integerSchema,
+    confirmation: stringSchema
   }, [])
 };

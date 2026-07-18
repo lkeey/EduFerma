@@ -59,6 +59,28 @@ describe("publication route guards", () => {
     expect(payload.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("requires exact confirmation before runtime Telegram acceptance", async () => {
+    process.env.CRON_SECRET = "right-secret";
+
+    const response = await processPublications(
+      request("/api/v1/internal/publications/process", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer right-secret",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          operation: "telegram_acceptance",
+          confirmation: "send"
+        })
+      })
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("keeps owner publication targets owner-only", async () => {
     process.env.ENABLE_DEMO_AUTH = "true";
 

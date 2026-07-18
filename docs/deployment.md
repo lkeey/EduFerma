@@ -119,8 +119,19 @@ pnpm production:verify -- --url=https://edu-ferma-web.vercel.app \
 The publication check reads only boolean readiness flags from `/api/health`;
 token values, chat IDs and database URLs are never returned or printed.
 
-After the three Telegram production variables are configured, run the guarded
-private-owner acceptance command in dry-run mode:
+After the three Telegram production variables are configured, prefer the
+`Telegram Production Acceptance` GitHub Actions workflow. It calls the guarded
+processor inside the Vercel production runtime, where Sensitive environment
+variables and the production database URL are available. Enter the exact
+workflow confirmation `SEND ONE PRIVATE OWNER TELEGRAM`.
+
+The first successful run sends and verifies one private owner message. A second
+run must return `already-sent` with the same persisted Telegram message ID and
+must not create another delivery. The workflow validates both response modes,
+the single sent delivery and the non-empty provider message ID.
+
+For local or self-hosted environments where the production variables are
+readable, the equivalent guarded command can first be run in dry-run mode:
 
 ```bash
 pnpm production:verify:telegram

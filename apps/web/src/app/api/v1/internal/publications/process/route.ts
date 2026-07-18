@@ -1,6 +1,7 @@
 import { ProcessPublicationsRequestSchema } from "@eduferma/validators";
 import { ApiError, handleApiError, ok, parseJson } from "@/server/api/responses";
 import { processInternalPublications } from "@/server/publications/service";
+import { runTelegramProductionAcceptance } from "@/server/publications/production-telegram-acceptance";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     const input = ProcessPublicationsRequestSchema.parse({
       limit: rawLimit === null ? undefined : Number(rawLimit)
     });
-    return ok(await processInternalPublications({ ...input, workerId: "cron:get" }));
+    return ok(await processInternalPublications({ limit: input.limit, workerId: "cron:get" }));
   } catch (error) {
     return handleApiError(error);
   }
@@ -45,7 +46,10 @@ export async function POST(request: Request) {
   try {
     requireCronAuthorization(request);
     const input = await parseCronBody(request);
-    return ok(await processInternalPublications({ ...input, workerId: "cron:post" }));
+    if (input.operation === "telegram_acceptance") {
+      return ok(await runTelegramProductionAcceptance());
+    }
+    return ok(await processInternalPublications({ limit: input.limit, workerId: "cron:post" }));
   } catch (error) {
     return handleApiError(error);
   }
