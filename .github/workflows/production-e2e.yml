@@ -73,7 +73,7 @@ jobs:
           echo "Production did not reach the expected commit within 10 minutes."
           exit 1
       - run: pnpm e2e:clerk --workers=1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: production-clerk-e2e-report
