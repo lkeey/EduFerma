@@ -1,34 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookOpenCheck, CalendarDays, ClipboardCheck, DatabaseZap, Home, LineChart, ShieldCheck, UsersRound } from "lucide-react";
 import { AccountSignOutAction } from "@/components/auth/account-sign-out-action";
+import { PlatformNavigation } from "@/components/platform/platform-navigation";
+import { getCurrentServiceUser } from "@/server/auth/session";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: ReactNode;
-};
-
-const studentNav: NavItem[] = [
-  { href: "/student/dashboard", label: "Обзор", icon: <Home aria-hidden="true" /> },
-  { href: "/student/schedule", label: "Расписание", icon: <CalendarDays aria-hidden="true" /> },
-  { href: "/student/plan", label: "План", icon: <BookOpenCheck aria-hidden="true" /> },
-  { href: "/student/assignments", label: "ДЗ", icon: <ClipboardCheck aria-hidden="true" /> },
-  { href: "/student/progress", label: "Прогресс", icon: <LineChart aria-hidden="true" /> }
-];
-
-const teacherNav: NavItem[] = [
-  { href: "/teacher/dashboard", label: "Обзор", icon: <Home aria-hidden="true" /> },
-  { href: "/teacher/students", label: "Ученики", icon: <UsersRound aria-hidden="true" /> },
-  { href: "/teacher/imports", label: "Импорт", icon: <BookOpenCheck aria-hidden="true" /> },
-  { href: "/teacher/task-bank", label: "Банк задач", icon: <DatabaseZap aria-hidden="true" /> },
-  { href: "/teacher/assignments", label: "ДЗ", icon: <ClipboardCheck aria-hidden="true" /> },
-  { href: "/teacher/reviews", label: "Проверка", icon: <LineChart aria-hidden="true" /> }
-];
-
-const ownerNav: NavItem[] = [...teacherNav, { href: "/owner/access", label: "Доступ", icon: <ShieldCheck aria-hidden="true" /> }];
-
-export function PlatformShell({
+export async function PlatformShell({
   role,
   title,
   subtitle,
@@ -41,23 +17,19 @@ export function PlatformShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const nav = role === "student" ? studentNav : role === "owner" ? ownerNav : teacherNav;
+  const currentUser = role === "teacher" ? await getCurrentServiceUser() : null;
+  const effectiveRole = role === "teacher" && currentUser?.role === "owner" ? "owner" : role;
 
   return (
     <main className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <Link className="brand-mark" href="/">
-          <span>EF</span>
-          <span>EduFerma</span>
-        </Link>
-        <nav aria-label={role === "student" ? "Student navigation" : role === "owner" ? "Owner navigation" : "Teacher navigation"}>
-          {nav.map((item) => (
-            <Link href={item.href} key={item.href}>
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="dashboard-sidebar-top">
+          <Link className="brand-mark" href="/">
+            <span>EF</span>
+            <span>EduFerma</span>
+          </Link>
+          <PlatformNavigation role={effectiveRole} />
+        </div>
       </aside>
       <section className="dashboard-main">
         <header className="dashboard-header">
