@@ -38,7 +38,12 @@ test("task bank exposes server filters, visible selection and bulk archive", asy
   await expect(page.getByRole("combobox", { name: "Сложность" })).toHaveValue("basic");
   await expect(page.getByRole("textbox", { name: "Источник" })).toHaveValue("original");
   await expect(page.getByRole("combobox", { name: "Статус" })).toHaveValue("active");
-  await expect(page.getByText("Учительское решение: прочитать значение по оси Y.")).toBeVisible();
+  await page.getByRole("button", { name: "Подробнее" }).first().click();
+  const taskDrawer = page.getByRole("dialog", { name: "Подробности задачи" });
+  await expect(taskDrawer.getByText("Учительское решение: прочитать значение по оси Y.")).toBeVisible();
+  await expect(taskDrawer.getByText("42", { exact: true })).toBeVisible();
+  await expect(page.getByText('{"answers":["42"]}', { exact: true })).toHaveCount(0);
+  await taskDrawer.getByRole("button", { name: "Закрыть подробности" }).click();
   await expect(
     page.getByRole("link", { name: "Открыть источник" }).first()
   ).toHaveAttribute(
@@ -88,11 +93,12 @@ test("task bank keeps protected delete errors visible", async ({ page }) => {
   });
   await page.goto("/teacher/task-bank");
 
+  await page.getByRole("button", { name: "Подробнее" }).first().click();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Удалить" }).first().click();
+  await page.getByRole("dialog", { name: "Подробности задачи" }).getByRole("button", { name: "Удалить" }).click();
 
   await expect(page.getByText("Task is referenced by assignments; archive it instead")).toBeVisible();
-  await expect(page.getByText("demo-ege-7-graph")).toBeVisible();
+  await expect(page.getByText("demo-ege-7-graph").first()).toBeVisible();
 });
 
 test("URL import persists review, apply, duplicate warning, and idempotency", async ({

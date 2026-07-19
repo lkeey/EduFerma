@@ -2,29 +2,19 @@
 
 import { useState } from "react";
 import { Badge, Button, LinkButton } from "@eduferma/ui";
-
-type TaskRow = {
-  id: string;
-  taskId: string;
-  statementMd: string;
-  topic?: string;
-  taskNumber?: string;
-  difficultyLevel: string;
-  skillAtoms: string[];
-  answerJson?: unknown;
-  solutionMd?: string;
-  sourceName?: string;
-  sourceUrl?: string;
-  verificationStatus: string;
-  licenseStatus: string;
-  status?: string;
-};
+import { presentTaskAnswer, toTaskRow, type TaskRow } from "@/components/platform/task-bank-presentation";
+import { TaskBankTaskCard } from "@/components/platform/task-bank-task-card";
+import { TaskBankTaskDrawer } from "@/components/platform/task-bank-task-drawer";
 
 export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [selected, setSelected] = useState<string[]>([]);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const openTask = openTaskId ? tasks.find((task) => task.id === openTaskId) : undefined;
+  const allSelected = tasks.length > 0 && tasks.every((task) => selected.includes(task.id));
 
   async function request(path: string, init: RequestInit) {
     setError(null);
@@ -36,8 +26,15 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
     return payload;
   }
 
+  function updateSelection(taskId: string, isSelected: boolean) {
+    setSelected((current) => {
+      if (isSelected) return current.includes(taskId) ? current : [...current, taskId];
+      return current.filter((item) => item !== taskId);
+    });
+  }
+
   async function bulkArchive() {
-    if (!window.confirm(`Архивировать выбранные задачи (${selected.length})?`)) return;
+    if (selected.length === 0 || !window.confirm(`Архивировать выбранные задачи (${selected.length})?`)) return;
     setPendingTaskId("bulk");
     try {
       await request("/api/v1/teacher/tasks/bulk", {
@@ -108,6 +105,7 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
       });
       setTasks((current) => current.filter((task) => task.id !== taskId));
       setSelected((current) => current.filter((id) => id !== taskId));
+      setOpenTaskId(null);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не удалось удалить задачу");
     } finally {
@@ -115,158 +113,137 @@ export function TaskBankControls({ tasks: initialTasks }: { tasks: TaskRow[] }) 
     }
   }
 
-  const allSelected = tasks.length > 0 && tasks.every((task) => selected.includes(task.id));
-
   return (
     <>
-      <div className="filter-bar">
-        <Button disabled={selected.length === 0 || pendingTaskId !== null} onClick={bulkArchive} type="button" variant="secondary">
-          Архивировать выбранные
-        </Button>
-        <span>Выбрано: {selected.length}</span>
+      <div className="task-bank-toolbar">
+        <div>
+          <Button disabled={selected.length === 0 || pendingTaskId !== null} onClick={bulkArchive} type="button" variant="secondary">
+            Архивировать выбранные
+          </Button>
+          <span aria-live="polite">Выбрано: {selected.length}</span>
+        </div>
+        <p>Полные условия, решения и редактирование открываются в подробностях задачи.</p>
       </div>
-      {error ? <p aria-live="polite">{error}</p> : null}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>
+
+      {error ? <p aria-live="assertive" className="task-bank-error" role="alert">{error}</p> : null}
+
+      {tasks.length === 0 ? (
+        <div className="task-bank-empty">
+          <strong>Задачи не найдены</strong>
+          <p>Измените фильтры или импортируйте новый источник.</p>
+        </div>
+      ) : (
+        <>
+          <div className="task-bank-table-wrap">
+            <table className="data-table task-bank-table">
+              <colgroup>
+                <col className="task-bank-select-column" />
+                <col className="task-bank-task-column" />
+                <col className="task-bank-topic-column" />
+                <col className="task-bank-answer-column" />
+                <col className="task-bank-source-column" />
+                <col className="task-bank-status-column" />
+                <col className="task-bank-action-column" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      aria-label="Выбрать все задачи на странице"
+                      checked={allSelected}
+                      onChange={(event) => setSelected(event.target.checked ? tasks.map((task) => task.id) : [])}
+                      type="checkbox"
+                    />
+                  </th>
+                  <th>Задача</th>
+                  <th>Тема</th>
+                  <th>Ответ</th>
+                  <th>Источник</th>
+                  <th>Статус</th>
+                  <th><span className="visually-hidden">Действия</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task) => {
+                  const answer = presentTaskAnswer(task.answerJson);
+
+                  return (
+                    <tr key={task.id}>
+                      <td>
+                        <input
+                          aria-label={`Выбрать задачу ${task.taskId}`}
+                          checked={selected.includes(task.id)}
+                          onChange={(event) => updateSelection(task.id, event.target.checked)}
+                          type="checkbox"
+                        />
+                      </td>
+                      <td>
+                        <button className="task-bank-summary-button" onClick={() => setOpenTaskId(task.id)} type="button">
+                          {task.statementMd}
+                        </button>
+                        <small className="task-bank-id">{task.taskId}</small>
+                      </td>
+                      <td>
+                        <strong>{task.topic || "Без темы"}</strong>
+                        <small>{task.taskNumber ? `№ ${task.taskNumber}` : "Номер не указан"}</small>
+                      </td>
+                      <td>
+                        <strong>{answer.summary}</strong>
+                        <small>{answer.typeLabel}</small>
+                      </td>
+                      <td>
+                        <span>{task.sourceName || "Не указан"}</span>
+                        {task.sourceUrl ? <a href={task.sourceUrl} rel="noreferrer" target="_blank">Открыть источник</a> : null}
+                      </td>
+                      <td>
+                        <Badge>{task.status ?? "draft"}</Badge>
+                        <small>{task.verificationStatus}</small>
+                      </td>
+                      <td>
+                        <div className="task-bank-row-actions">
+                          <Button onClick={() => setOpenTaskId(task.id)} type="button" variant="secondary">Подробнее</Button>
+                          <LinkButton href="/teacher/assignments/new" variant="ghost">В ДЗ</LinkButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="task-bank-card-list">
+            <label className="task-bank-select-all-card">
               <input
-                aria-label="Выбрать все задачи на странице"
                 checked={allSelected}
                 onChange={(event) => setSelected(event.target.checked ? tasks.map((task) => task.id) : [])}
                 type="checkbox"
               />
-            </th>
-            <th>Задача</th>
-            <th>Тема</th>
-            <th>Ответ</th>
-            <th>Решение</th>
-            <th>Источник</th>
-            <th>Статус</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <tr key={task.id}>
-              <td>
-                <input
-                  aria-label={`Выбрать задачу ${task.taskId}`}
-                  checked={selected.includes(task.id)}
-                  onChange={(event) =>
-                    setSelected((current) =>
-                      event.target.checked ? [...current, task.id] : current.filter((item) => item !== task.id)
-                    )
-                  }
-                  type="checkbox"
-                />
-              </td>
-              <td>
-                <p>{task.statementMd}</p>
-                <small>{task.taskId}</small>
-              </td>
-              <td>
-                {task.topic}
-                <br />
-                <small>{task.skillAtoms.join(", ")}</small>
-              </td>
-              <td>{formatAnswer(task.answerJson)}</td>
-              <td>{task.solutionMd || "—"}</td>
-              <td>
-                <span>{task.sourceName || "—"}</span>
-                {task.sourceUrl ? (
-                  <>
-                    <br />
-                    <a href={task.sourceUrl} rel="noreferrer" target="_blank">Открыть источник</a>
-                  </>
-                ) : null}
-              </td>
-              <td>
-                <Badge>{task.status ?? "draft"}</Badge>{" "}
-                <Badge>{task.verificationStatus}</Badge>{" "}
-                <Badge>{task.licenseStatus}</Badge>
-              </td>
-              <td>
-                <div className="filter-bar">
-                  <LinkButton href="/teacher/assignments/new" variant="secondary">В ДЗ</LinkButton>
-                  <Button disabled={pendingTaskId !== null} onClick={() => archiveTask(task.id)} type="button" variant="secondary">
-                    Архив
-                  </Button>
-                  <Button disabled={pendingTaskId !== null} onClick={() => deleteTask(task.id)} type="button" variant="secondary">
-                    Удалить
-                  </Button>
-                </div>
-                <details>
-                  <summary>Редактировать</summary>
-                  <form action={(formData) => saveTask(task.id, formData)}>
-                    <label>
-                      Условие
-                      <textarea className="text-field" defaultValue={task.statementMd} name="statementMd" required />
-                    </label>
-                    <label>
-                      Тема
-                      <input className="text-field" defaultValue={task.topic ?? ""} name="topic" required />
-                    </label>
-                    <label>
-                      Номер
-                      <input className="text-field" defaultValue={task.taskNumber ?? ""} name="taskNumber" />
-                    </label>
-                    <label>
-                      Сложность
-                      <select className="text-field" defaultValue={task.difficultyLevel} name="difficultyLevel">
-                        <option value="basic">basic</option>
-                        <option value="medium">medium</option>
-                        <option value="advanced">advanced</option>
-                        <option value="trap">trap</option>
-                        <option value="unknown">unknown</option>
-                      </select>
-                    </label>
-                    <label>
-                      Статус
-                      <select className="text-field" defaultValue={task.status ?? "draft"} name="status">
-                        <option value="active">active</option>
-                        <option value="draft">draft</option>
-                        <option value="archived">archived</option>
-                        <option value="needs_review">needs_review</option>
-                      </select>
-                    </label>
-                    <Button disabled={pendingTaskId !== null} type="submit">Сохранить</Button>
-                  </form>
-                </details>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              Выбрать все задачи на странице
+            </label>
+            {tasks.map((task) => (
+              <TaskBankTaskCard
+                isSelected={selected.includes(task.id)}
+                key={task.id}
+                onOpen={() => setOpenTaskId(task.id)}
+                onSelect={(isSelected) => updateSelection(task.id, isSelected)}
+                task={task}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {openTask ? (
+        <TaskBankTaskDrawer
+          isPending={pendingTaskId === openTask.id}
+          onArchive={() => archiveTask(openTask.id)}
+          onClose={() => setOpenTaskId(null)}
+          onDelete={() => deleteTask(openTask.id)}
+          onSave={(formData) => saveTask(openTask.id, formData)}
+          task={openTask}
+        />
+      ) : null}
     </>
   );
-}
-
-function formatAnswer(answer: unknown) {
-  if (answer === undefined || answer === null) return "—";
-  if (typeof answer === "string") return answer;
-  return JSON.stringify(answer);
-}
-
-function toTaskRow(task: Record<string, unknown>): TaskRow {
-  return {
-    id: String(task.id),
-    taskId: String(task.task_id ?? task.taskId ?? task.id),
-    statementMd: String(task.statement_md ?? task.statementMd ?? ""),
-    topic: typeof task.topic === "string" ? task.topic : undefined,
-    taskNumber: typeof task.task_number === "string" ? task.task_number : typeof task.taskNumber === "string" ? task.taskNumber : undefined,
-    difficultyLevel: String(task.difficulty_level ?? task.difficultyLevel ?? "unknown"),
-    skillAtoms: Array.isArray(task.skill_atoms)
-      ? task.skill_atoms.map(String)
-      : Array.isArray(task.skillAtoms)
-        ? task.skillAtoms.map(String)
-        : [],
-    answerJson: task.answer_json ?? task.answerJson,
-    solutionMd: typeof task.solution_md === "string" ? task.solution_md : typeof task.solutionMd === "string" ? task.solutionMd : undefined,
-    sourceName: typeof task.source_name === "string" ? task.source_name : typeof task.sourceName === "string" ? task.sourceName : undefined,
-    sourceUrl: typeof task.source_url === "string" ? task.source_url : typeof task.sourceUrl === "string" ? task.sourceUrl : undefined,
-    verificationStatus: String(task.verification_status ?? task.verificationStatus ?? "unknown"),
-    licenseStatus: String(task.license_status ?? task.licenseStatus ?? "unknown"),
-    status: typeof task.status === "string" ? task.status : undefined
-  };
 }

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:remote-db": "vitest run --config vitest.remote-db.config.ts",
     "e2e": "playwright test",
+    "e2e:responsive": "playwright test --config=playwright.responsive.config.ts",
     "e2e:clerk": "playwright test --config=playwright.clerk.config.ts",
     "e2e:clerk:provision": "tsx scripts/provision-clerk-e2e-users.ts",
     "web:self-review": "tsx scripts/self-review-web-platform.ts",
